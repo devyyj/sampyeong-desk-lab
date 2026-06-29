@@ -3,9 +3,9 @@
 import React from 'react';
 
 export default function ProfileEditPage() {
-  const [realName, setRealName] = React.useState('홍길동');
-  const [department, setDepartment] = React.useState('연구개발부');
-  const [bio, setBio] = React.useState('안녕하세요! 삼평동 책상 전략 연구소의 주임연구원 홍길동입니다.');
+  const [realName, setRealName] = React.useState('');
+  const [department, setDepartment] = React.useState('');
+  const [bio, setBio] = React.useState('');
   const [avatarUrl, setAvatarUrl] = React.useState('');
   const [success, setSuccess] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
@@ -23,7 +23,25 @@ export default function ProfileEditPage() {
       }
       return;
     }
-    setLoading(false);
+
+    const loadProfileData = async () => {
+      try {
+        const res = await fetch('/api/auth/session');
+        const data = await res.json();
+        if (data.user) {
+          setRealName(data.user.user_metadata?.real_name || '');
+          setDepartment(data.user.user_metadata?.department || '');
+          setBio(data.user.user_metadata?.bio || '');
+          setAvatarUrl(data.user.user_metadata?.avatar_url || '');
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProfileData();
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {

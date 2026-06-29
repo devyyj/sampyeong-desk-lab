@@ -36,11 +36,16 @@ export default function GlobalHeader() {
 
   return (
     <header className="sticky top-0 z-50 bg-[#fafafa]/90 dark:bg-[#09090b]/90 backdrop-blur border-b border-[#e4e4e7] dark:border-[#27272a]">
-      <div className="max-w-xl mx-auto px-4 h-12 flex items-center justify-between">
-        <Link href="/" className="font-bold text-xs uppercase tracking-wider cursor-pointer text-[#18181b] dark:text-[#f4f4f5] no-underline">
-          SDL.Lab
+      <div className="max-w-xl mx-auto px-4 h-14 flex items-center justify-between">
+        <Link href="/" className="flex items-center space-x-2 cursor-pointer text-[#18181b] dark:text-[#f4f4f5] no-underline">
+          <img src="/sdl_logo.jpg" alt="SDL Logo" className="w-10 h-10 rounded-lg object-cover" />
+          <span className="flex flex-col text-[10px] md:text-[12px] font-bold leading-tight tracking-wide">
+            <span>삼평동</span>
+            <span>책상 전략</span>
+            <span>연구소</span>
+          </span>
         </Link>
-        <nav className="flex items-center space-x-3 text-[11px] font-medium text-[#71717a] dark:text-[#a1a1aa]">
+        <nav className="flex items-center space-x-3 text-[11px] md:text-[13px] font-medium text-[#71717a] dark:text-[#a1a1aa]">
           <Link href="/" className="hover:text-[#18181b] dark:hover:text-[#f4f4f5] no-underline">피드</Link>
           <Link href="/directory" className="hover:text-[#18181b] dark:hover:text-[#f4f4f5] no-underline">명부</Link>
           <Link href="/profile" className="hover:text-[#18181b] dark:hover:text-[#f4f4f5] no-underline">프로필</Link>
@@ -48,12 +53,12 @@ export default function GlobalHeader() {
           {isLoggedIn ? (
             <button
               onClick={handleLogout}
-              className="text-[10px] text-rose-500 hover:underline px-1 cursor-pointer"
+              className="text-[10px] md:text-[12px] text-rose-500 hover:underline px-1 cursor-pointer"
             >
               로그아웃
             </button>
           ) : (
-            <Link href="/login" className="text-[10px] text-[#18181b] dark:text-[#f4f4f5] hover:underline px-1">
+            <Link href="/login" className="text-[10px] md:text-[12px] text-[#18181b] dark:text-[#f4f4f5] hover:underline px-1">
               로그인
             </Link>
           )}

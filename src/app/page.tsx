@@ -39,13 +39,31 @@ export default function FeedPage() {
   const [imageUrl, setImageUrl] = React.useState('');
   const [selectedTag, setSelectedTag] = React.useState<string | null>(null);
   const [visibleCount, setVisibleCount] = React.useState(5);
-  const [currentUser] = React.useState({
-    id: 'test-user-id',
-    nickname: 'user1',
-    role: 'admin',
+  const [currentUser, setCurrentUser] = React.useState({
+    id: '',
+    nickname: '',
+    role: '',
+    realName: '',
   });
 
   const [commentInputs, setCommentInputs] = React.useState<Record<string, string>>({});
+
+  const fetchSession = async () => {
+    try {
+      const res = await fetch('/api/auth/session');
+      const data = await res.json();
+      if (data.user) {
+        setCurrentUser({
+          id: data.user.id,
+          nickname: data.user.user_metadata?.nickname || 'user1',
+          role: data.user.user_metadata?.role || 'user',
+          realName: data.user.user_metadata?.real_name || '홍길동',
+        });
+      }
+    } catch (e) {
+      console.error('Session fetch failed in FeedPage', e);
+    }
+  };
 
   const fetchPosts = async () => {
     try {
@@ -64,6 +82,7 @@ export default function FeedPage() {
   };
 
   React.useEffect(() => {
+    fetchSession();
     fetchPosts();
   }, []);
 

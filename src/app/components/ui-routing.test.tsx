@@ -9,8 +9,26 @@ import ProfilePage from '../profile/page';
 import GlobalHeader from './GlobalHeader';
 
 // Mock global fetch
-global.fetch = jest.fn(() =>
-  Promise.resolve({
+global.fetch = jest.fn((url) => {
+  const urlStr = String(url);
+  if (urlStr.includes('/api/auth/session')) {
+    return Promise.resolve({
+      json: () => Promise.resolve({
+        user: {
+          id: 'test-user-id',
+          email: 'user1@sdl.com',
+          user_metadata: {
+            nickname: 'user1',
+            real_name: '홍길동',
+            department: '연구개발부',
+            role: 'admin',
+            bio: '안녕하세요! 반갑습니다.',
+          }
+        }
+      })
+    });
+  }
+  return Promise.resolve({
     json: () => Promise.resolve({
       posts: [
         {
@@ -44,8 +62,8 @@ global.fetch = jest.fn(() =>
         }
       ],
     }),
-  })
-) as jest.Mock;
+  });
+}) as jest.Mock;
 
 const originalLocation = window.location;
 
@@ -91,8 +109,8 @@ describe('Component Flow TDD Tests', () => {
         </>
       );
     });
-    // Verify header title
-    expect(await screen.findByText('SDL.Lab')).toBeInTheDocument();
+    // Verify header title logo image alt
+    expect(await screen.findByAltText('SDL Logo')).toBeInTheDocument();
   });
 
   it('DirectoryPage performs filtering on list', async () => {

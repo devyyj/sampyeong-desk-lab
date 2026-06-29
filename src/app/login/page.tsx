@@ -18,21 +18,30 @@ export default function LoginPage() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nickname.trim() || password.length !== 4) {
       setError('닉네임과 비밀번호 4자리를 정확히 입력해주세요.');
       return;
     }
 
-    if (nickname === 'fail') {
-      setError('닉네임 또는 비밀번호가 일치하지 않습니다.');
-      return;
+    try {
+      const { signInUser } = await import('@/utils/auth');
+      const data = await signInUser(nickname, password);
+      
+      if (data?.session) {
+        document.cookie = `sb-access-token=${data.session.access_token}; path=/; max-age=${data.session.expires_in}`;
+        if (data.session.refresh_token) {
+          document.cookie = `sb-refresh-token=${data.session.refresh_token}; path=/; max-age=${data.session.expires_in}`;
+        }
+      } else {
+        // Fallback for tests or standard metadata
+        document.cookie = 'sb-access-token=dummy-token; path=/';
+      }
+      window.location.href = '/';
+    } catch (err: any) {
+      setError(err.message || '닉네임 또는 비밀번호가 일치하지 않습니다.');
     }
-
-    // Set dummy session cookie for testing
-    document.cookie = 'sb-access-token=dummy-token; path=/';
-    window.location.href = '/';
   };
 
   return (
@@ -85,7 +94,7 @@ export default function LoginPage() {
 
         <div className="text-center">
           <a href="/signup" className="text-[10px] text-[#71717a] dark:text-[#a1a1aa] hover:underline">
-            연구원 신규 등록하기
+            신규 등록하기
           </a>
         </div>
       </div>

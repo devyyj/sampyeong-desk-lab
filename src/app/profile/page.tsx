@@ -31,17 +31,30 @@ export default function ProfilePage() {
       return;
     }
 
+    const fetchUserProfile = async () => {
+      try {
+        const res = await fetch('/api/auth/session');
+        const data = await res.json();
+        if (active && data.user) {
+          setProfile({
+            id: data.user.id,
+            realName: data.user.user_metadata?.real_name || '',
+            nickname: data.user.user_metadata?.nickname || '',
+            department: data.user.user_metadata?.department || '',
+            avatarUrl: data.user.user_metadata?.avatar_url || null,
+            bio: data.user.user_metadata?.bio || '안녕하세요!',
+            role: data.user.user_metadata?.role || 'user',
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch user session profile', err);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
     if (active) {
-      setProfile({
-        id: 'test-user-id',
-        realName: '홍길동',
-        nickname: 'user1',
-        department: '연구개발부',
-        avatarUrl: null,
-        bio: '안녕하세요! 삼평동 책상 전략 연구소의 주임연구원 홍길동입니다.',
-        role: 'admin',
-      });
-      setLoading(false);
+      fetchUserProfile();
     }
     return () => {
       active = false;

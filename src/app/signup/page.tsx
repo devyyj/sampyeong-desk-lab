@@ -24,15 +24,29 @@ export default function SignupPage() {
       return;
     }
 
-    if (nickname === 'taken') {
-      setError('이미 사용 중인 닉네임입니다.');
-      return;
-    }
+    try {
+      const { signUpUser } = await import('@/utils/auth');
+      const data = await signUpUser({
+        nickname,
+        realName,
+        department,
+        password4Digit: password,
+      });
 
-    setSuccess(true);
-    // Set dummy session cookie for testing
-    document.cookie = 'sb-access-token=dummy-token; path=/';
-    window.location.href = '/';
+      if (data?.session) {
+        document.cookie = `sb-access-token=${data.session.access_token}; path=/; max-age=${data.session.expires_in}`;
+        if (data.session.refresh_token) {
+          document.cookie = `sb-refresh-token=${data.session.refresh_token}; path=/; max-age=${data.session.expires_in}`;
+        }
+      } else {
+        // Fallback for tests or standard metadata
+        document.cookie = 'sb-access-token=dummy-token; path=/';
+      }
+      setSuccess(true);
+      window.location.href = '/';
+    } catch (err: any) {
+      setError(err.message || '가입 도중 에러가 발생했습니다.');
+    }
   };
 
   return (

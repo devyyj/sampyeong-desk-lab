@@ -19,17 +19,37 @@
   }
 }
 
+/* PC 화면 가독성을 위해 화면 폭 768px 이상에서 폰트 크기 변수 설정 */
+:root {
+  --base-font-size: 13px;
+  --base-input-size: 13px;
+  --header-logo-size: 12px;
+  --header-nav-size: 11px;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --base-font-size: 15px;
+    --base-input-size: 15px;
+    --header-logo-size: 14px;
+    --header-nav-size: 13px;
+  }
+}
+
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: var(--base-font-size);
+  line-height: 1.6;
   letter-spacing: -0.01em;
 }
 
 /* Minimal input focus outline reset */
 input, textarea, button {
   font-family: inherit;
-  font-size: 13px;
+  font-size: var(--base-input-size);
 }
+
+

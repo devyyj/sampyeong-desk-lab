@@ -25,9 +25,9 @@ export default function AnnouncementsPage() {
   const [newContent, setNewContent] = React.useState('');
   const [error, setError] = React.useState('');
   const [currentUser, setCurrentUser] = React.useState({
-    id: 'test-user-id',
-    nickname: 'user1',
-    role: 'admin', 
+    id: '',
+    nickname: '',
+    role: '', 
   });
 
   const fetchAnnouncements = async () => {

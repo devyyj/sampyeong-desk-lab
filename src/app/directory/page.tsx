@@ -90,7 +90,7 @@ export default function DirectoryPage() {
           ))}
           {filteredProfiles.length === 0 && (
             <div className="text-center py-8 text-[#a1a1aa] text-[11px]">
-              검색 조건에 맞는 연구원이 없습니다.
+              검색 조건에 맞는 회원이 없습니다.
             </div>
           )}
         </div>
