@@ -3,6 +3,7 @@
 import { db } from '@/db';
 import { boardGames } from '../../../drizzle/schema';
 import { getSession } from '@/lib/session';
+import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { v4 as uuidv4 } from 'uuid';
@@ -59,5 +60,6 @@ export async function addBoardGame(prevState: any, formData: FormData) {
     return { error: '보드게임 등록 중 오류가 발생했습니다.' };
   }
 
+  revalidatePath('/boardgames');
   redirect('/boardgames');
 }
