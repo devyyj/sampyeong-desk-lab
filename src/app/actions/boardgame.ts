@@ -67,7 +67,7 @@ export async function addBoardGame(prevState: any, formData: FormData) {
   redirect('/boardgames');
 }
 
-export async function updateBoardGame(formData: FormData) {
+export async function updateBoardGame(prevState: any, formData: FormData) {
   const session = await getSession();
   if (!session) {
     return { error: '로그인이 필요합니다.' };

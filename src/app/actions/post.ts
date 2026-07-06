@@ -63,7 +63,7 @@ export async function createPost(prevState: any, formData: FormData) {
   redirect('/');
 }
 
-export async function updatePost(formData: FormData) {
+export async function updatePost(prevState: any, formData: FormData) {
   const session = await getSession();
   if (!session) {
     return { error: '로그인이 필요합니다.' };
