@@ -3,6 +3,7 @@ import { boardGames } from "../../../drizzle/schema";
 import { desc } from "drizzle-orm";
 import { getSession } from "@/lib/session";
 import Link from "next/link";
+import DeleteBoardGameButton from "@/components/DeleteBoardGameButton";
 
 export const dynamic = 'force-dynamic';
 
@@ -36,7 +37,7 @@ export default async function BoardGamesPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {allGames.map((game) => (
-            <div key={game.id} className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm flex flex-col group">
+            <div key={game.id} className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm flex flex-col group relative">
               <div className="w-full aspect-video bg-muted relative overflow-hidden">
                 {game.thumbnailUrl ? (
                   <img src={game.thumbnailUrl} alt={game.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
@@ -56,7 +57,15 @@ export default async function BoardGamesPage() {
                 </div>
               </div>
               <div className="p-5 flex-1 flex flex-col">
-                <h3 className="font-bold text-lg text-foreground mb-3">{game.name}</h3>
+                <div className="flex justify-between items-start mb-3">
+                  <h3 className="font-bold text-lg text-foreground">{game.name}</h3>
+                  {session && (
+                    <div className="flex gap-2">
+                      <Link href={`/boardgames/${game.id}/edit`} className="text-xs text-blue-500 hover:underline bg-blue-100 px-2 py-1 rounded">수정</Link>
+                      <DeleteBoardGameButton id={game.id} />
+                    </div>
+                  )}
+                </div>
                 
                 <div className="space-y-2 mt-auto">
                   {game.recommendedPlayers && (

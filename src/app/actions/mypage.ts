@@ -18,12 +18,16 @@ export async function updateProfile(prevState: any, formData: FormData) {
   const department = formData.get('department') as string;
   const bio = formData.get('bio') as string;
   const newPin = formData.get('newPin') as string;
+  const confirmNewPin = formData.get('confirmNewPin') as string;
   const image = formData.get('profileImage') as File | null;
 
   try {
     const updateData: any = { department, bio };
 
     if (newPin) {
+      if (newPin !== confirmNewPin) {
+        return { error: '새 비밀번호가 일치하지 않습니다.' };
+      }
       if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
         return { error: '비밀번호는 4자리 숫자여야 합니다.' };
       }
@@ -36,9 +40,11 @@ export async function updateProfile(prevState: any, formData: FormData) {
       const fileName = `${uuidv4()}.${fileExt}`;
       const filePath = `${session.userId}/${fileName}`;
       
+      const arrayBuffer = await image.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, image);
+        .upload(filePath, buffer, { contentType: image.type });
 
       if (uploadError) {
         console.error('Upload error', uploadError);

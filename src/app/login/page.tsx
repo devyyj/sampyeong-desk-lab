@@ -14,7 +14,8 @@ export default function LoginPage({
   return (
     <div className="max-w-md mx-auto mt-20">
       <div className="bg-card border border-border p-8 rounded-2xl shadow-sm">
-        <h1 className="text-2xl font-bold mb-6 text-center text-primary-600">SDL 로그인</h1>
+        <h1 className="text-2xl font-bold mb-2 text-center text-primary-600">SDL 로그인</h1>
+        <p className="text-center text-muted-foreground mb-6 text-sm">SDL에 오신 것을 환영합니다! 아이디와 PIN을 입력해주세요.</p>
         
         <form action={formAction} className="space-y-4">
           <input type="hidden" name="redirect" value={searchParams.redirect || '/'} />

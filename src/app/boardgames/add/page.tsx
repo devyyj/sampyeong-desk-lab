@@ -10,12 +10,15 @@ export default function AddBoardGamePage() {
   return (
     <div className="max-w-xl mx-auto">
       <div className="bg-card border border-border p-6 rounded-2xl shadow-sm">
-        <h1 className="text-xl font-bold mb-6 text-foreground">새 보드게임 등록</h1>
+        <div className="mb-6">
+          <h1 className="text-xl font-bold text-foreground">새 보드게임 등록</h1>
+          <p className="text-sm text-muted-foreground mt-1">회사에 새로 들어온 보드게임을 등록해주세요. 썸네일 이미지를 함께 올리면 찾기 쉬워요!</p>
+        </div>
         
         <form action={formAction} className="space-y-4">
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-foreground mb-1">
-              보드게임 이름 *
+              보드게임 이름 <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -49,14 +52,14 @@ export default function AddBoardGamePage() {
                 id="playTime"
                 name="playTime"
                 className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="예: 30분"
+                placeholder="예: 30분~1시간"
               />
             </div>
           </div>
 
           <div>
             <label htmlFor="image" className="block text-sm font-medium text-foreground mb-1">
-              썸네일 이미지 첨부
+              썸네일 이미지 첨부 (선택)
             </label>
             <input
               type="file"
@@ -65,6 +68,7 @@ export default function AddBoardGamePage() {
               accept="image/*"
               className="w-full file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 text-sm text-muted-foreground"
             />
+            <p className="text-xs text-muted-foreground mt-1">1MB 이하의 JPG, PNG, WEBP 이미지를 권장합니다.</p>
           </div>
 
           {state?.error && (

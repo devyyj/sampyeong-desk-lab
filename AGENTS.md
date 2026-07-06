@@ -10,3 +10,6 @@
 2. **상세한 주석**: 복잡한 로직, 결정 사항 및 명확하지 않은 구현 세부 사항의 "이유(why)"를 설명하는 상세한 주석으로 코드를 철저하게 문서화해야 합니다.
 3. **Server Actions와 useActionState (React 19+)**: 클라이언트 컴포넌트에서 `useActionState`와 함께 Server Action을 사용할 때, Action 함수의 첫 번째 인자는 **반드시 `prevState`**가 되어야 하고, 두 번째 인자로 `FormData`가 전달됩니다 (예: `async function action(prevState: any, formData: FormData)`). `FormData`만 인자로 받는 기존 방식은 런타임에 Null 오류를 발생시킬 수 있으니 주의하세요.
 4. **기본 브랜치**: 이 프로젝트의 기본(default) 브랜치는 `develop` 브랜치입니다. 모든 새로운 작업의 시작과 반영은 특별한 요청이 없는 한 `develop` 브랜치를 기준으로 진행합니다.
+5. **E2E 및 통합 테스트의 누락 없는 시나리오 검증**: 파일 업로드 등 외부 부수 효과(Side Effect)를 동반하는 핵심 로직은 E2E 테스트에서 실제와 동일한 형태(예: 테스트 파일 첨부)로 검증해야 합니다. 단위 테스트에서 외부 서비스(Supabase Storage 등)를 Mocking할 경우 호출 대상과 누락된 로직이 없는지 엄격히 확인해야 합니다. ('Happy Path' 혹은 텍스트 입력만 검증하는 반쪽짜리 테스트 지양)
+6. **인프라 설정(RLS)과 애플리케이션 코드의 동기화**: DB 마이그레이션(SQL)에 기재된 보안/운영 정책(예: Service Role Key 사용 의도)과 실제 애플리케이션 코드(예: `createClient`에서 Anon Key 사용)가 불일치하지 않도록 교차 검증해야 합니다. 외부 스토리지나 DB 접근 권한 설정(RLS)은 구현 즉시 실제 작동 여부를 테스트해야 합니다.
+7. **Node.js 환경에서의 Web API(File) 객체 처리 주의**: Next.js Server Action(Node.js 환경)에서 `FormData`로부터 추출한 Web API 표준 `File` 객체를 서드파티 SDK에 직접 전달하면 호환성 문제로 실패할 수 있습니다. 서버 환경에서 파일을 외부로 전송할 때는 반드시 `await image.arrayBuffer()`를 통해 `Buffer`로 변환한 후 전송해야 합니다.

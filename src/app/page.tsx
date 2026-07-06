@@ -3,7 +3,7 @@ import Link from "next/link";
 import { db } from "@/db";
 import { desc } from "drizzle-orm";
 import { posts } from "../../drizzle/schema";
-import Image from "next/image";
+import DeletePostButton from "@/components/DeletePostButton";
 
 export const dynamic = 'force-dynamic';
 
@@ -40,20 +40,28 @@ export default async function Page() {
         <div className="space-y-6">
           {allPosts.map((post) => (
             <article key={post.id} className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-              <div className="p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-                  {post.author.profileImageUrl ? (
-                    <img src={post.author.profileImageUrl} alt="Profile" className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-sm font-medium text-muted-foreground">
-                      {post.author.username[0].toUpperCase()}
-                    </span>
-                  )}
+              <div className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+                    {post.author.profileImageUrl ? (
+                      <img src={post.author.profileImageUrl} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-sm font-medium text-muted-foreground">
+                        {post.author.username[0].toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <div className="font-semibold text-sm">{post.author.username}</div>
+                    <div className="text-xs text-muted-foreground">{post.author.department}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="font-semibold text-sm">{post.author.username}</div>
-                  <div className="text-xs text-muted-foreground">{post.author.department}</div>
-                </div>
+                {session?.userId === post.authorId && (
+                  <div className="flex items-center gap-2">
+                    <Link href={`/posts/${post.id}/edit`} className="text-xs text-blue-500 hover:underline">수정</Link>
+                    <DeletePostButton id={post.id} />
+                  </div>
+                )}
               </div>
               
               {post.imageUrl && (

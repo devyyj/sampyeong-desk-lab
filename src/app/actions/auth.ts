@@ -10,10 +10,15 @@ import { redirect } from 'next/navigation';
 export async function signup(prevState: any, formData: FormData) {
   const username = formData.get('username') as string;
   const pin = formData.get('pin') as string;
+  const confirmPin = formData.get('confirmPin') as string;
   const department = formData.get('department') as string;
 
-  if (!username || !pin || !department) {
+  if (!username || !pin || !confirmPin || !department) {
     return { error: '모든 항목을 입력해주세요.' };
+  }
+
+  if (pin !== confirmPin) {
+    return { error: '비밀번호가 일치하지 않습니다.' };
   }
 
   if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {

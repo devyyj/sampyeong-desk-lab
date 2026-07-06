@@ -1,10 +1,15 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
 import { updateProfile } from '@/app/actions/mypage';
 
 export default function MypageForm({ user }: { user: any }) {
   const [state, formAction] = useActionState(updateProfile, null as any);
+  const [newPin, setNewPin] = useState('');
+  const [confirmNewPin, setConfirmNewPin] = useState('');
+
+  const isPinMatched = !newPin || newPin === confirmNewPin;
+  const isPinValid = !newPin || newPin.length === 4;
 
   return (
     <form action={formAction} className="space-y-6">
@@ -66,19 +71,52 @@ export default function MypageForm({ user }: { user: any }) {
             />
           </div>
 
-          <div>
-            <label htmlFor="newPin" className="block text-sm font-medium text-foreground mb-1">
-              새 비밀번호 (4자리 PIN)
-            </label>
-            <input
-              type="password"
-              id="newPin"
-              name="newPin"
-              maxLength={4}
-              pattern="\d{4}"
-              className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="변경하려면 입력 (4자리 숫자)"
-            />
+          <div className="pt-4 border-t border-border">
+            <h3 className="text-sm font-medium text-foreground mb-3">비밀번호 변경</h3>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="newPin" className="block text-sm font-medium text-foreground mb-1">
+                  새 비밀번호 (4자리 PIN)
+                </label>
+                <input
+                  type="password"
+                  id="newPin"
+                  name="newPin"
+                  maxLength={4}
+                  pattern="\d{4}"
+                  value={newPin}
+                  onChange={(e) => setNewPin(e.target.value)}
+                  className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="변경하려면 입력 (4자리 숫자)"
+                />
+              </div>
+
+              {newPin.length > 0 && (
+                <div>
+                  <label htmlFor="confirmNewPin" className="block text-sm font-medium text-foreground mb-1">
+                    새 비밀번호 확인
+                  </label>
+                  <input
+                    type="password"
+                    id="confirmNewPin"
+                    name="confirmNewPin"
+                    maxLength={4}
+                    pattern="\d{4}"
+                    required
+                    value={confirmNewPin}
+                    onChange={(e) => setConfirmNewPin(e.target.value)}
+                    className={`w-full px-4 py-2 border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 ${confirmNewPin && !isPinMatched ? 'border-red-500 focus:ring-red-500' : 'border-border focus:ring-primary-500'}`}
+                    placeholder="새 비밀번호를 다시 입력해주세요"
+                  />
+                  {confirmNewPin && !isPinMatched && (
+                    <p className="text-xs text-red-500 mt-1">비밀번호가 일치하지 않습니다.</p>
+                  )}
+                  {confirmNewPin && isPinMatched && isPinValid && (
+                    <p className="text-xs text-green-500 mt-1">비밀번호가 일치합니다.</p>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -107,7 +145,8 @@ export default function MypageForm({ user }: { user: any }) {
         
         <button
           type="submit"
-          className="px-6 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors"
+          disabled={!isPinMatched || !isPinValid}
+          className={`px-6 py-2 rounded-lg font-medium transition-colors ${(!isPinMatched || !isPinValid) ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-primary-600 text-white hover:bg-primary-700'}`}
         >
           정보 수정
         </button>
