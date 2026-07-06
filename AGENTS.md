@@ -9,3 +9,4 @@
 1. **테스트 주도 개발 (TDD)**: 모든 새로운 기능과 버그 수정은 TDD 원칙을 따라야 합니다. 실패하는 테스트를 먼저 작성한 다음, 테스트를 통과하도록 코드를 구현하고 리팩터링하세요.
 2. **상세한 주석**: 복잡한 로직, 결정 사항 및 명확하지 않은 구현 세부 사항의 "이유(why)"를 설명하는 상세한 주석으로 코드를 철저하게 문서화해야 합니다.
 3. **Server Actions와 useActionState (React 19+)**: 클라이언트 컴포넌트에서 `useActionState`와 함께 Server Action을 사용할 때, Action 함수의 첫 번째 인자는 **반드시 `prevState`**가 되어야 하고, 두 번째 인자로 `FormData`가 전달됩니다 (예: `async function action(prevState: any, formData: FormData)`). `FormData`만 인자로 받는 기존 방식은 런타임에 Null 오류를 발생시킬 수 있으니 주의하세요.
+4. **기본 브랜치**: 이 프로젝트의 기본(default) 브랜치는 `develop` 브랜치입니다. 모든 새로운 작업의 시작과 반영은 특별한 요청이 없는 한 `develop` 브랜치를 기준으로 진행합니다.
