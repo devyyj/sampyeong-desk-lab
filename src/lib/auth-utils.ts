@@ -1,12 +1,20 @@
 import bcrypt from 'bcryptjs';
 
+/** 관리자가 계정을 발급하거나 PIN을 초기화할 때 쓰는 기본 PIN. 이 PIN을 받은 사용자는 첫 로그인 때 변경해야 한다. */
+export const INITIAL_PIN = '1234';
+
+/** PIN 형식 검증: 정확히 4자리 숫자 문자열 (FormData 값이 null일 수 있어 unknown을 받는다) */
+export function isValidPin(pin: unknown): pin is string {
+  return typeof pin === 'string' && /^\d{4}$/.test(pin);
+}
+
 /**
  * Validates and hashes a 4-digit PIN.
  * @param pin The 4-digit numeric string
  * @returns The hashed PIN string
  */
 export async function hashPIN(pin: string): Promise<string> {
-  if (!/^\d{4}$/.test(pin)) {
+  if (!isValidPin(pin)) {
     throw new Error('PIN must be exactly 4 digits');
   }
   const salt = await bcrypt.genSalt(10);

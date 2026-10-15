@@ -12,6 +12,11 @@ describe('schema: Confluence import 확장', () => {
     expect(column(users, 'display_name')).toBeDefined();
   });
 
+  it('users에 관리자/PIN 변경 필요 플래그(기본 false)', () => {
+    expect(column(users, 'is_admin')).toMatchObject({ notNull: true, default: false });
+    expect(column(users, 'must_change_pin')).toMatchObject({ notNull: true, default: false });
+  });
+
   it('board_games에 보유자/보관함/멱등성 키 컬럼이 있다', () => {
     expect(column(boardGames, 'source_key').isUnique).toBe(true);
     expect(column(boardGames, 'in_shared_cabinet').default).toBe(false);

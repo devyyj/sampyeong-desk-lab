@@ -11,6 +11,10 @@ export const users = pgTable('users', {
   department: varchar('department', { length: 100 }).notNull(), // 소속 부서(팀)
   profileImageUrl: text('profile_image_url'), // 프로필 사진 URL
   bio: varchar('bio', { length: 255 }), // 한 줄 자기소개
+  // 관리자 여부. 회원 생성·PIN 초기화 권한은 세션 값이 아닌 이 컬럼으로 매번 판단한다.
+  isAdmin: boolean('is_admin').default(false).notNull(),
+  // 관리자가 발급/초기화한 PIN을 쓰는 중이면 true. 로그인 후 PIN을 바꾸기 전까지 다른 페이지 이용을 막는다.
+  mustChangePin: boolean('must_change_pin').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
