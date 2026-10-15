@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
-import { signup, login, logout } from './auth';
+import { login, logout } from './auth';
 import { db } from '@/db';
 import { users } from '../../../drizzle/schema';
 import * as authUtils from '@/lib/auth-utils';
@@ -41,81 +41,8 @@ describe('auth server actions', () => {
     vi.clearAllMocks();
   });
 
-  describe('signup', () => {
-    it('returns error if fields are missing', async () => {
-      const formData = new FormData();
-      const result = await signup(null, formData);
-      expect(result).toEqual({ error: '모든 항목을 입력해주세요.' });
-    });
-
-    it('returns error if PINs do not match', async () => {
-      const formData = new FormData();
-      formData.append('username', 'test');
-      formData.append('department', 'dev');
-      formData.append('pin', '1234');
-      formData.append('confirmPin', '4321');
-      const result = await signup(null, formData);
-      expect(result).toEqual({ error: '비밀번호가 일치하지 않습니다.' });
-    });
-
-    it('returns error if PIN is invalid', async () => {
-      const formData = new FormData();
-      formData.append('username', 'test');
-      formData.append('department', 'dev');
-      formData.append('pin', '123');
-      formData.append('confirmPin', '123');
-      const result = await signup(null, formData);
-      expect(result).toEqual({ error: '비밀번호는 4자리 숫자여야 합니다.' });
-    });
-  });
-
-  // Confluence에서 이관된 사전 등록 계정(pin_hash NULL)을 같은 아이디로 가입 시 연결(claim)
-  describe('signup: 사전 등록 계정 연결', () => {
-    const signupForm = () => {
-      const formData = new FormData();
-      formData.append('username', 'kim.test');
-      formData.append('department', '개발팀');
-      formData.append('pin', '1234');
-      formData.append('confirmPin', '1234');
-      return formData;
-    };
-
-    beforeEach(() => {
-      vi.mocked(authUtils.hashPIN).mockResolvedValue('hashed');
-    });
-
-    it('pin_hash가 NULL인 사전 등록 계정이면 INSERT 대신 UPDATE로 연결하고 세션 생성', async () => {
-      // 1번째 where: 기존 사용자 조회, 2번째 where: UPDATE ... RETURNING
-      mockDb.where
-        .mockResolvedValueOnce([{ id: 'u1', username: 'kim.test', pinHash: null }])
-        .mockReturnValueOnce({ returning: vi.fn().mockResolvedValue([{ id: 'u1', username: 'kim.test' }]) });
-
-      await signup(null, signupForm());
-
-      expect(mockDb.insert).not.toHaveBeenCalled();
-      expect(mockDb.set).toHaveBeenCalledWith(expect.objectContaining({ pinHash: 'hashed', department: '개발팀' }));
-      expect(session.createSession).toHaveBeenCalledWith('u1', 'kim.test', { isAdmin: false, mustChangePin: false });
-    });
-
-    it('UPDATE가 0행이면(동시 가입 경합) 이미 존재 오류이고 세션을 만들지 않음', async () => {
-      mockDb.where
-        .mockResolvedValueOnce([{ id: 'u1', username: 'kim.test', pinHash: null }])
-        .mockReturnValueOnce({ returning: vi.fn().mockResolvedValue([]) });
-
-      const result = await signup(null, signupForm());
-
-      expect(result).toEqual({ error: '이미 존재하는 아이디입니다.' });
-      expect(session.createSession).not.toHaveBeenCalled();
-    });
-
-    it('이미 PIN이 있는 계정이면 기존처럼 이미 존재 오류', async () => {
-      mockDb.where.mockResolvedValueOnce([{ id: 'u1', username: 'kim.test', pinHash: 'x' }]);
-
-      const result = await signup(null, signupForm());
-
-      expect(result).toEqual({ error: '이미 존재하는 아이디입니다.' });
-      expect(mockDb.update).not.toHaveBeenCalled();
-    });
+  it('signup은 더 이상 export되지 않는다 (회원가입 제거)', async () => {
+    expect('signup' in (await import('./auth'))).toBe(false);
   });
 
   describe('login', () => {

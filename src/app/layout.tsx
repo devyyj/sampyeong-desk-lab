@@ -28,7 +28,7 @@ export default async function RootLayout({
       className={`${inter.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        <GNB isLoggedIn={isLoggedIn} />
+        <GNB isLoggedIn={isLoggedIn} isAdmin={!!session?.isAdmin} />
 
         <main className="flex-1 w-full max-w-5xl mx-auto p-4 md:p-6 lg:p-8">
           {children}

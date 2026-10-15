@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-export default function GNB({ isLoggedIn }: { isLoggedIn: boolean }) {
+export default function GNB({ isLoggedIn, isAdmin }: { isLoggedIn: boolean; isAdmin: boolean }) {
   const pathname = usePathname();
 
 
@@ -38,6 +38,12 @@ export default function GNB({ isLoggedIn }: { isLoggedIn: boolean }) {
         <div className="flex items-center gap-4">
           {isLoggedIn ? (
             <>
+              {/* 표시 여부만 세션 값으로 정한다. 관리자 화면·액션은 서버에서 DB로 다시 권한을 확인한다. */}
+              {isAdmin && (
+                <Link href="/admin/members" className="text-sm font-medium hover:text-primary-500">
+                  관리자
+                </Link>
+              )}
               <Link href="/mypage" className="text-sm font-medium hover:text-primary-500">
                 마이페이지
               </Link>
@@ -56,9 +62,6 @@ export default function GNB({ isLoggedIn }: { isLoggedIn: boolean }) {
             <>
               <Link href="/login" className="text-sm font-medium hover:text-primary-500">
                 로그인
-              </Link>
-              <Link href="/signup" className="text-sm font-medium px-4 py-2 bg-foreground text-background rounded-full hover:bg-foreground/90 transition-colors">
-                회원가입
               </Link>
             </>
           )}

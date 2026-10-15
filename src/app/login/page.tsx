@@ -2,7 +2,6 @@
 
 import { use, useActionState } from 'react';
 import { login } from '@/app/actions/auth';
-import Link from 'next/link';
 
 export default function LoginPage({
   searchParams,
@@ -65,12 +64,7 @@ export default function LoginPage({
           </button>
         </form>
 
-        <div className="mt-6 text-center text-sm text-muted-foreground">
-          계정이 없으신가요?{' '}
-          <Link href="/signup" className="text-primary-600 hover:underline font-medium">
-            회원가입
-          </Link>
-        </div>
+        <p className="mt-6 text-center text-sm text-muted-foreground">계정은 관리자에게 문의하세요.</p>
       </div>
     </div>
   );
