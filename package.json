@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "import:confluence": "tsx --env-file=.env.local scripts/import-confluence/index.ts"
+    "import:confluence": "tsx --env-file=.env.local scripts/import-confluence/index.ts",
+    "bootstrap:pins": "tsx --env-file=.env.local scripts/bootstrap-pins.main.ts"
   },
   "dependencies": {
     "@supabase/server": "^1.3.0",
