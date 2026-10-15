@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { updateProfile } from './mypage';
 import * as session from '@/lib/session';
 
@@ -12,6 +12,7 @@ vi.mock('@/db', () => ({
 
 vi.mock('@/lib/session', () => ({
   getSession: vi.fn(),
+  createSession: vi.fn(),
 }));
 
 vi.mock('next/cache', () => ({
@@ -47,6 +48,20 @@ describe('mypage server actions', () => {
       formData.append('confirmNewPin', '123');
       const result = await updateProfile(null, formData);
       expect(result).toEqual({ error: '비밀번호는 4자리 숫자여야 합니다.' });
+    });
+  
+    it('PIN을 바꾸면 mustChangePin=false로 저장하고 세션 재발급(관리자 여부는 DB 값)', async () => {
+      vi.mocked(session.getSession).mockResolvedValueOnce({ userId: '1', username: 'test', isAdmin: false, mustChangePin: true, expiresAt: new Date() });
+      const { db } = await import('@/db');
+      const mockDb = db as unknown as Record<'update' | 'set' | 'where', Mock>;
+      mockDb.where.mockReturnValueOnce({ returning: vi.fn().mockResolvedValue([{ isAdmin: true }]) });
+      const formData = new FormData();
+      formData.append('newPin', '5678');
+      formData.append('confirmNewPin', '5678');
+
+      expect(await updateProfile(null, formData)).toEqual({ success: '정보가 성공적으로 수정되었습니다.' });
+      expect(mockDb.set).toHaveBeenCalledWith(expect.objectContaining({ mustChangePin: false, pinHash: expect.any(String) }));
+      expect(session.createSession).toHaveBeenCalledWith('1', 'test', { isAdmin: true, mustChangePin: false });
     });
   });
 });

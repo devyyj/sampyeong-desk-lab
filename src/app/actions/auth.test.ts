@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
-import { login, logout } from './auth';
+import { login, logout, changePin } from './auth';
 import { db } from '@/db';
 import { users } from '../../../drizzle/schema';
 import * as authUtils from '@/lib/auth-utils';
@@ -22,7 +22,9 @@ vi.mock('@/db', () => ({
   },
 }));
 
-vi.mock('@/lib/auth-utils', () => ({
+// 해시/검증만 대체하고 PIN 형식 검증(isValidPin)은 실제 구현을 쓴다.
+vi.mock('@/lib/auth-utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/auth-utils')>()),
   hashPIN: vi.fn(),
   verifyPIN: vi.fn(),
 }));
@@ -30,6 +32,7 @@ vi.mock('@/lib/auth-utils', () => ({
 vi.mock('@/lib/session', () => ({
   createSession: vi.fn(),
   deleteSession: vi.fn(),
+  getSession: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({
@@ -118,6 +121,62 @@ describe('auth server actions', () => {
       await logout();
       expect(session.deleteSession).toHaveBeenCalled();
       expect(redirect).toHaveBeenCalledWith('/login');
+    });
+  });
+
+  describe('changePin (초기 PIN 변경 강제)', () => {
+    const pinForm = (newPin: string, confirmNewPin = newPin) => {
+      const formData = new FormData();
+      formData.append('newPin', newPin);
+      formData.append('confirmNewPin', confirmNewPin);
+      return formData;
+    };
+    const loggedIn = () => vi.mocked(session.getSession).mockResolvedValueOnce(
+      { userId: 'u1', username: 'kim.test', isAdmin: false, mustChangePin: true, expiresAt: new Date() });
+
+    it('비로그인이면 오류', async () => {
+      vi.mocked(session.getSession).mockResolvedValueOnce(null);
+      expect(await changePin(null, pinForm('5678'))).toEqual({ error: '로그인이 필요합니다.' });
+    });
+
+    it('4자리 숫자가 아니면 오류', async () => {
+      loggedIn();
+      expect(await changePin(null, pinForm('12a4'))).toEqual({ error: '비밀번호는 4자리 숫자여야 합니다.' });
+    });
+
+    it('확인 값이 다르면 오류', async () => {
+      loggedIn();
+      expect(await changePin(null, pinForm('5678', '5679'))).toEqual({ error: '새 비밀번호가 일치하지 않습니다.' });
+    });
+
+    it('현재 PIN과 같으면 거부 (초기 PIN 재사용 방지)', async () => {
+      loggedIn();
+      mockDb.where.mockResolvedValueOnce([{ id: 'u1', username: 'kim.test', pinHash: 'h', isAdmin: false }]);
+      vi.mocked(authUtils.verifyPIN).mockResolvedValueOnce(true);
+      expect(await changePin(null, pinForm('1234'))).toEqual({ error: '현재 비밀번호와 다른 비밀번호를 입력해주세요.' });
+      expect(mockDb.update).not.toHaveBeenCalled();
+    });
+
+    it('세션의 사용자가 DB에 없으면 오류', async () => {
+      loggedIn();
+      mockDb.where.mockResolvedValueOnce([]);
+      expect(await changePin(null, pinForm('5678'))).toEqual({ error: '로그인이 필요합니다.' });
+    });
+
+    it('성공: PIN 갱신 + mustChangePin=false + 세션 재발급 + / 이동', async () => {
+      loggedIn();
+      mockDb.where
+        .mockResolvedValueOnce([{ id: 'u1', username: 'kim.test', pinHash: 'h', isAdmin: true }])
+        .mockResolvedValueOnce(undefined);
+      vi.mocked(authUtils.verifyPIN).mockResolvedValueOnce(false);
+      vi.mocked(authUtils.hashPIN).mockResolvedValueOnce('hashed');
+
+      await changePin(null, pinForm('5678'));
+
+      expect(mockDb.set).toHaveBeenCalledWith(expect.objectContaining({ pinHash: 'hashed', mustChangePin: false }));
+      expect(session.createSession).toHaveBeenCalledWith('u1', 'kim.test', { isAdmin: true, mustChangePin: false });
+      const { redirect } = await import('next/navigation');
+      expect(redirect).toHaveBeenLastCalledWith('/');
     });
   });
 });

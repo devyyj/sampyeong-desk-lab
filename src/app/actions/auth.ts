@@ -2,8 +2,8 @@
 
 import { db } from '@/db';
 import { users } from '../../../drizzle/schema';
-import { verifyPIN } from '@/lib/auth-utils';
-import { createSession, deleteSession } from '@/lib/session';
+import { hashPIN, isValidPin, verifyPIN } from '@/lib/auth-utils';
+import { createSession, deleteSession, getSession } from '@/lib/session';
 import { eq } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
 
@@ -57,3 +57,43 @@ export async function logout() {
   redirect('/login');
 }
 
+/**
+ * 관리자가 발급/초기화한 PIN을 본인 PIN으로 바꾼다(/change-pin).
+ * 모든 이관 회원이 같은 초기 PIN을 받으므로, 현재 PIN과 같은 값으로 "변경"하는 것은 막는다.
+ * 성공하면 mustChangePin=false로 세션을 다시 발급해야 middleware가 다른 페이지 접근을 허용한다.
+ */
+export async function changePin(prevState: unknown, formData: FormData) {
+  const session = await getSession();
+  if (!session) {
+    return { error: '로그인이 필요합니다.' };
+  }
+
+  const newPin = formData.get('newPin');
+  const confirmNewPin = formData.get('confirmNewPin');
+  if (!isValidPin(newPin)) {
+    return { error: '비밀번호는 4자리 숫자여야 합니다.' };
+  }
+  if (newPin !== confirmNewPin) {
+    return { error: '새 비밀번호가 일치하지 않습니다.' };
+  }
+
+  try {
+    const [user] = await db.select().from(users).where(eq(users.id, session.userId));
+    if (!user) {
+      return { error: '로그인이 필요합니다.' };
+    }
+    if (user.pinHash && (await verifyPIN(newPin, user.pinHash))) {
+      return { error: '현재 비밀번호와 다른 비밀번호를 입력해주세요.' };
+    }
+
+    await db.update(users)
+      .set({ pinHash: await hashPIN(newPin), mustChangePin: false, updatedAt: new Date() })
+      .where(eq(users.id, user.id));
+    await createSession(user.id, user.username, { isAdmin: user.isAdmin, mustChangePin: false });
+  } catch (e) {
+    console.error('Change PIN error', e);
+    return { error: '비밀번호 변경 중 오류가 발생했습니다.' };
+  }
+
+  redirect('/');
+}
