@@ -94,7 +94,7 @@ describe('auth server actions', () => {
 
       expect(mockDb.insert).not.toHaveBeenCalled();
       expect(mockDb.set).toHaveBeenCalledWith(expect.objectContaining({ pinHash: 'hashed', department: '개발팀' }));
-      expect(session.createSession).toHaveBeenCalledWith('u1', 'kim.test');
+      expect(session.createSession).toHaveBeenCalledWith('u1', 'kim.test', { isAdmin: false, mustChangePin: false });
     });
 
     it('UPDATE가 0행이면(동시 가입 경합) 이미 존재 오류이고 세션을 만들지 않음', async () => {
@@ -119,6 +119,29 @@ describe('auth server actions', () => {
   });
 
   describe('login', () => {
+    const loginForm = (redirectTo = '/') => {
+      const formData = new FormData();
+      formData.append('username', 'kim.test');
+      formData.append('pin', '1234');
+      formData.append('redirect', redirectTo);
+      return formData;
+    };
+
+    it('로그인 시 DB의 isAdmin/mustChangePin을 세션에 담는다', async () => {
+      mockDb.where.mockResolvedValueOnce([{ id: 'u1', username: 'kim.test', pinHash: 'h', isAdmin: true, mustChangePin: false }]);
+      vi.mocked(authUtils.verifyPIN).mockResolvedValueOnce(true);
+      await login(null, loginForm());
+      expect(session.createSession).toHaveBeenCalledWith('u1', 'kim.test', { isAdmin: true, mustChangePin: false });
+    });
+
+    it('mustChangePin이면 redirect 값과 무관하게 /change-pin으로 이동', async () => {
+      mockDb.where.mockResolvedValueOnce([{ id: 'u1', username: 'kim.test', pinHash: 'h', isAdmin: false, mustChangePin: true }]);
+      vi.mocked(authUtils.verifyPIN).mockResolvedValueOnce(true);
+      await login(null, loginForm('/mypage'));
+      const { redirect } = await import('next/navigation');
+      expect(redirect).toHaveBeenLastCalledWith('/change-pin');
+    });
+
     it('pin_hash가 NULL인 미가입 계정은 일반 인증 실패 메시지, verifyPIN 미호출', async () => {
       mockDb.where.mockResolvedValueOnce([{ id: 'u1', username: 'kim.test', pinHash: null }]);
       const formData = new FormData();

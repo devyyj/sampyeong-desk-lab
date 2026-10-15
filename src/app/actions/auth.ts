@@ -46,7 +46,7 @@ export async function signup(prevState: any, formData: FormData) {
         return { error: '이미 존재하는 아이디입니다.' };
       }
       // redirect()는 try 밖(함수 끝)에서 호출한다. try 안에서 부르면 NEXT_REDIRECT 예외가 catch에 잡혀 오류로 바뀐다.
-      await createSession(claimedUser.id, claimedUser.username);
+      await createSession(claimedUser.id, claimedUser.username, { isAdmin: false, mustChangePin: false });
     } else {
       const [newUser] = await db.insert(users).values({
         username,
@@ -54,7 +54,7 @@ export async function signup(prevState: any, formData: FormData) {
         department,
       }).returning();
 
-      await createSession(newUser.id, newUser.username);
+      await createSession(newUser.id, newUser.username, { isAdmin: false, mustChangePin: false });
     }
   } catch (e) {
     console.error('Signup error', e);
@@ -85,6 +85,7 @@ export async function login(prevState: any, formData: FormData) {
     return { error: '아이디와 비밀번호를 입력해주세요.' };
   }
 
+  let mustChangePin = false;
   try {
     const [user] = await db.select().from(users).where(eq(users.username, username));
     // 사전 등록(미가입) 계정은 PIN이 없으므로 로그인 불가. 계정 존재 여부가 드러나지 않도록 같은 메시지를 쓴다.
@@ -97,13 +98,15 @@ export async function login(prevState: any, formData: FormData) {
       return { error: '아이디 또는 비밀번호가 올바르지 않습니다.' };
     }
 
-    await createSession(user.id, user.username);
+    await createSession(user.id, user.username, { isAdmin: user.isAdmin, mustChangePin: user.mustChangePin });
+    mustChangePin = user.mustChangePin;
   } catch (e) {
     console.error('Login error', e);
     return { error: '로그인 처리 중 오류가 발생했습니다.' };
   }
 
-  redirect(redirectTo);
+  // 관리자가 발급/초기화한 PIN으로 로그인했다면 원래 가려던 곳 대신 PIN 변경 화면으로 보낸다.
+  redirect(mustChangePin ? '/change-pin' : redirectTo);
 }
 
 export async function logout() {
