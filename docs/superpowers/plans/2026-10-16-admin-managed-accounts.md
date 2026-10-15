@@ -336,3 +336,13 @@ it('관리자면 회원 목록 상태 표시(관리자/초기 PIN/정상)', ...)
 ## 실행 기록
 
 (Task 7 Step 5, Task 8 결과)
+
+### Task 7 — DB 적용 (2026-10-16)
+- `0002_admin_flags` 적용(DATABASE_URL 직접 연결): `is_admin`, `must_change_pin` boolean NOT NULL DEFAULT false
+- `npm run bootstrap:pins` → `{ pinsAssigned: 53, adminSet: true }`, 재실행 → `{ pinsAssigned: 0, adminSet: true }`
+
+### Task 8 — 실제 흐름 검증 (dev 서버, headless)
+- PASS: /signup 404 · 관리자 1234 로그인 → /change-pin · /boardgames 직접 입력 → /change-pin · 초기 PIN 재사용 거부 · PIN 변경 → / · GNB 관리자 메뉴 · 회원 생성(아이디 앞뒤 공백 포함) · 새 회원 1234 로그인 → /change-pin · 새 회원 PIN 변경 → / · 새 회원 관리자 메뉴 없음 · 비관리자 /admin/members 404
+- 첫 실행 실패 2건은 검증 스크립트 결함(로그인 상태 GNB의 로그아웃 submit 버튼을 클릭, 리다이렉트 완료 전 다음 단계 진행)이었고 앱 결함 아님 → 선택자를 `main` 범위로, URL 변경 대기로 수정 후 전 항목 통과
+- 정리: 테스트 회원 삭제, 관리자 PIN `1234` + `must_change_pin=true`로 원복
+- `npm test` 26 files / 139 tests, `npm run build` 성공, `tsc --noEmit` 기존 오류 5건 외 0건
