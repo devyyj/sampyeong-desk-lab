@@ -9,7 +9,7 @@
 동호회 운영 정보가 사내 Confluence(`삼평동 책상 전략 연구소` 하위 16개 페이지)에 있다. 이 웹앱이 Confluence를 대체하도록, 정형 데이터는 DB 테이블로, 서술형 문서는 Markdown 본문으로 **1회성 이관**한다.
 
 성공 기준:
-- 회원 명부(시즌 1~5), 보드 게임 보유 현황, 공용 보관함, 활동 기록(91건, 사진 201장), 회칙이 DB/Storage에 들어간다.
+- 회원 명부(시즌 1~5), 보드 게임 보유 현황, 공용 보관함, 활동 기록(91건, 사진 197장), 회칙·보관함 안내(이미지 4장)가 DB/Storage에 들어간다.
 - Confluence 회원은 "사전 등록" 계정으로 들어가고, 본인이 같은 사내 ID로 가입하면 기존 기록이 그대로 연결된다.
 - import는 재실행해도 중복이 생기지 않는다(멱등).
 - 개인정보(실명·부서·사내 ID·얼굴 사진)는 git에 남지 않고, 활동 사진은 비회원에게 노출되지 않는다.
@@ -56,8 +56,8 @@
 `activities.type` 값: `ESCAPE_ROOM` | `REGULAR` | `LUNCH` | `EVENING` | `OTHER`.
 
 ### 3.3 마이그레이션
-- `drizzle-kit generate`로 `0002_*.sql`을 생성한다(컬럼과 테이블 변경).
-- 직접 작성하는 `0003_confluence_storage_rls.sql`:
+- `drizzle-kit generate --name confluence_import`로 `0001_confluence_import.sql`을 생성한다(컬럼과 테이블 변경). drizzle journal 기준 번호라서 기존 수동 파일 `0001_storage_rls.sql`과 번호가 겹친다.
+- 직접 작성하는 `0002_confluence_storage_rls.sql`:
   - 신규 테이블 5개에 `ENABLE ROW LEVEL SECURITY`를 건다. anon 정책은 두지 않는다. 앱은 Drizzle로 직접 연결하므로 영향이 없고, REST 경로로의 노출만 막는다.
   - `activity_photos` 버킷은 **private**으로 만들고 SELECT/INSERT 정책을 두지 않는다. 업로드는 service role, 조회는 서버에서 발급한 signed URL로만 한다.
   - `document_images` 버킷은 **public**으로 만들고 public SELECT 정책만 둔다.
@@ -164,7 +164,7 @@ scripts/import-confluence/
 - **load 단위 테스트**: DB 모듈을 mock해서 upsert 순서와 키를 확인한다. 특히 `pin_hash` 미포함과 `--reset` 시 `--yes` 없이는 거부되는지를 본다.
 - **auth 액션 테스트**(기존 `auth.test.ts`에 추가): claim 성공, 이미 가입한 ID 거부, claim 경합으로 0행이 갱신된 경우, `pin_hash NULL` 로그인 거부.
 - **통합 검증**(수동 실행, 결과를 기록):
-  - `--dry-run` 리포트 건수를 확인한다. 기대값은 페이지 16, 활동 91, 사진 201, 시즌 5이며 보드게임과 명부 인원은 리포트로 확정한다.
+  - `--dry-run` 리포트 건수를 확인한다. 기대값은 활동 91, 활동 사진 197, 문서 2, 시즌 5이며 보드게임과 명부 인원은 리포트로 확정한다.
   - 실제 import 후에는 DB 건수를 확인하고, 재실행해도 건수가 같은지(멱등) 본다.
   - anon 키로 `activity_photos` 접근이 거부되는지, signed URL로는 열리는지 확인한다.
 - 커밋 전에 `npx tsc --noEmit`, `npm run build`, `npm test`를 실행한다(AGENTS.md 8번).
