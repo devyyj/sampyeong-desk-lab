@@ -2,7 +2,7 @@
 
 import { db } from '@/db';
 import { users } from '../../../drizzle/schema';
-import { hashPIN, isValidPin, verifyPIN } from '@/lib/auth-utils';
+import { hashPIN, isValidPin, verifyPIN, INITIAL_PIN, INITIAL_PIN_REJECTED } from '@/lib/auth-utils';
 import { createSession, deleteSession, getSession } from '@/lib/session';
 import { eq } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
@@ -75,6 +75,10 @@ export async function changePin(prevState: unknown, formData: FormData) {
   }
   if (newPin !== confirmNewPin) {
     return { error: '새 비밀번호가 일치하지 않습니다.' };
+  }
+  // 관리자가 1234가 아닌 PIN으로 초기화한 경우에도, 누구나 아는 1234를 본인 PIN으로 고르면 안 된다.
+  if (newPin === INITIAL_PIN) {
+    return { error: INITIAL_PIN_REJECTED };
   }
 
   try {

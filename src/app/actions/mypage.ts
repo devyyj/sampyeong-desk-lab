@@ -4,7 +4,7 @@ import { db } from '@/db';
 import { users } from '../../../drizzle/schema';
 import { createSession, getSession } from '@/lib/session';
 import { eq } from 'drizzle-orm';
-import { hashPIN } from '@/lib/auth-utils';
+import { hashPIN, INITIAL_PIN, INITIAL_PIN_REJECTED } from '@/lib/auth-utils';
 import { createClient } from '@/utils/supabase/server';
 import { v4 as uuidv4 } from 'uuid';
 import { revalidatePath } from 'next/cache';
@@ -30,6 +30,10 @@ export async function updateProfile(prevState: any, formData: FormData) {
       }
       if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
         return { error: '비밀번호는 4자리 숫자여야 합니다.' };
+      }
+      // 마이페이지에서 공개된 초기 PIN으로 되돌리면 PIN 변경 강제를 우회하게 되므로 막는다.
+      if (newPin === INITIAL_PIN) {
+        return { error: INITIAL_PIN_REJECTED };
       }
       updateData.pinHash = await hashPIN(newPin);
       // 본인이 PIN을 바꿨으므로 "관리자가 준 PIN 사용 중" 상태가 아니다.

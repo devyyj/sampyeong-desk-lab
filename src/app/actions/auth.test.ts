@@ -149,11 +149,17 @@ describe('auth server actions', () => {
       expect(await changePin(null, pinForm('5678', '5679'))).toEqual({ error: '새 비밀번호가 일치하지 않습니다.' });
     });
 
-    it('현재 PIN과 같으면 거부 (초기 PIN 재사용 방지)', async () => {
+    it('현재 PIN과 같으면 거부 (관리자가 지정한 PIN 재사용 방지)', async () => {
       loggedIn();
       mockDb.where.mockResolvedValueOnce([{ id: 'u1', username: 'kim.test', pinHash: 'h', isAdmin: false }]);
       vi.mocked(authUtils.verifyPIN).mockResolvedValueOnce(true);
-      expect(await changePin(null, pinForm('1234'))).toEqual({ error: '현재 비밀번호와 다른 비밀번호를 입력해주세요.' });
+      expect(await changePin(null, pinForm('5678'))).toEqual({ error: '현재 비밀번호와 다른 비밀번호를 입력해주세요.' });
+      expect(mockDb.update).not.toHaveBeenCalled();
+    });
+
+    it('현재 PIN이 초기 PIN이 아니더라도 초기 PIN(1234)으로는 변경 불가', async () => {
+      loggedIn();
+      expect(await changePin(null, pinForm('1234'))).toEqual({ error: '초기 비밀번호(1234)는 사용할 수 없습니다.' });
       expect(mockDb.update).not.toHaveBeenCalled();
     });
 

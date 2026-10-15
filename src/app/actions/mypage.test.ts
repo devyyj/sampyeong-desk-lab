@@ -50,6 +50,14 @@ describe('mypage server actions', () => {
       expect(result).toEqual({ error: '비밀번호는 4자리 숫자여야 합니다.' });
     });
   
+    it('마이페이지에서도 초기 PIN(1234)으로는 변경 불가', async () => {
+      vi.mocked(session.getSession).mockResolvedValueOnce({ userId: '1', username: 'test', isAdmin: false, mustChangePin: false, expiresAt: new Date() });
+      const formData = new FormData();
+      formData.append('newPin', '1234');
+      formData.append('confirmNewPin', '1234');
+      expect(await updateProfile(null, formData)).toEqual({ error: '초기 비밀번호(1234)는 사용할 수 없습니다.' });
+    });
+
     it('PIN을 바꾸면 mustChangePin=false로 저장하고 세션 재발급(관리자 여부는 DB 값)', async () => {
       vi.mocked(session.getSession).mockResolvedValueOnce({ userId: '1', username: 'test', isAdmin: false, mustChangePin: true, expiresAt: new Date() });
       const { db } = await import('@/db');
