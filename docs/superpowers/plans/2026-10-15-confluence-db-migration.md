@@ -522,3 +522,26 @@ it('모든 쓰기는 하나의 transaction 안에서 수행', ...);
 ## 실행 기록
 
 (Task 10 Step 5, Task 11 결과를 여기에 기록)
+
+### Task 10 Step 5 — dry-run (2026-10-15)
+
+```
+pages 16 / people 53 / seasons 5 / seasonMembers 161 / boardGames 86 / activities 91 / photos 197 / documents 2
+skippedUnknownUsers (5): <사내 ID 5건 — 개인정보라 생략>
+cabinetUnmatched (13): <게임명 (보유자 사내 ID) 13건 — 개인정보라 생략, 전체 목록은 data/confluence/normalized.json 재생성으로 확인>
+duplicateGames (0): -
+missingFiles (0): -
+```
+
+- 활동 종류 분포: LUNCH 42, EVENING 26, REGULAR 13, ESCAPE_ROOM 9, OTHER 1(벚꽃 소풍)
+- cabinetUnmatched는 원본 데이터 차이(표기 차이 또는 보유자 차이, 예: 보유 현황엔 퇴사자 소유로 기재)이며 파서 결함 아님. 스펙대로 별도 게임으로 추가됨 → 사용자 확인 필요.
+
+### Task 11 — 실제 이관 (2026-10-16)
+
+- 마이그레이션 적용: `confluence_import`, `confluence_storage_rls` (Supabase MCP), `0003_drop_public_read_users` (DATABASE_URL 직접 연결 — MCP 인증 만료)
+- `--reset --yes` import: users 53 / seasons 5 / seasonMembers 161 / boardGames 86(보관함 28) / activities 91 / activityPhotos 197 / documents 2, 업로드 201 files **22.1 MB**(원본 193.8 MB)
+- 멱등성: reset 없이 재실행 → DB 건수 동일, Storage 객체 activity_photos 197 / document_images 4 (중복 없음)
+- 접근 제어(publishable 키): activities·season_members·activity_photos·documents 0 rows, activity_photos 업로드/다운로드 거부, public URL 400, service role signed URL 200 `image/webp`, document_images public URL 200
+- **발견·수정**: 기존 정책 `Allow public read users`로 anon이 `pin_hash` 포함 users 전체 조회 가능 → 0003으로 정책 제거, 이후 anon users 0 rows
+- claim: dev 서버에서 사전 등록 계정 1개로 가입 → 같은 users.id, PIN 설정, 행 1개 유지 → 검증 후 pin_hash NULL/부서 원복
+- `npm test` 19 files / 89 tests 통과, `npm run build` 성공

@@ -1,11 +1,14 @@
 import { db } from "@/db";
 import { users } from "../../../drizzle/schema";
-import { desc } from "drizzle-orm";
+import { desc, isNotNull } from "drizzle-orm";
 
 export const dynamic = 'force-dynamic';
 
 export default async function MembersPage() {
   const allUsers = await db.query.users.findMany({
+    // 임시: Confluence에서 이관된 사전 등록(미가입) 계정은 프로필이 비어 있어 제외한다.
+    // 시즌 명부 UI(현재 시즌 + 미가입 배지)가 구현되면 그쪽 기준으로 교체한다.
+    where: isNotNull(users.pinHash),
     orderBy: [desc(users.createdAt)],
   });
 

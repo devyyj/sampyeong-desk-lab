@@ -33,7 +33,7 @@
 
 **`users`**
 - `pin_hash`: `NOT NULL` → **nullable**. `NULL`이면 사전 등록(미가입) 상태.
-- `display_name varchar(50)` 추가: 실명(예: `조영용`). `username`에는 사내 ID(예: `youngyong.jo`)가 들어간다.
+- `display_name varchar(50)` 추가: 실명(예: `홍길동`). `username`에는 사내 ID(예: `gildong.hong`)가 들어간다.
 - `department`는 `NOT NULL` 유지(Confluence 표기 `이름/부서`에서 추출).
 
 **`board_games`**
