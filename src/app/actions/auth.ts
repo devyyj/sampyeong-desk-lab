@@ -64,10 +64,22 @@ export async function signup(prevState: any, formData: FormData) {
   redirect('/');
 }
 
+/**
+ * 로그인 후 이동 경로 검증. redirect 값은 URL 쿼리(/login?redirect=...)에서 오므로 공격자가 조작할 수 있다.
+ * 외부 URL("https://...")이나 프로토콜 상대 경로("//host", "/\host" — 브라우저가 "//"로 해석)를 그대로
+ * redirect()에 넘기면 로그인 직후 외부 사이트로 보내는 오픈 리다이렉트가 되므로, 사이트 내부 경로만 허용한다.
+ */
+function safeRedirectPath(value: FormDataEntryValue | null): string {
+  if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//') || value.startsWith('/\\')) {
+    return '/';
+  }
+  return value;
+}
+
 export async function login(prevState: any, formData: FormData) {
   const username = formData.get('username') as string;
   const pin = formData.get('pin') as string;
-  const redirectTo = (formData.get('redirect') as string) || '/';
+  const redirectTo = safeRedirectPath(formData.get('redirect'));
 
   if (!username || !pin) {
     return { error: '아이디와 비밀번호를 입력해주세요.' };

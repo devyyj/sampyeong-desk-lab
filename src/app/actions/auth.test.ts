@@ -131,6 +131,30 @@ describe('auth server actions', () => {
       expect(authUtils.verifyPIN).not.toHaveBeenCalled();
     });
 
+    describe('로그인 성공 후 이동 경로', () => {
+      const loginWith = async (redirectTo: string) => {
+        mockDb.where.mockResolvedValueOnce([{ id: 'u1', username: 'kim.test', pinHash: 'hash' }]);
+        vi.mocked(authUtils.verifyPIN).mockResolvedValueOnce(true);
+        const formData = new FormData();
+        formData.append('username', 'kim.test');
+        formData.append('pin', '1234');
+        formData.append('redirect', redirectTo);
+        await login(null, formData);
+        const { redirect } = await import('next/navigation');
+        return vi.mocked(redirect).mock.calls.at(-1)?.[0];
+      };
+
+      it('내부 경로면 그 경로로 이동', async () => {
+        expect(await loginWith('/mypage')).toBe('/mypage');
+      });
+
+      it('외부 URL·프로토콜 상대 경로는 / 로 대체 (오픈 리다이렉트 방지)', async () => {
+        expect(await loginWith('https://evil.example')).toBe('/');
+        expect(await loginWith('//evil.example')).toBe('/');
+        expect(await loginWith('/\\evil.example')).toBe('/');
+      });
+    });
+
     it('returns error if fields are missing', async () => {
       const formData = new FormData();
       const result = await login(null, formData);

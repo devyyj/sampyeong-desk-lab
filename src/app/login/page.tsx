@@ -1,14 +1,17 @@
 'use client';
 
-import { useActionState } from 'react';
+import { use, useActionState } from 'react';
 import { login } from '@/app/actions/auth';
 import Link from 'next/link';
 
 export default function LoginPage({
   searchParams,
 }: {
-  searchParams: { redirect?: string };
+  searchParams: Promise<{ redirect?: string }>;
 }) {
+  // Next 15+부터 searchParams는 Promise다. 동기로 읽으면 redirect가 항상 undefined가 되어
+  // 로그인 후 원래 가려던 페이지가 아닌 "/"로 이동하므로, 클라이언트 페이지에서는 use()로 푼다.
+  const { redirect } = use(searchParams);
   const [state, formAction] = useActionState(login, null as any);
 
   return (
@@ -18,7 +21,7 @@ export default function LoginPage({
         <p className="text-center text-muted-foreground mb-6 text-sm">SDL에 오신 것을 환영합니다! 아이디와 PIN을 입력해주세요.</p>
         
         <form action={formAction} className="space-y-4">
-          <input type="hidden" name="redirect" value={searchParams.redirect || '/'} />
+          <input type="hidden" name="redirect" value={redirect || '/'} />
           
           <div>
             <label htmlFor="username" className="block text-sm font-medium text-foreground mb-1">
