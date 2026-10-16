@@ -3,6 +3,7 @@
 // 앱 코드(src/)에서 Service Role(Secret) Key를 쓰는 곳은 이 파일 하나로 한정한다.
 import 'server-only';
 import { createClient } from '@supabase/supabase-js';
+import type { PostImageBucket } from './post-images';
 
 const ACTIVITY_PHOTOS_BUCKET = 'activity_photos';
 // 페이지를 열어 둔 채 사진을 보는 시간을 넉넉히 잡되, 링크가 밖으로 공유돼도 오래 살아 있지 않도록 1시간.
@@ -41,7 +42,8 @@ export async function createSignedPhotoUrls(paths: string[]): Promise<(string | 
 
 // 사용자 업로드용 공개 버킷. 0005에서 익명 업로드 정책을 지웠으므로 이 버킷들에 쓰는 일은 서비스 키로만 가능하다.
 const AVATARS_BUCKET = 'avatars';
-const POST_IMAGES_BUCKET = 'post_images';
+// 게시글 사진의 업로드·확인·삭제 흐름은 버킷만 다르고 같아서 아래 함수들이 버킷을 인자로 받는다(기본값은 예전 동작인 post_images).
+// 어느 버킷인지는 게시글 종류로 정한다(post-images.ts bucketForKind).
 
 /**
  * 프로필 사진을 서버에서 올리고 공개 URL을 돌려준다. 한 장이라 서명 URL 대신 서버 업로드를 유지한다.
@@ -60,8 +62,11 @@ export async function uploadAvatar(path: string, body: Buffer, contentType: stri
  * upsert=false라 이미 있는 파일(다른 글의 사진)을 토큰으로 덮어쓸 수 없다. 경로는 호출하는 액션이
  * 로그인한 회원 폴더 안에서 새 uuid로 만든다.
  */
-export async function createPostImageUploadUrls(paths: string[]): Promise<{ path: string; token: string }[]> {
-  const bucket = createAdminStorage().from(POST_IMAGES_BUCKET);
+export async function createPostImageUploadUrls(
+  paths: string[],
+  bucketName: PostImageBucket = 'post_images',
+): Promise<{ path: string; token: string }[]> {
+  const bucket = createAdminStorage().from(bucketName);
   return Promise.all(
     paths.map(async (path) => {
       const { data, error } = await bucket.createSignedUploadUrl(path, { upsert: false });
@@ -76,8 +81,11 @@ export async function createPostImageUploadUrls(paths: string[]): Promise<{ path
  * 서명 업로드 URL은 크기·형식을 강제하지 않으므로, 클라이언트 검사를 우회한 파일을 여기서 걸러낸다.
  * 없는 파일(업로드 실패, 지어낸 경로)은 null.
  */
-export async function getPostImageInfo(paths: string[]): Promise<({ size?: number; contentType?: string } | null)[]> {
-  const bucket = createAdminStorage().from(POST_IMAGES_BUCKET);
+export async function getPostImageInfo(
+  paths: string[],
+  bucketName: PostImageBucket = 'post_images',
+): Promise<({ size?: number; contentType?: string } | null)[]> {
+  const bucket = createAdminStorage().from(bucketName);
   return Promise.all(
     paths.map(async (path) => {
       const { data, error } = await bucket.info(path);
@@ -91,8 +99,8 @@ export async function getPostImageInfo(paths: string[]): Promise<({ size?: numbe
  * 게시글에서 뺀 사진·삭제된 게시글의 사진 파일을 지운다.
  * 실패해도 예외를 던지지 않는다: 파일이 남는 것보다 사용자의 글 수정·삭제가 실패하는 편이 더 나쁘다(설계 §4.3).
  */
-export async function removePostImages(paths: string[]): Promise<void> {
+export async function removePostImages(paths: string[], bucketName: PostImageBucket = 'post_images'): Promise<void> {
   if (paths.length === 0) return;
-  const { error } = await createAdminStorage().from(POST_IMAGES_BUCKET).remove(paths);
+  const { error } = await createAdminStorage().from(bucketName).remove(paths);
   if (error) console.error('post image cleanup failed', paths, error);
 }

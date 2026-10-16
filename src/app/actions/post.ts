@@ -1,15 +1,17 @@
 'use server';
 
 import { db } from '@/db';
-import { posts, postImages } from '../../../drizzle/schema';
+import { posts, postImages, seasons } from '../../../drizzle/schema';
 import { getSession } from '@/lib/session';
 import { redirect } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { createPostImageUploadUrls, getPostImageInfo, removePostImages } from '@/lib/storage-admin';
-import { checkImageFiles, extensionFor, MAX_POST_IMAGES, TOO_MANY_IMAGES } from '@/lib/post-images';
+import { bucketForKind, checkImageFiles, extensionFor, MAX_POST_IMAGES, TOO_MANY_IMAGES, type PostImageBucket, type PostKind } from '@/lib/post-images';
 import { isUuid } from '@/lib/uuid';
+import { getAdminUser } from '@/lib/admin';
+import { parseActivityFields, type ActivityFields } from '@/lib/activity-fields';
 
 /*
  * 게시글 사진 흐름(설계 §5, 방식 A)
@@ -17,6 +19,10 @@ import { isUuid } from '@/lib/uuid';
  * 2. 브라우저가 Storage에 직접 올린다(Server Action 본문 한도와 무관하게 10MB × 10장).
  * 3. createPost/updatePost가 경로를 받아, 본인 폴더의 경로인지·실제로 올라갔는지·규칙을 지키는지 확인하고 저장한다.
  * Server Action은 누구나 직접 호출할 수 있으므로 3번의 검사가 최종 방어선이다.
+ *
+ * 게시글 종류(설계 §5.3): 자유글(general)과 활동 기록(activity). 사진 버킷만 다르고 흐름은 같다
+ * (general → post_images 공개, activity → activity_photos 비공개). 종류는 작성할 때만 고르고 이후 바꾸지 않는다.
+ * 수정·삭제는 작성자 본인 또는 관리자(관리자 여부는 세션이 아니라 DB로 확인 — getAdminUser).
  */
 
 type FileSpec = { type: string; size: number };
@@ -25,10 +31,14 @@ const LOGIN_REQUIRED = { error: '로그인이 필요합니다.' };
 const BAD_PATH = { error: '잘못된 사진 경로입니다.' };
 const NOT_UPLOADED = { error: '업로드되지 않은 사진이 있습니다. 다시 시도해주세요.' };
 
-/** 사진 업로드 전에 경로별 서명 업로드 토큰을 발급한다. existingCount는 수정 화면에서 남겨 둔 기존 사진 수. */
+/**
+ * 사진 업로드 전에 경로별 서명 업로드 토큰을 발급한다. existingCount는 수정 화면에서 남겨 둔 기존 사진 수,
+ * kind는 올릴 글의 종류(버킷 결정). 모르는 값은 자유글로 본다.
+ */
 export async function requestPostImageUploads(
   files: FileSpec[],
   existingCount = 0,
+  kind: PostKind = 'general',
 ): Promise<{ uploads: { path: string; token: string }[] } | { error: string }> {
   const session = await getSession();
   if (!session) return LOGIN_REQUIRED;
@@ -42,7 +52,7 @@ export async function requestPostImageUploads(
   // 경로는 서버가 정한다: 로그인한 회원 폴더 + 새 uuid + MIME 기준 확장자. 사용자가 정한 파일 이름은 쓰지 않는다.
   const paths = files.map((f) => `${session.userId}/${uuidv4()}.${extensionFor(f.type)}`);
   try {
-    return { uploads: await createPostImageUploadUrls(paths) };
+    return { uploads: await createPostImageUploadUrls(paths, bucketForKind(kind)) };
   } catch (e) {
     console.error('Signed upload URL error', e);
     return { error: '사진 업로드를 준비하지 못했습니다. 다시 시도해주세요.' };
@@ -56,22 +66,35 @@ export async function requestPostImageUploads(
  * - Storage에 실제로 있고, 크기·형식 규칙을 지켜야 한다. 서명 업로드 URL은 크기·형식을 강제하지 않으므로
  *   여기서 걸린 파일은 본인 폴더의 쓸모없는 파일이라 바로 지운다.
  */
-async function checkNewImagePaths(userId: string, paths: string[]): Promise<{ error: string } | null> {
+async function checkNewImagePaths(userId: string, paths: string[], bucket: PostImageBucket): Promise<{ error: string } | null> {
   if (paths.length === 0) return null;
   const pattern = new RegExp(`^${userId}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.[a-z0-9]{1,10}$`);
   if (paths.some((p) => !pattern.test(p)) || new Set(paths).size !== paths.length) return BAD_PATH;
 
-  const infos = await getPostImageInfo(paths);
+  const infos = await getPostImageInfo(paths, bucket);
   if (infos.some((info) => info === null)) return NOT_UPLOADED;
   const invalid = checkImageFiles(infos.map((info) => ({ type: info!.contentType ?? '', size: info!.size ?? 0 })));
   if (invalid) {
-    await removePostImages(paths);
+    await removePostImages(paths, bucket);
     return { error: invalid };
   }
   return null;
 }
 
 const imagePathsOf = (formData: FormData) => formData.getAll('imagePaths').map(String);
+
+/** 활동 입력 검사 + 시즌이 실제로 있는지(DB). 자유글이면 검사할 것이 없다. */
+async function activityFieldsOf(formData: FormData): Promise<ActivityFields | { error: string }> {
+  const fields = parseActivityFields(formData);
+  if ('error' in fields) return fields;
+  const season = await db.query.seasons.findFirst({ where: eq(seasons.id, fields.seasonId) });
+  return season ? fields : { error: '시즌을 골라주세요.' };
+}
+
+/** 작성자 본인이거나 관리자인지. 본인 글이면 DB를 더 조회하지 않는다. */
+async function canManage(authorId: string, userId: string): Promise<boolean> {
+  return authorId === userId || (await getAdminUser()) !== null;
+}
 
 export async function createPost(prevState: unknown, formData: FormData) {
   const session = await getSession();
@@ -82,14 +105,24 @@ export async function createPost(prevState: unknown, formData: FormData) {
 
   const paths = imagePathsOf(formData);
   if (paths.length > MAX_POST_IMAGES) return { error: TOO_MANY_IMAGES };
+  // kind가 정확히 'activity'일 때만 활동 기록이다. 자유글에 섞여 온 활동 칼럼은 쓰지 않는다(CHECK 제약과도 맞춤).
+  const kind: PostKind = formData.get('kind') === 'activity' ? 'activity' : 'general';
 
   try {
-    const pathError = await checkNewImagePaths(session.userId, paths);
+    let activity: ActivityFields | null = null;
+    if (kind === 'activity') {
+      const fields = await activityFieldsOf(formData);
+      if ('error' in fields) return fields;
+      activity = fields;
+    }
+
+    const pathError = await checkNewImagePaths(session.userId, paths, bucketForKind(kind));
     if (pathError) return pathError;
 
+    const values = activity ? { content, authorId: session.userId, kind, ...activity } : { content, authorId: session.userId };
     // 글과 사진 행을 한 트랜잭션으로 저장해, 사진 행만 빠진 글이 생기지 않게 한다.
     await db.transaction(async (tx) => {
-      const [post] = await tx.insert(posts).values({ content, authorId: session.userId }).returning({ id: posts.id });
+      const [post] = await tx.insert(posts).values(values).returning({ id: posts.id });
       if (paths.length > 0) {
         await tx.insert(postImages).values(paths.map((storagePath, position) => ({ postId: post.id, storagePath, position })));
       }
@@ -107,6 +140,7 @@ export async function createPost(prevState: unknown, formData: FormData) {
  * 게시글 수정. 내용과 함께 사진을 뺄 수 있고(removeImageIds) 새 사진을 더할 수 있다(imagePaths).
  * 순서는 남은 기존 사진(원래 순서) → 새 사진. (post_id, position) 고유 제약이 있어 번호를 하나씩 옮기지 않고
  * 사진 행을 모두 지운 뒤 새 순서로 다시 넣는다(같은 트랜잭션).
+ * 종류는 DB의 값을 따른다(폼의 kind는 무시 — 바꾸면 사진이 다른 버킷을 가리키게 된다).
  */
 export async function updatePost(prevState: unknown, formData: FormData) {
   const session = await getSession();
@@ -120,25 +154,35 @@ export async function updatePost(prevState: unknown, formData: FormData) {
   const removeIds = new Set(formData.getAll('removeImageIds').map(String));
 
   let removedPaths: string[] = [];
+  let bucket: PostImageBucket = 'post_images';
   try {
     const post = await db.query.posts.findFirst({
       where: eq(posts.id, id),
       with: { images: { orderBy: (images, { asc }) => [asc(images.position)] } },
     });
     if (!post) return { error: '찾을 수 없습니다.' };
-    if (post.authorId !== session.userId) return { error: '수정 권한이 없습니다.' };
+    if (!(await canManage(post.authorId, session.userId))) return { error: '수정 권한이 없습니다.' };
+
+    let activity: ActivityFields | null = null;
+    if (post.kind === 'activity') {
+      const fields = await activityFieldsOf(formData);
+      if ('error' in fields) return fields;
+      activity = fields;
+    }
+    bucket = bucketForKind(post.kind);
 
     // 이 글의 사진만 뺄 수 있다. 다른 글의 사진 id가 섞여 와도 무시된다.
     const kept = post.images.filter((img) => !removeIds.has(img.id));
     const removed = post.images.filter((img) => removeIds.has(img.id));
     if (kept.length + newPaths.length > MAX_POST_IMAGES) return { error: TOO_MANY_IMAGES };
 
-    const pathError = await checkNewImagePaths(session.userId, newPaths);
+    // 관리자가 남의 글에 사진을 더하면 관리자 본인 폴더에 올라간다(경로 규칙은 올린 사람 기준).
+    const pathError = await checkNewImagePaths(session.userId, newPaths, bucket);
     if (pathError) return pathError;
 
     const ordered = [...kept.map((img) => img.storagePath), ...newPaths];
     await db.transaction(async (tx) => {
-      await tx.update(posts).set({ content, updatedAt: new Date() }).where(eq(posts.id, post.id));
+      await tx.update(posts).set({ content, ...activity, updatedAt: new Date() }).where(eq(posts.id, post.id));
       await tx.delete(postImages).where(eq(postImages.postId, post.id));
       if (ordered.length > 0) {
         await tx.insert(postImages).values(ordered.map((storagePath, position) => ({ postId: post.id, storagePath, position })));
@@ -151,7 +195,7 @@ export async function updatePost(prevState: unknown, formData: FormData) {
   }
 
   // 파일은 DB 반영이 끝난 뒤에 지운다(트랜잭션이 실패했는데 파일만 사라지는 일이 없게). 실패해도 로그만 남는다.
-  await removePostImages(removedPaths);
+  await removePostImages(removedPaths, bucket);
   revalidatePath('/');
   redirect('/');
 }
@@ -164,7 +208,7 @@ export async function deletePost(id: string) {
   if (!isUuid(id)) throw new Error('잘못된 요청입니다.');
 
   const post = await db.query.posts.findFirst({ where: eq(posts.id, id), with: { images: true } });
-  if (!post || post.authorId !== session.userId) {
+  if (!post || !(await canManage(post.authorId, session.userId))) {
     throw new Error('삭제 권한이 없습니다.');
   }
 
@@ -175,6 +219,6 @@ export async function deletePost(id: string) {
     console.error('Delete post error', e);
     throw new Error('게시글 삭제 중 오류가 발생했습니다.');
   }
-  await removePostImages(post.images.map((img) => img.storagePath));
+  await removePostImages(post.images.map((img) => img.storagePath), bucketForKind(post.kind));
   revalidatePath('/');
 }

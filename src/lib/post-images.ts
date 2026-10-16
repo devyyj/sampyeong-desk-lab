@@ -35,3 +35,15 @@ export function extensionFor(type: string): string {
 export function postImagePublicUrl(path: string): string {
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/post_images/${path}`;
 }
+
+/**
+ * 게시글 사진 버킷. 자유글은 post_images(공개), 활동 기록은 activity_photos(비공개, 회원에게만 signed URL)다(설계 §3.1).
+ * 한 글의 사진은 모두 같은 공개 범위여야 하므로 행마다 버킷을 저장하지 않고 게시글 종류로 정한다.
+ * 그래서 작성 후에는 종류를 바꾸지 않는다(바꾸면 사진이 엉뚱한 버킷을 가리킨다).
+ */
+export type PostImageBucket = 'post_images' | 'activity_photos';
+export type PostKind = 'general' | 'activity';
+
+export function bucketForKind(kind: string): PostImageBucket {
+  return kind === 'activity' ? 'activity_photos' : 'post_images';
+}

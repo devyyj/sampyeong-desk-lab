@@ -51,3 +51,12 @@ export function shortDate(ymd: string, now: Date = new Date()): string {
   const date = new Date(`${ymd}T12:00:00+09:00`);
   return `${dateLabel(date, now)} (${WEEKDAYS[seoulParts(date).weekday]})`;
 }
+
+/**
+ * 한국 날짜 "YYYY-MM-DD"(활동 기록 작성 화면의 모임 날짜 기본값). 서버가 계산해 폼에 넘긴다:
+ * 브라우저에서 계산하면 서버 렌더와 값이 달라질 수 있고(hydration 불일치), UTC 서버에서는 한국 오전 9시 전에 전날이 된다.
+ */
+export function todayKst(now: Date = new Date()): string {
+  const { year, month, day } = seoulParts(now);
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}

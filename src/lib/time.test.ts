@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import { relativeTime, shortDate } from './time';
+import { relativeTime, shortDate, todayKst } from './time';
 
 // 기준 시각: 2026-10-16 21:00 KST (= 12:00 UTC)
 const now = new Date('2026-10-16T12:00:00Z');
@@ -41,5 +41,12 @@ describe('shortDate', () => {
 
   it('형식이 다른 값은 그대로 돌려준다', () => {
     expect(shortDate('미정', now)).toBe('미정');
+  });
+});
+
+describe('todayKst', () => {
+  it('한국 날짜(YYYY-MM-DD). UTC로는 전날이어도 한국이 다음 날이면 다음 날', () => {
+    expect(todayKst(new Date('2026-10-16T15:30:00Z'))).toBe('2026-10-17');
+    expect(todayKst(new Date('2026-10-16T14:59:00Z'))).toBe('2026-10-16');
   });
 });

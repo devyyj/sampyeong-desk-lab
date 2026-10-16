@@ -147,6 +147,18 @@ describe('업로드용 서비스 키 함수', () => {
     spy.mockRestore();
   });
 
+  it('활동 기록 사진은 activity_photos(비공개) 버킷을 지정해 같은 함수로 올리고·확인하고·지운다', async () => {
+    createSignedUploadUrl.mockResolvedValueOnce({ data: { path: 'u1/1.png', token: 't1', signedUrl: 's1' }, error: null });
+    await createPostImageUploadUrls(['u1/1.png'], 'activity_photos');
+    expect(from).toHaveBeenLastCalledWith('activity_photos');
+    info.mockResolvedValueOnce({ data: { size: 1, contentType: 'image/png' }, error: null });
+    await getPostImageInfo(['u1/1.png'], 'activity_photos');
+    expect(from).toHaveBeenLastCalledWith('activity_photos');
+    remove.mockResolvedValueOnce({ data: [], error: null });
+    await removePostImages(['u1/1.png'], 'activity_photos');
+    expect(from).toHaveBeenLastCalledWith('activity_photos');
+  });
+
   it('removePostImages: 지울 것이 없으면 Storage를 호출하지 않는다', async () => {
     await removePostImages([]);
     expect(remove).not.toHaveBeenCalled();

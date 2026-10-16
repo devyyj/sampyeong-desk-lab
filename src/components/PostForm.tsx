@@ -3,11 +3,15 @@
 import { startTransition, useActionState, useEffect, useRef, useState, type FormEvent } from 'react';
 import { createPost, updatePost, requestPostImageUploads } from '@/app/actions/post';
 import { createClient } from '@/utils/supabase/client';
-import { checkImageFiles, MAX_POST_IMAGES } from '@/lib/post-images';
+import { bucketForKind, checkImageFiles, MAX_POST_IMAGES, type PostKind } from '@/lib/post-images';
+import { ACTIVITY_TYPE_CODES, getActivityType } from '@/lib/activity-types';
+import { fieldInput, fieldLabel } from '@/lib/form-styles';
 import { CameraIcon } from './icons';
 import FormHeader from './FormHeader';
 
 type ExistingImage = { id: string; url: string };
+type ActivityValues = { title: string; activityType: string; activityDate: string; seasonId: number };
+type Season = { id: number; name: string };
 type NewImage = { file: File; preview: string };
 type ActionState = { error?: string } | null;
 
@@ -19,8 +23,22 @@ type ActionState = { error?: string } | null;
  * 3) 올린 경로만 createPost/updatePost에 보낸다(설계 §5). 서버가 경로·실제 파일을 다시 검사한다.
  *
  * 사진 규칙(개수·크기·형식)은 고르는 즉시 검사해 바로 알려 준다. 수정 화면의 개수는 "남겨 둔 기존 사진 + 새 사진"이다.
+ *
+ * 글 종류(설계 §5.3): 작성 화면에서만 "일반 글 | 활동 기록"을 고른다. 종류에 따라 사진 버킷이 달라서
+ * (활동 기록은 회원 전용 activity_photos) 수정 화면에서는 바꿀 수 없다. 활동 기록이면 제목·종류·모임 날짜·시즌을 더 받는다.
+ * 모임 날짜 기본값(today)은 서버가 한국 날짜로 계산해 넘긴다(브라우저 계산은 hydration 불일치·시간대 문제).
  */
-export default function PostForm({ mode, post }: { mode: 'create' | 'edit'; post?: { id: string; content: string; images: ExistingImage[] } }) {
+export default function PostForm({
+  mode,
+  post,
+  seasons = [],
+  today = '',
+}: {
+  mode: 'create' | 'edit';
+  post?: { id: string; content: string; images: ExistingImage[]; kind?: PostKind; activity?: ActivityValues | null };
+  seasons?: Season[];
+  today?: string;
+}) {
   const action = mode === 'create' ? createPost : updatePost;
   const [state, dispatch, isSaving] = useActionState<ActionState, FormData>(
     action as (prev: ActionState, formData: FormData) => Promise<ActionState>,
@@ -31,6 +49,8 @@ export default function PostForm({ mode, post }: { mode: 'create' | 'edit'; post
   const [newImages, setNewImages] = useState<NewImage[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [kind, setKind] = useState<PostKind>(post?.kind ?? 'general');
+  const isActivity = kind === 'activity';
 
   const keptCount = existing.length - removedIds.size;
   const total = keptCount + newImages.length;
@@ -80,12 +100,13 @@ export default function PostForm({ mode, post }: { mode: 'create' | 'edit'; post
       setUploading(true);
       try {
         const files = newImages.map((img) => img.file);
-        const issued = await requestPostImageUploads(files.map((f) => ({ type: f.type, size: f.size })), keptCount);
+        const issued = await requestPostImageUploads(files.map((f) => ({ type: f.type, size: f.size })), keptCount, kind);
         if ('error' in issued) {
           setError(issued.error);
           return;
         }
-        const storage = createClient().storage.from('post_images');
+        // 토큰을 발급한 버킷과 같은 버킷에 올려야 한다(서버와 같은 규칙 bucketForKind).
+        const storage = createClient().storage.from(bucketForKind(kind));
         const results = await Promise.all(
           issued.uploads.map(({ path, token }, i) => storage.uploadToSignedUrl(path, token, files[i])),
         );
@@ -121,12 +142,15 @@ export default function PostForm({ mode, post }: { mode: 'create' | 'edit'; post
 
       {/* 게시글·보드게임·회원 생성 공통 상단 바. 탭바는 이 화면에서 숨겨진다(nav.hidesAppChrome). */}
       <FormHeader
-        title={mode === 'create' ? '새 게시글' : '게시글 수정'}
+        title={mode === 'create' ? '새 게시글' : isActivity ? '활동 기록 수정' : '게시글 수정'}
         cancelHref="/"
         submitLabel={mode === 'create' ? '게시하기' : '수정완료'}
         busy={busy}
         busyLabel={uploading ? '사진 올리는 중…' : undefined}
       />
+
+      {mode === 'create' && <KindSwitch kind={kind} onChange={setKind} />}
+      {isActivity && <ActivityFields values={post?.activity ?? null} seasons={seasons} today={today} />}
 
       {/* 사진을 먼저 고르는 흐름(모임 직후 사진부터 올리는 사용 장면). 한 줄 가로 스크롤에 추가 칸 + 미리보기를 둔다. */}
       <div className="-mx-4 px-4 pb-4 flex gap-2 overflow-x-auto no-scrollbar">
@@ -215,9 +239,96 @@ export default function PostForm({ mode, post }: { mode: 'create' | 'edit'; post
         rows={8}
         defaultValue={post?.content}
         className="w-full py-1 bg-transparent text-[17px] leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none resize-none"
-        placeholder="오늘 어떤 게임을 하셨나요?"
+        placeholder={isActivity ? '어떤 게임을 했나요? 인원·후기도 남겨 주세요.' : '오늘 어떤 게임을 하셨나요?'}
       />
       <p className="mt-2 text-xs text-muted-foreground">사진은 한 장에 10MB 이하, 최대 {MAX_POST_IMAGES}장까지 올릴 수 있어요.</p>
     </form>
+  );
+}
+
+/**
+ * 글 종류 고르기(작성 화면 전용). 라디오 그룹이라 폼 값 kind로 그대로 전송된다.
+ * 두 칸짜리 분할 버튼 모양이지만 실제 입력은 라디오라 키보드(←/→)·스크린리더가 기본으로 동작한다.
+ */
+function KindSwitch({ kind, onChange }: { kind: PostKind; onChange: (kind: PostKind) => void }) {
+  const options: { value: PostKind; label: string }[] = [
+    { value: 'general', label: '일반 글' },
+    { value: 'activity', label: '활동 기록' },
+  ];
+  return (
+    <div role="radiogroup" aria-label="글 종류" className="mb-4 grid grid-cols-2 p-1 rounded-xl bg-muted">
+      {options.map((o) => (
+        <label
+          key={o.value}
+          className="h-10 rounded-lg flex items-center justify-center text-[15px] font-semibold text-muted-foreground cursor-pointer has-[:checked]:bg-background has-[:checked]:text-foreground has-[:checked]:shadow-sm has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-foreground/30"
+        >
+          <input
+            type="radio"
+            name="kind"
+            value={o.value}
+            checked={kind === o.value}
+            onChange={() => onChange(o.value)}
+            className="sr-only"
+          />
+          {o.label}
+        </label>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * 활동 기록 칸: 제목(필수) · 종류(칩, 필수) · 모임 날짜 · 시즌(기본 최신).
+ * 서버(parseActivityFields)가 다시 검사하므로 여기서는 required로 빠뜨림만 막는다.
+ */
+function ActivityFields({ values, seasons, today }: { values: ActivityValues | null; seasons: Season[]; today: string }) {
+  const latest = seasons.reduce<Season | null>((a, b) => (a && a.id > b.id ? a : b), null);
+  const sorted = [...seasons].sort((a, b) => b.id - a.id);
+  return (
+    <div className="mb-4 space-y-4">
+      <div>
+        <label htmlFor="title" className={fieldLabel}>
+          제목
+        </label>
+        <input id="title" name="title" required maxLength={100} defaultValue={values?.title} className={fieldInput} placeholder="예: 제 9회 보드게임 정기모임" />
+      </div>
+
+      <fieldset>
+        <legend className={fieldLabel}>활동 종류</legend>
+        <div role="radiogroup" aria-label="활동 종류" className="flex flex-wrap gap-1.5">
+          {ACTIVITY_TYPE_CODES.map((code, i) => (
+            <label
+              key={code}
+              className="h-9 px-3.5 inline-flex items-center rounded-full bg-muted text-[14px] font-medium cursor-pointer has-[:checked]:bg-foreground has-[:checked]:text-background has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-foreground/30"
+            >
+              {/* 같은 name의 라디오 하나에만 required를 걸어도 그룹 전체가 필수가 된다. */}
+              <input type="radio" name="activityType" value={code} required={i === 0} defaultChecked={values?.activityType === code} className="sr-only" />
+              {getActivityType(code).label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label htmlFor="activityDate" className={fieldLabel}>
+            모임 날짜
+          </label>
+          <input id="activityDate" name="activityDate" type="date" required defaultValue={values?.activityDate ?? today} className={fieldInput} />
+        </div>
+        <div>
+          <label htmlFor="seasonId" className={fieldLabel}>
+            시즌
+          </label>
+          <select id="seasonId" name="seasonId" required defaultValue={String(values?.seasonId ?? latest?.id ?? '')} className={fieldInput}>
+            {sorted.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+    </div>
   );
 }

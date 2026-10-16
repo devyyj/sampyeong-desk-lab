@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  checkImageFiles, extensionFor, postImagePublicUrl,
+  checkImageFiles, extensionFor, postImagePublicUrl, bucketForKind,
   MAX_POST_IMAGES, MAX_POST_IMAGE_BYTES, TOO_MANY_IMAGES, IMAGE_TOO_LARGE, NOT_AN_IMAGE,
 } from './post-images';
 
@@ -51,5 +51,13 @@ describe('postImagePublicUrl', () => {
   it('공개 버킷 경로를 공개 URL로 바꾼다', () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
     expect(postImagePublicUrl('u1/a.png')).toBe('https://example.supabase.co/storage/v1/object/public/post_images/u1/a.png');
+  });
+});
+
+describe('bucketForKind', () => {
+  it('활동 기록은 비공개 activity_photos, 그 밖(자유글·모르는 값)은 공개 post_images', () => {
+    expect(bucketForKind('activity')).toBe('activity_photos');
+    expect(bucketForKind('general')).toBe('post_images');
+    expect(bucketForKind('')).toBe('post_images');
   });
 });
