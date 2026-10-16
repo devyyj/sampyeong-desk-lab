@@ -15,7 +15,17 @@ export default async function AdminMembersPage() {
   // 관리자 화면의 존재 자체를 숨기기 위해 403 대신 404를 반환한다. 권한은 세션이 아닌 DB로 확인한다.
   if (!(await getAdminUser())) notFound();
 
-  const members = await db.query.users.findMany({ orderBy: [asc(users.username)] });
+  const rows = await db.query.users.findMany({
+    orderBy: [asc(users.username)],
+    // 정렬·표시용으로 참여 시즌 번호만 가져온다(seasons.id = 시즌 번호).
+    with: { seasonMemberships: { columns: { seasonId: true } } },
+  });
+
+  // 시즌 순서대로: 처음 참여한 시즌이 빠른 회원부터 보여준다(오래된 회원 → 새 회원).
+  // 같은 시즌에 처음 들어온 회원끼리는 아이디순, 시즌이 없는 계정(관리자 등)은 맨 뒤에 둔다.
+  const members = rows
+    .map((m) => ({ ...m, seasonIds: m.seasonMemberships.map((s) => s.seasonId).sort((a, b) => a - b) }))
+    .sort((a, b) => (a.seasonIds[0] ?? Infinity) - (b.seasonIds[0] ?? Infinity) || a.username.localeCompare(b.username));
 
   return (
     <div>
@@ -42,6 +52,9 @@ export default async function AdminMembersPage() {
                   {status}
                 </span>
               </div>
+              <p className="text-[13px] text-muted-foreground">
+                {m.seasonIds.length > 0 ? `시즌 ${m.seasonIds.join(', ')}` : '시즌 없음'}
+              </p>
               {details && <p className="text-[13px] text-muted-foreground break-words">{details}</p>}
               <ResetPinForm userId={m.id} />
             </li>
