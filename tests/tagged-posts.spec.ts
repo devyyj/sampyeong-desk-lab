@@ -49,13 +49,12 @@ test('태그·날짜·시즌 글: 작성 → 카드·태그 모아 보기 → �
   await page.getByRole('button', { name: '게시하기' }).click();
   await page.waitForURL((url) => url.pathname === '/');
 
-  // DB: 선택 정보가 저장되고, 사진은 비공개 버킷(activity_photos)에만 있다.
+  // DB: 선택 정보가 저장되고, 사진은 비공개 버킷(activity_photos)에 있다.
   const [row] = await db.select().from(posts).where(eq(posts.content, content));
   expect(row).toMatchObject({ authorId: author.id, tags: ['정기 모임', uniqueTag], activityDate: '2026-10-16', seasonId: latestSeason.id });
   const [photo] = await imagesOf(row.id);
   expect(photo.storagePath).toMatch(new RegExp(`^${author.id}/[0-9a-f-]{36}\\.png$`));
   expect(await storageFileExists('activity_photos', photo.storagePath)).toBe(true);
-  expect(await storageFileExists('post_images', photo.storagePath)).toBe(false);
 
   // 카드: 날짜는 모임 날짜 하나, 시즌 칩, 태그, 사진은 signed URL로 실제 로드.
   const card = page.locator('article').filter({ hasText: `E2E 정기모임 ${stamp}` });

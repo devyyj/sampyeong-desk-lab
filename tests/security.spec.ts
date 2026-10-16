@@ -15,13 +15,25 @@ const publicClient = () => {
 
 test('publishable 키만으로는 공개 버킷에 파일을 올릴 수 없다', async () => {
   const supabase = publicClient();
-  for (const bucket of ['post_images', 'avatars', 'boardgame_thumbnails']) {
+  for (const bucket of ['avatars', 'boardgame_thumbnails']) {
     const path = `e2e_anon/${Date.now()}.txt`;
     const { data, error } = await supabase.storage.from(bucket).upload(path, new Blob(['x'], { type: 'text/plain' }));
     // 다른 이유(잘못된 키 등)로 실패한 것이 아니라 RLS가 막았는지까지 본다.
     expect(error?.message, bucket).toMatch(/row-level security/);
     expect(data, bucket).toBeNull();
   }
+});
+
+test('예전 공개 게시글 사진 버킷(post_images)은 없다: 게시글 사진은 모두 비공개 activity_photos에 있다(0010)', async () => {
+  const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data, error } = await admin.storage.getBucket('post_images');
+  expect(data).toBeNull();
+  expect(error?.message).toMatch(/not found/i);
+  // 비공개 버킷은 그대로 있어야 한다(지울 대상을 잘못 고르지 않았는지).
+  const { data: photos } = await admin.storage.getBucket('activity_photos');
+  expect(photos).toMatchObject({ id: 'activity_photos', public: false });
 });
 
 test('publishable 키로 새 테이블(댓글·좋아요·게시글 사진)을 읽어도 행이 나오지 않는다', async () => {

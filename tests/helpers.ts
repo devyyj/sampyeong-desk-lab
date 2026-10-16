@@ -22,7 +22,7 @@ export const TEST_IMAGE = path.join(process.cwd(), 'tests', 'fixtures', 'dummy.p
 
 // 사용자 업로드 버킷. 각 액션은 `${userId}/${uuid}.ext` 경로에 올린다.
 // activity_photos에는 이관 사진(s1/… 경로)도 있지만, 정리는 e2e 회원 id 폴더만 비우므로 건드리지 않는다.
-const UPLOAD_BUCKETS = ['post_images', 'activity_photos', 'boardgame_thumbnails', 'avatars'];
+const UPLOAD_BUCKETS = ['activity_photos', 'boardgame_thumbnails', 'avatars'];
 
 let seq = 0;
 /**

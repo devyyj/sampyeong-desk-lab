@@ -98,3 +98,9 @@ describe('schema: 옛 활동 구조 정리(0009)', () => {
     expect(config.indexes.map((i) => i.config.name)).not.toContain('comments_activity_id_created_at_idx');
   });
 });
+
+describe('schema: 옛 단일 사진 칼럼 정리(0010)', () => {
+  it('posts.image_url은 지웠다(0005에서 post_images로 옮긴 뒤 아무도 읽지 않음)', () => {
+    expect(getTableConfig(posts).columns.map((c) => c.name)).not.toContain('image_url');
+  });
+});

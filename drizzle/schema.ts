@@ -26,8 +26,7 @@ export const posts = pgTable('posts', {
   id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
   authorId: uuid('author_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   content: text('content').notNull(),
-  // 예전 단일 사진의 공개 URL. 0005에서 post_images로 옮겼고 코드에서는 더 이상 쓰지 않는다(되돌리기용으로 컬럼만 남김).
-  imageUrl: text('image_url'),
+  // 사진은 post_images 테이블에 여러 장으로 둔다. 예전 단일 사진 URL 칼럼(image_url)은 0005에서 옮긴 뒤 0010에서 지웠다.
   // 시즌·모임 날짜는 모든 글의 선택 입력이다(입력한 경우에만 카드에 보인다).
   // 예전 글 종류(kind)·활동 제목(title)·활동 종류(activity_type)는 0008에서 태그·본문 첫 줄로 옮긴 뒤 0009에서 지웠다.
   seasonId: integer('season_id').references(() => seasons.id),

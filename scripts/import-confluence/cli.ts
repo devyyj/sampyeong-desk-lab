@@ -12,7 +12,8 @@ import { loadAll, resetDatabase, type UploadedPaths } from './load';
 const DATA_DIR = path.join(process.cwd(), 'data', 'confluence');
 const ATTACHMENTS_DIR = path.join(DATA_DIR, 'attachments');
 // activity_photos에는 이관 사진과 회원이 올린 모든 게시글 사진이 들어 있다. --reset은 posts를 비우므로 함께 비운다.
-const BUCKETS_TO_RESET = ['avatars', 'post_images', 'boardgame_thumbnails', 'activity_photos', 'document_images'];
+// 예전 공개 게시글 사진 버킷 post_images는 0010에서 지웠다(없는 버킷을 비우려 하면 실패한다).
+const BUCKETS_TO_RESET = ['avatars', 'boardgame_thumbnails', 'activity_photos', 'document_images'];
 
 export type CliOptions = { dryRun: boolean; reset: boolean; yes: boolean };
 
