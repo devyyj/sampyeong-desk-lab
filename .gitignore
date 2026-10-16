@@ -47,3 +47,6 @@ test-results/
 # Confluence 이관 원본/변환본 (회원 실명·부서·사진 등 개인정보 포함)
 data/
 docs/confluence/
+
+# brainstorming visual companion / subagent scratch
+.superpowers/
