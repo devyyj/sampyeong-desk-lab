@@ -23,19 +23,6 @@ export type ParsedBoardGame = {
   inSharedCabinet: boolean;
 };
 
-export type ActivityType = 'ESCAPE_ROOM' | 'REGULAR' | 'LUNCH' | 'EVENING' | 'OTHER';
-export type ParsedPhoto = { pageId: string; fileName: string; position: number };
-export type ParsedActivity = {
-  sourceKey: string;
-  seasonId: number;
-  date: string;
-  type: ActivityType;
-  title: string;
-  bodyMd: string;
-  noteMd: string | null;
-  photos: ParsedPhoto[];
-};
-
 export type ParsedDocument = {
   slug: 'rules' | 'shared-cabinet';
   title: string;
@@ -56,7 +43,6 @@ export type Normalized = {
   seasons: ParsedSeason[];
   seasonMembers: ParsedSeasonMember[];
   boardGames: ParsedBoardGame[];
-  activities: ParsedActivity[];
   documents: ParsedDocument[];
   report: ImportReport;
 };

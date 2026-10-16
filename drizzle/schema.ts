@@ -28,14 +28,8 @@ export const posts = pgTable('posts', {
   content: text('content').notNull(),
   // 예전 단일 사진의 공개 URL. 0005에서 post_images로 옮겼고 코드에서는 더 이상 쓰지 않는다(되돌리기용으로 컬럼만 남김).
   imageUrl: text('image_url'),
-  // [0009에서 삭제 예정] 예전 글 종류(0006). 양식 통합(0008)으로 앱은 더 이상 읽지 않는다. 되돌릴 여지를 두려고 칼럼만 남김.
-  kind: varchar('kind', { length: 20 }).notNull().default('general'),
-  // [0009에서 삭제 예정] 예전 활동 제목. 0008에서 본문 첫 줄로 옮겼다.
-  title: text('title'),
-  // [0009에서 삭제 예정] 예전 활동 종류. 0008에서 태그(tags)로 옮겼다.
-  activityType: varchar('activity_type', { length: 20 }),
   // 시즌·모임 날짜는 모든 글의 선택 입력이다(입력한 경우에만 카드에 보인다).
-
+  // 예전 글 종류(kind)·활동 제목(title)·활동 종류(activity_type)는 0008에서 태그·본문 첫 줄로 옮긴 뒤 0009에서 지웠다.
   seasonId: integer('season_id').references(() => seasons.id),
   activityDate: date('activity_date', { mode: 'string' }),
   // 활동 이관 멱등성 키(예전 activities.source_key, Confluence "<pageId>:<행 번호>")
@@ -83,27 +77,6 @@ export const seasonMembers = pgTable('season_members', {
   note: text('note'), // 명부 비고 원문 (🎖️/💎 뱃지 등)
 }, (t) => [primaryKey({ columns: [t.seasonId, t.userId] })]);
 
-export const activities = pgTable('activities', {
-  id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
-  seasonId: integer('season_id').notNull().references(() => seasons.id, { onDelete: 'cascade' }),
-  date: date('date', { mode: 'string' }).notNull(),
-  type: varchar('type', { length: 20 }).notNull(), // ESCAPE_ROOM | REGULAR | LUNCH | EVENING | OTHER
-  title: text('title').notNull(),
-  bodyMd: text('body_md').notNull(), // 활동 내용 (Markdown)
-  noteMd: text('note_md'), // 비고/후기 (Markdown, 사진 제외)
-  // Confluence import 멱등성 키("<pageId>:<행 번호>")
-  sourceKey: text('source_key').unique(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
-
-export const activityPhotos = pgTable('activity_photos', {
-  id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
-  activityId: uuid('activity_id').notNull().references(() => activities.id, { onDelete: 'cascade' }),
-  // private 버킷(activity_photos) 내 경로. URL은 조회 시 signed URL로 발급하므로 저장하지 않는다.
-  storagePath: text('storage_path').notNull(),
-  position: integer('position').notNull(), // 활동 내 사진 순서 (0부터)
-}, (t) => [unique().on(t.activityId, t.position)]);
-
 // 회칙, 공용 보관함 안내 같은 서술형 문서
 export const documents = pgTable('documents', {
   slug: varchar('slug', { length: 50 }).primaryKey(), // "rules", "shared-cabinet"
@@ -113,7 +86,7 @@ export const documents = pgTable('documents', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-// 게시글 사진(여러 장). 공개 버킷(post_images) 안 경로만 저장하고 공개 URL은 화면에서 만든다.
+// 게시글 사진(여러 장). 비공개 버킷(activity_photos, POST_PHOTOS_BUCKET) 안 경로만 저장하고 화면에서 서명 URL을 만든다.
 export const postImages = pgTable('post_images', {
   id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
   postId: uuid('post_id').notNull().references(() => posts.id, { onDelete: 'cascade' }),
@@ -121,20 +94,17 @@ export const postImages = pgTable('post_images', {
   position: integer('position').notNull(), // 0부터, 표시 순서
 }, (t) => [unique().on(t.postId, t.position)]);
 
-// 게시글·활동 기록 댓글을 한 테이블에 둔다. 댓글 좋아요·수정·삭제·권한 로직을 하나로 유지하기 위함이고,
-// "게시글 또는 활동 중 정확히 하나"는 CHECK로 DB가 보장한다.
+// 게시글 댓글. 예전에는 활동 기록 댓글(activity_id)도 같은 테이블에 두고 "둘 중 하나"를 CHECK로 보장했지만,
+// 활동 기록이 게시글로 합쳐져(0006 이관) 0009에서 activity_id를 지우고 post_id를 필수로 바꿨다.
 export const comments = pgTable('comments', {
   id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
-  postId: uuid('post_id').references(() => posts.id, { onDelete: 'cascade' }),
-  activityId: uuid('activity_id').references(() => activities.id, { onDelete: 'cascade' }),
+  postId: uuid('post_id').notNull().references(() => posts.id, { onDelete: 'cascade' }),
   authorId: uuid('author_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   content: text('content').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (t) => [
-  check('comments_one_target', sql`num_nonnulls(${t.postId}, ${t.activityId}) = 1`),
   index('comments_post_id_created_at_idx').on(t.postId, t.createdAt),
-  index('comments_activity_id_created_at_idx').on(t.activityId, t.createdAt),
 ]);
 
 // 좋아요는 대상별 테이블로 둔다. 진짜 FK + cascade를 걸 수 있고, 복합 PK가 "회원당 1회"를 보장한다.
@@ -143,12 +113,6 @@ export const postLikes = pgTable('post_likes', {
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (t) => [primaryKey({ columns: [t.postId, t.userId] })]);
-
-export const activityLikes = pgTable('activity_likes', {
-  activityId: uuid('activity_id').notNull().references(() => activities.id, { onDelete: 'cascade' }),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-}, (t) => [primaryKey({ columns: [t.activityId, t.userId] })]);
 
 export const commentLikes = pgTable('comment_likes', {
   commentId: uuid('comment_id').notNull().references(() => comments.id, { onDelete: 'cascade' }),
@@ -180,17 +144,12 @@ export const postImagesRelations = relations(postImages, ({ one }) => ({
 
 export const commentsRelations = relations(comments, ({ one, many }) => ({
   post: one(posts, { fields: [comments.postId], references: [posts.id] }),
-  activity: one(activities, { fields: [comments.activityId], references: [activities.id] }),
   author: one(users, { fields: [comments.authorId], references: [users.id] }),
   likes: many(commentLikes),
 }));
 
 export const postLikesRelations = relations(postLikes, ({ one }) => ({
   post: one(posts, { fields: [postLikes.postId], references: [posts.id] }),
-}));
-
-export const activityLikesRelations = relations(activityLikes, ({ one }) => ({
-  activity: one(activities, { fields: [activityLikes.activityId], references: [activities.id] }),
 }));
 
 export const commentLikesRelations = relations(commentLikes, ({ one }) => ({
@@ -212,21 +171,9 @@ export const boardGamesRelations = relations(boardGames, ({ one }) => ({
 
 export const seasonsRelations = relations(seasons, ({ many }) => ({
   members: many(seasonMembers),
-  activities: many(activities),
 }));
 
 export const seasonMembersRelations = relations(seasonMembers, ({ one }) => ({
   season: one(seasons, { fields: [seasonMembers.seasonId], references: [seasons.id] }),
   user: one(users, { fields: [seasonMembers.userId], references: [users.id] }),
-}));
-
-export const activitiesRelations = relations(activities, ({ one, many }) => ({
-  season: one(seasons, { fields: [activities.seasonId], references: [seasons.id] }),
-  photos: many(activityPhotos),
-  comments: many(comments),
-  likes: many(activityLikes),
-}));
-
-export const activityPhotosRelations = relations(activityPhotos, ({ one }) => ({
-  activity: one(activities, { fields: [activityPhotos.activityId], references: [activities.id] }),
 }));

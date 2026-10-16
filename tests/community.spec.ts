@@ -51,7 +51,7 @@ test('게시글: 좋아요 토글·유지, 댓글 작성·수정·좋아요·삭
   await expect(commentsSheet(page).getByRole('textbox', { name: '댓글 쓰기' })).toHaveValue('');
   await expect(card.getByRole('button', { name: '댓글 1', exact: true })).toBeVisible();
   const [saved] = await db.select().from(comments).where(eq(comments.postId, post.id));
-  expect(saved).toMatchObject({ authorId: fan.id, content: 'E2E 첫 댓글', activityId: null });
+  expect(saved).toMatchObject({ authorId: fan.id, content: 'E2E 첫 댓글' });
 
   // 수정 → (수정됨)
   await myComment.getByRole('button', { name: '수정' }).click();

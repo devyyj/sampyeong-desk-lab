@@ -35,7 +35,8 @@ describe('normalize', () => {
       { id: 1, name: '시즌 1', period: '25년 4분기' },
       { id: 2, name: '시즌 2', period: '26년 1분기' },
     ]);
-    expect(n.activities.map((a) => [a.seasonId, a.sourceKey])).toEqual([[1, 'a1:1'], [1, 'a1:2'], [2, 'a2:1']]);
+    // 활동 행은 더 이상 만들지 않는다(시즌 페이지는 시즌 목록에만 쓴다).
+    expect(n).not.toHaveProperty('activities');
     expect(n.seasonMembers).toHaveLength(2);
     expect(n.boardGames).toHaveLength(2); // 보유 현황 딕싯(owner.only) + 소유자가 다른 보관함 딕싯(kim.test)
     expect(n.documents.map((d) => d.slug)).toEqual(['rules', 'shared-cabinet']);

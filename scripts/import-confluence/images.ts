@@ -26,11 +26,6 @@ export function resolveLocalFile(attachmentsDir: string, pageId: string, fileNam
   return existsSync(file) ? file : null;
 }
 
-/** Storage 키에 ":"를 쓰지 않으려고 sourceKey("<pageId>:<행>")의 ":"를 "_"로 바꾼다. */
-export function activityPhotoPath(seasonId: number, sourceKey: string, position: number): string {
-  return `${seasonId}/${sourceKey.replace(':', '_')}/${position}.webp`;
-}
-
 export function documentImagePath(slug: string, index: number): string {
   return `${slug}/${index}.webp`;
 }

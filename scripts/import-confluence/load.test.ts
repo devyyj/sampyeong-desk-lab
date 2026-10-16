@@ -2,7 +2,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { getTableName, type SQL } from 'drizzle-orm';
 import { PgDialect } from 'drizzle-orm/pg-core';
-import { users, boardGames, documents, activities, activityPhotos, seasonMembers, seasons, posts } from '../../drizzle/schema';
+import { users, boardGames, documents, seasonMembers, seasons, posts } from '../../drizzle/schema';
 import { loadAll, resetDatabase, type Db, type UploadedPaths } from './load';
 import type { Normalized } from './types';
 
@@ -10,7 +10,7 @@ type Call = { table: unknown; values: Record<string, unknown>[]; onConflict?: { 
 
 /**
  * drizzle 트랜잭션을 흉내 낸 가짜 DB. insert/delete 호출을 테이블별로 기록하고,
- * returning()에는 users/activities에 대해 결정적인 id를 돌려준다.
+ * returning()에는 users에 대해 결정적인 id를 돌려준다.
  */
 function fakeDb() {
   const calls: Call[] = [];
@@ -24,8 +24,7 @@ function fakeDb() {
       const call: Call = { table, values: [] };
       calls.push(call);
       const rows = () => call.values.map((v) =>
-        table === users ? { id: `id-${v.username}`, username: v.username }
-          : table === activities ? { id: `act-${v.sourceKey}`, sourceKey: v.sourceKey } : v);
+        table === users ? { id: `id-${v.username}`, username: v.username } : v);
       const builder = {
         values: (v: Record<string, unknown>[]) => { call.values = v; return builder; },
         onConflictDoUpdate: (cfg: Call['onConflict']) => { call.onConflict = cfg; return builder; },
@@ -50,12 +49,10 @@ const normalized = (): Normalized => ({
     { sourceKey: '딕싯:kim.test', name: '딕싯', category: '파티', recommendedPlayers: null, ownerUsername: 'kim.test', note: null, inSharedCabinet: true },
     { sourceKey: '체스:gone.user', name: '체스', category: null, recommendedPlayers: null, ownerUsername: null, note: null, inSharedCabinet: false },
   ],
-  activities: [{ sourceKey: 'p1:1', seasonId: 1, date: '2025-12-19', type: 'LUNCH', title: '점심 연구', bodyMd: '- 점심 연구', noteMd: null, photos: [] }],
   documents: [{ slug: 'rules', title: '회칙', bodyMd: '![]({{img:a.png}})', sourcePageId: 'r1', images: [{ pageId: 'r1', fileName: 'a.png' }] }],
   report: { skippedUnknownUsers: [], cabinetUnmatched: [], duplicateGames: [], missingFiles: [] },
 });
 const uploaded = (): UploadedPaths => ({
-  activityPhotos: new Map([['p1:1', [{ position: 0, storagePath: '1/p1_1/0.webp' }]]]),
   documentImageUrls: new Map([['rules', new Map([['a.png', 'https://s/document_images/rules/0.webp']])]]),
 });
 
@@ -87,11 +84,16 @@ describe('loadAll', () => {
     expect(callFor(boardGames).onConflict!.target).toBe(boardGames.sourceKey);
   });
 
-  it('season_members와 activity_photos는 반환된 id로 연결', async () => {
+  it('season_members는 반환된 id로 연결', async () => {
     const { db, callFor } = fakeDb();
     await loadAll(db, normalized(), uploaded());
     expect(callFor(seasonMembers).values).toEqual([{ seasonId: 1, userId: 'id-kim.test', role: '회장', note: null }]);
-    expect(callFor(activityPhotos).values).toEqual([{ activityId: 'act-p1:1', position: 0, storagePath: '1/p1_1/0.webp' }]);
+  });
+
+  it('활동 기록은 더 이상 이관하지 않는다(게시글로 합쳐져 posts가 원본이다)', async () => {
+    const { db, calls } = fakeDb();
+    await loadAll(db, normalized(), uploaded());
+    expect(calls.map((c) => getTableName(c.table as typeof users))).toEqual(['users', 'seasons', 'season_members', 'board_games', 'documents']);
   });
 
   it('documents bodyMd의 이미지 placeholder를 public URL로 치환', async () => {
@@ -111,7 +113,7 @@ describe('loadAll', () => {
     const { db, outsideTx } = fakeDb();
     const counts = await loadAll(db, normalized(), uploaded());
     expect(outsideTx).not.toHaveBeenCalled();
-    expect(counts).toEqual({ users: 1, seasons: 1, seasonMembers: 1, boardGames: 2, activities: 1, activityPhotos: 1, documents: 1 });
+    expect(counts).toEqual({ users: 1, seasons: 1, seasonMembers: 1, boardGames: 2, documents: 1 });
   });
 });
 
@@ -120,7 +122,7 @@ describe('resetDatabase', () => {
     const { db, deletes, outsideTx } = fakeDb();
     await resetDatabase(db);
     expect(deletes.map((t) => getTableName(t as typeof users))).toEqual(
-      [activityPhotos, activities, seasonMembers, seasons, documents, boardGames, posts, users].map((t) => getTableName(t)),
+      [seasonMembers, seasons, documents, boardGames, posts, users].map((t) => getTableName(t)),
     );
     expect(outsideTx).not.toHaveBeenCalled();
   });

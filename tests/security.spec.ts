@@ -26,7 +26,7 @@ test('publishable 키만으로는 공개 버킷에 파일을 올릴 수 없다',
 
 test('publishable 키로 새 테이블(댓글·좋아요·게시글 사진)을 읽어도 행이 나오지 않는다', async () => {
   const supabase = publicClient();
-  for (const table of ['post_images', 'comments', 'post_likes', 'activity_likes', 'comment_likes']) {
+  for (const table of ['post_images', 'comments', 'post_likes', 'comment_likes']) {
     const { data } = await supabase.from(table).select('*').limit(1);
     // RLS가 켜져 있고 정책이 없으면 오류 없이 빈 배열이 온다(post_images에는 이관된 행이 1개 이상 있다).
     expect(data ?? [], table).toEqual([]);

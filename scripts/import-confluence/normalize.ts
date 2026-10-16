@@ -1,7 +1,6 @@
 import type { ConfluencePage, Mention, Normalized } from './types';
 import { parseSeasonTitle, parseRosterTitle, parseRoster } from './parse/members';
 import { parseBoardGames } from './parse/boardgames';
-import { parseActivities } from './parse/activities';
 import { parseDocument } from './parse/documents';
 import { collectPeople } from './parse/people';
 
@@ -14,9 +13,11 @@ function requirePage(pages: ConfluencePage[], titlePrefix: string): ConfluencePa
 /**
  * 수집한 Confluence 페이지 전체를 DB 적재용 정규화 데이터로 바꾼다.
  * 페이지는 ID가 아닌 제목 패턴으로 찾는다(시즌 페이지가 추가돼도 코드 수정 없이 인식되도록).
+ * 시즌 페이지의 활동 표는 더 이상 이관하지 않는다: 활동 기록은 게시글로 합쳐져(0006 이관) posts가 원본이고,
+ * 다시 넣으면 회원이 고친 글과 겹친다. 시즌 페이지는 시즌 목록(번호·기간)을 만드는 데만 쓴다.
  */
 export function normalize(pages: ConfluencePage[]): Normalized {
-  const activityPages = pages
+  const seasonPages = pages
     .map((page) => ({ page, season: parseSeasonTitle(page.title) }))
     .filter((x): x is { page: ConfluencePage; season: NonNullable<typeof x.season> } => x.season !== null)
     .sort((a, b) => a.season.id - b.season.id);
@@ -38,10 +39,9 @@ export function normalize(pages: ConfluencePage[]): Normalized {
 
   return {
     people: collectPeople(mentions),
-    seasons: activityPages.map((x) => x.season),
+    seasons: seasonPages.map((x) => x.season),
     seasonMembers: rosters.flatMap((r) => r.members),
     boardGames: games.games,
-    activities: activityPages.flatMap(({ page, season }) => parseActivities(page, season.id)),
     documents: [parseDocument('rules', rulesPage), parseDocument('shared-cabinet', cabinetPage)],
     report: {
       skippedUnknownUsers,

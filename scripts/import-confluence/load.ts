@@ -2,14 +2,13 @@ import { sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import * as schema from '../../drizzle/schema';
-import { users, posts, boardGames, seasons, seasonMembers, activities, activityPhotos, documents } from '../../drizzle/schema';
+import { users, posts, boardGames, seasons, seasonMembers, documents } from '../../drizzle/schema';
 import type { Normalized } from './types';
 
 export type Db = PostgresJsDatabase<typeof schema>;
 
-/** 이미지 업로드 결과. load는 이 값으로 사진 행과 문서 이미지 URL을 만든다. */
+/** 이미지 업로드 결과. load는 이 값으로 문서 이미지 URL을 만든다. */
 export type UploadedPaths = {
-  activityPhotos: Map<string /* activity sourceKey */, { position: number; storagePath: string }[]>;
   documentImageUrls: Map<string /* slug */, Map<string /* fileName */, string /* public URL */>>;
 };
 
@@ -25,10 +24,13 @@ const excluded = (column: string) => sql.raw(`excluded.${column}`);
 const keepIfRegistered = (column: string, current: AnyPgColumn) =>
   sql`CASE WHEN ${users.pinHash} IS NULL THEN ${excluded(column)} ELSE ${current} END`;
 
-/** --reset: FK 의존 순서(자식 → 부모)대로 비운다. 하나라도 실패하면 전부 롤백된다. */
+/**
+ * --reset: FK 의존 순서(자식 → 부모)대로 비운다. 하나라도 실패하면 전부 롤백된다.
+ * 주의: 활동 기록은 이제 게시글(posts)로만 남아 있고 이 스크립트가 다시 넣지 않으므로, 리셋하면 되살릴 수 없다.
+ */
 export async function resetDatabase(db: Db): Promise<void> {
   await db.transaction(async (tx) => {
-    for (const table of [activityPhotos, activities, seasonMembers, seasons, documents, boardGames, posts, users]) {
+    for (const table of [seasonMembers, seasons, documents, boardGames, posts, users]) {
       await tx.delete(table);
     }
   });
@@ -97,26 +99,6 @@ export async function loadAll(db: Db, n: Normalized, uploaded: UploadedPaths): P
         });
     }
 
-    const activityRows = n.activities.length === 0 ? [] : await tx.insert(activities)
-      .values(n.activities.map((a) => ({
-        sourceKey: a.sourceKey, seasonId: a.seasonId, date: a.date, type: a.type, title: a.title, bodyMd: a.bodyMd, noteMd: a.noteMd,
-      })))
-      .onConflictDoUpdate({
-        target: activities.sourceKey,
-        set: {
-          seasonId: excluded('season_id'), date: excluded('date'), type: excluded('type'), title: excluded('title'),
-          bodyMd: excluded('body_md'), noteMd: excluded('note_md'),
-        },
-      })
-      .returning({ id: activities.id, sourceKey: activities.sourceKey });
-
-    const photoRows = activityRows.flatMap((a) =>
-      (uploaded.activityPhotos.get(a.sourceKey!) ?? []).map((p) => ({ activityId: a.id, position: p.position, storagePath: p.storagePath })));
-    if (photoRows.length) {
-      await tx.insert(activityPhotos).values(photoRows)
-        .onConflictDoUpdate({ target: [activityPhotos.activityId, activityPhotos.position], set: { storagePath: excluded('storage_path') } });
-    }
-
     const documentRows = n.documents.map((d) => ({
       slug: d.slug, title: d.title, sourcePageId: d.sourcePageId,
       bodyMd: resolveDocumentImages(d.slug, d.bodyMd, uploaded.documentImageUrls.get(d.slug)),
@@ -131,7 +113,7 @@ export async function loadAll(db: Db, n: Normalized, uploaded: UploadedPaths): P
 
     return {
       users: userRows.length, seasons: n.seasons.length, seasonMembers: memberRows.length, boardGames: n.boardGames.length,
-      activities: activityRows.length, activityPhotos: photoRows.length, documents: documentRows.length,
+      documents: documentRows.length,
     };
   });
 }

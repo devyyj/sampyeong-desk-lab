@@ -4,7 +4,7 @@ import sharp from 'sharp';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import path from 'path';
-import { optimizeImage, resolveLocalFile, activityPhotoPath, documentImagePath, uploadImage, emptyBucket, type StorageLike } from './images';
+import { optimizeImage, resolveLocalFile, documentImagePath, uploadImage, emptyBucket, type StorageLike } from './images';
 
 describe('optimizeImage', () => {
   it('긴 변 1600으로 축소, webp, EXIF 제거', async () => {
@@ -26,9 +26,6 @@ describe('optimizeImage', () => {
 });
 
 describe('경로 헬퍼', () => {
-  it('activityPhotoPath는 sourceKey의 ":"를 "_"로 바꾼다', () => {
-    expect(activityPhotoPath(3, '1349016589:12', 0)).toBe('3/1349016589_12/0.webp');
-  });
   it('documentImagePath', () => {
     expect(documentImagePath('rules', 1)).toBe('rules/1.webp');
   });

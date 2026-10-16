@@ -31,7 +31,7 @@ const form = (f: Record<string, string>) => {
   for (const [k, v] of Object.entries(f)) fd.append(k, v);
   return fd;
 };
-const comment = (authorId = ME) => ({ id: COMMENT, authorId, postId: POST, activityId: null });
+const comment = (authorId = ME) => ({ id: COMMENT, authorId, postId: POST });
 
 beforeEach(() => {
   vi.clearAllMocks();

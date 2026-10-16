@@ -1,9 +1,10 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import { getTableConfig } from 'drizzle-orm/pg-core';
+import * as schema from './schema';
 import {
-  users, boardGames, activities, activityPhotos, seasonMembers, seasons, documents,
-  posts, postImages, comments, postLikes, activityLikes, commentLikes,
+  users, boardGames, seasonMembers, seasons, documents,
+  posts, postImages, comments, postLikes, commentLikes,
 } from './schema';
 
 const column = (table: Parameters<typeof getTableConfig>[0], name: string) =>
@@ -29,9 +30,7 @@ describe('schema: Confluence import 확장', () => {
   });
 
   it('신규 테이블의 키 구성', () => {
-    expect(column(activities, 'source_key').isUnique).toBe(true);
     expect(getTableConfig(seasonMembers).primaryKeys[0].columns.map((c) => c.name)).toEqual(['season_id', 'user_id']);
-    expect(getTableConfig(activityPhotos).uniqueConstraints[0].columns.map((c) => c.name)).toEqual(['activity_id', 'position']);
     expect(column(seasons, 'id').primary).toBe(true);
     expect(column(documents, 'slug').primary).toBe(true);
   });
@@ -47,32 +46,24 @@ describe('schema: 커뮤니티 기능(0005)', () => {
     expect(getTableConfig(postImages).uniqueConstraints[0].columns.map((c) => c.name)).toEqual(['post_id', 'position']);
   });
 
-  it('comments는 게시글/활동 중 하나를 가리키고(CHECK), 작성자가 필수', () => {
-    expect(column(comments, 'post_id').notNull).toBe(false);
-    expect(column(comments, 'activity_id').notNull).toBe(false);
+  it('comments는 게시글 하나를 가리키고(0009에서 post_id 필수), 작성자가 필수', () => {
+    expect(column(comments, 'post_id').notNull).toBe(true);
     expect(column(comments, 'author_id').notNull).toBe(true);
-    expect(getTableConfig(comments).checks.map((c) => c.name)).toContain('comments_one_target');
   });
 
   it('좋아요 테이블은 (대상, 회원) 복합 PK로 회원당 1회만 허용', () => {
     expect(getTableConfig(postLikes).primaryKeys[0].columns.map((c) => c.name)).toEqual(['post_id', 'user_id']);
-    expect(getTableConfig(activityLikes).primaryKeys[0].columns.map((c) => c.name)).toEqual(['activity_id', 'user_id']);
     expect(getTableConfig(commentLikes).primaryKeys[0].columns.map((c) => c.name)).toEqual(['comment_id', 'user_id']);
   });
 });
 
 describe('schema: 피드·활동 통합(0006)', () => {
-  it('posts.kind는 필수이고 기본값은 일반 글(general)', () => {
-    expect(column(posts, 'kind')).toMatchObject({ notNull: true, default: 'general', length: 20 });
-  });
-
-  it('활동형 칼럼(제목·종류·시즌·모임 날짜)은 nullable이고, 이관 멱등성 키는 unique', () => {
-    for (const name of ['title', 'activity_type', 'season_id', 'activity_date']) {
+  it('시즌·모임 날짜는 nullable(선택 입력)이고, 이관 멱등성 키는 unique', () => {
+    for (const name of ['season_id', 'activity_date']) {
       expect(column(posts, name).notNull, name).toBe(false);
     }
     expect(column(posts, 'source_key').isUnique).toBe(true);
   });
-
 });
 
 describe('schema: 양식 통합(0008)', () => {
@@ -87,5 +78,23 @@ describe('schema: 양식 통합(0008)', () => {
     const config = getTableConfig(posts);
     expect(config.checks.map((c) => c.name)).not.toContain('posts_kind_fields');
     expect(config.indexes.map((i) => i.config.name)).not.toContain('posts_kind_created_at_idx');
+  });
+});
+
+describe('schema: 옛 활동 구조 정리(0009)', () => {
+  it('posts에서 예전 글 종류·제목·활동 종류 칼럼을 지웠다', () => {
+    const names = getTableConfig(posts).columns.map((c) => c.name);
+    for (const name of ['kind', 'title', 'activity_type']) expect(names, name).not.toContain(name);
+  });
+
+  it('옛 활동 테이블(activities·activity_photos·activity_likes)은 schema에 없다', () => {
+    for (const name of ['activities', 'activityPhotos', 'activityLikes']) expect(schema, name).not.toHaveProperty(name);
+  });
+
+  it('comments에서 activity_id와 대상 하나 CHECK·활동 인덱스를 지웠다', () => {
+    const config = getTableConfig(comments);
+    expect(config.columns.map((c) => c.name)).not.toContain('activity_id');
+    expect(config.checks.map((c) => c.name)).not.toContain('comments_one_target');
+    expect(config.indexes.map((i) => i.config.name)).not.toContain('comments_activity_id_created_at_idx');
   });
 });

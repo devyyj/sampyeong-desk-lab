@@ -46,9 +46,9 @@ describe('getComments', () => {
   it('대상별로 오래된 순 댓글을 묶고, 작성자 닉네임·배지·좋아요·수정 여부를 붙인다', async () => {
     const created = new Date('2026-10-16T03:04:00Z');
     vi.mocked(db.query.comments.findMany).mockResolvedValueOnce([
-      { id: 'c1', postId: P1, activityId: null, authorId: A, content: '첫 댓글', createdAt: created, updatedAt: created, author: { id: A, nickname: '보드왕' } },
+      { id: 'c1', postId: P1, authorId: A, content: '첫 댓글', createdAt: created, updatedAt: created, author: { id: A, nickname: '보드왕' } },
       {
-        id: 'c2', postId: P1, activityId: null, authorId: 'b', content: '고침', createdAt: created,
+        id: 'c2', postId: P1, authorId: 'b', content: '고침', createdAt: created,
         // 작성 직후(1초 안)에 고쳐도 수정됨으로 본다.
         updatedAt: new Date(created.getTime() + 300), author: { id: 'b', nickname: '둘째' },
       },
