@@ -142,6 +142,7 @@ scripts/import-confluence/
 - `npm run import:confluence -- [--dry-run] [--reset --yes]`로 실행한다(`tsx`).
 - 필요한 환경 변수: `DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
   - Service Role Key는 **이 스크립트에서만** 쓰고, 앱 코드(`src/`)에서는 import하지 않는다. `.env.local`에 사용자가 추가해야 한다.
+    - 2026-10-16 갱신: 조회 UI에서 활동 사진 signed URL을 발급하기 위해 `src/lib/storage-admin.ts`(server-only) 한 곳에서만 예외로 사용한다(`2026-10-16-archive-views-design.md`).
 - 새 devDependency는 `sharp`, `tsx`, `linkedom`이다.
 
 ## 6. 앱 코드 변경 (최소 범위)

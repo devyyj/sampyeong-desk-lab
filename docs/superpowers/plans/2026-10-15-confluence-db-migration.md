@@ -13,6 +13,7 @@
 ## Global Constraints
 
 - Service Role Key(`SUPABASE_SERVICE_ROLE_KEY`)는 `scripts/` 안에서만 사용. `src/`에서 import 금지.
+  - 2026-10-16 갱신: 활동 사진 signed URL 발급을 위해 `src/lib/storage-admin.ts`(server-only) 한 곳에서만 예외로 허용한다. 설계: `docs/superpowers/specs/2026-10-16-archive-views-design.md`
 - 개인정보 원본(`data/`, `docs/confluence/`)은 git에 넣지 않는다(이미 gitignore). 테스트 fixture는 **가짜 이름/ID로 익명화**한 인라인 HTML 문자열만 쓴다.
 - 이미지: 긴 변 최대 1600px(확대 안 함), WebP 품질 80, 메타데이터(EXIF) 제거.
 - 버킷: `activity_photos` = private, `document_images` = public.

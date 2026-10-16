@@ -12,10 +12,16 @@ describe('guardRoute', () => {
     // 기존 middleware가 놓치던 동적 편집 경로
     ['/posts/abc/edit', null, '/login?redirect=%2Fposts%2Fabc%2Fedit'],
     ['/boardgames/xyz/edit', null, '/login?redirect=%2Fboardgames%2Fxyz%2Fedit'],
+    // 시즌 회원 명부(실명/부서)는 회원 전용
+    ['/members', null, '/login?redirect=%2Fmembers'],
     // 공개 경로
     ['/', null, null],
     ['/boardgames', null, null],
     ['/login', null, null],
+    // 활동 기록·동호회 안내는 공개(활동 사진만 페이지에서 회원 여부로 가린다)
+    ['/activities', null, null],
+    ['/activities/abc', null, null],
+    ['/about/rules', null, null],
     // PIN 변경 필요 → 어떤 페이지든 /change-pin
     ['/', { mustChangePin: true }, '/change-pin'],
     ['/boardgames', { mustChangePin: true }, '/change-pin'],

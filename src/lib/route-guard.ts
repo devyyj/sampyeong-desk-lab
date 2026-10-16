@@ -1,7 +1,8 @@
 import type { SessionPayload } from './session';
 
 // 로그인해야 들어갈 수 있는 경로(접두사 일치)
-const PROTECTED_PREFIXES = ['/mypage', '/posts/write', '/boardgames/add', '/admin', '/change-pin'];
+// /members는 시즌 회원 명부(실명·부서)라 회원 전용이다. 활동 기록은 공개하되 사진만 페이지에서 가린다.
+const PROTECTED_PREFIXES = ['/mypage', '/posts/write', '/boardgames/add', '/admin', '/change-pin', '/members'];
 // 게시글·보드게임 수정 페이지는 /posts/<id>/edit 형태라 접두사로는 잡히지 않는다(기존 '/posts/edit' 검사가 놓치던 경로).
 const PROTECTED_PATTERNS = [/^\/(posts|boardgames)\/[^/]+\/edit(\/|$)/];
 
