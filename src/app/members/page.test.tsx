@@ -41,14 +41,14 @@ describe('MembersPage', () => {
     expect(names).toEqual(['박씨', '김비', '안에이']);
   });
 
-  it('이름 옆에 닉네임과 [회장](그 시즌 직책) 또는 [N시즌](참여 수)을 함께 표시한다', async () => {
+  it('이름 옆에 닉네임과 👑 회장(그 시즌 직책) 또는 Lv.N(참여 시즌 수)을 함께 표시한다', async () => {
     await page();
     const card = (name: string) => screen.getByRole('heading', { level: 3, name }).parentElement!;
-    expect(card('김비')).toHaveTextContent('김비비비[1시즌]');
+    expect(card('김비')).toHaveTextContent('김비비비Lv.1');
     // 회장은 참여 수 대신 회장으로만 표시한다.
-    expect(card('박씨')).toHaveTextContent('[회장]');
-    expect(card('박씨')).not.toHaveTextContent('시즌]');
-    expect(card('안에이')).toHaveTextContent('[2시즌]');
+    expect(card('박씨')).toHaveTextContent('👑회장');
+    expect(card('박씨')).not.toHaveTextContent('Lv.');
+    expect(card('안에이')).toHaveTextContent('Lv.2');
     expect(getSeasonCounts).toHaveBeenCalledWith(['b', 'c', 'a']);
   });
 

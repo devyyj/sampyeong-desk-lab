@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getProfile, type ProfileView } from '@/app/actions/profile';
-import { badgeLabel } from '@/lib/badge';
+import LevelBadge from './LevelBadge';
 import BottomSheet from './BottomSheet';
 import Avatar from './Avatar';
 
@@ -33,9 +33,13 @@ export default function ProfilePopup({ userId, nickname, onClose }: { userId: st
           <div className="min-w-0">
             <p className="text-lg font-bold truncate">{nickname}</p>
             {profile?.badge && (
-              <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-primary-50 text-primary-600 text-xs font-semibold">
-                {profile.badge.kind === 'president' ? badgeLabel(profile.badge) : `${badgeLabel(profile.badge)} 참여`}
-              </span>
+              <p className="mt-1 flex items-center gap-1.5">
+                <LevelBadge badge={profile.badge} />
+                {/* 레벨 = 참여 시즌 수라는 것을 프로필에서 한 번 풀어 설명한다. */}
+                {profile.badge.kind === 'seasons' && (
+                  <span className="text-xs text-muted-foreground">{`${profile.badge.count}개 시즌 참여`}</span>
+                )}
+              </p>
             )}
           </div>
         </div>

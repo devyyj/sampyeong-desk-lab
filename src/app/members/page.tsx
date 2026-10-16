@@ -6,6 +6,7 @@ import { resolveSeason } from '@/lib/seasons';
 import SeasonSelect from '@/components/SeasonSelect';
 import { getSession } from '@/lib/session';
 import { getSeasonCounts } from '@/lib/member-badges';
+import LevelBadge from '@/components/LevelBadge';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,7 +73,7 @@ export default async function MembersPage({
     },
   });
 
-  // 이름 옆 [N시즌] 표시용. 명단 전체를 한 번에 센다(N+1 방지).
+  // 이름 옆 레벨(Lv.N) 표시용. 명단 전체를 한 번에 센다(N+1 방지).
   const seasonCounts = await getSeasonCounts(rows.map((row) => row.user.id));
 
   // 실명이 없는 회원(이관 데이터 일부)은 닉네임으로 대신한다.
@@ -111,11 +112,9 @@ export default async function MembersPage({
                   최신 시즌 기준(getMemberBadges)이 아니라 고른 시즌의 직책을 따른다.
                 */}
                 {role === '회장' ? (
-                  <span className="text-xs font-semibold text-primary-600">[회장]</span>
+                  <LevelBadge badge={{ kind: 'president' }} />
                 ) : (
-                  (seasonCounts.get(user.id) ?? 0) > 0 && (
-                    <span className="text-xs font-semibold text-primary-600">{`[${seasonCounts.get(user.id)}시즌]`}</span>
-                  )
+                  (seasonCounts.get(user.id) ?? 0) > 0 && <LevelBadge badge={{ kind: 'seasons', count: seasonCounts.get(user.id)! }} />
                 )}
                 {/* 회장 외 직책(이관 데이터에는 없음)이 생기면 기존처럼 칩으로 보여준다. */}
                 {role && role !== '회장' && (

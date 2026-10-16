@@ -12,13 +12,14 @@ describe('UserName', () => {
 
   it('닉네임과 배지만 보여주고, 누르기 전에는 프로필을 조회하지 않는다', () => {
     render(<UserName userId={UID} nickname="보드왕" badge={{ kind: 'seasons', count: 3 }} />);
-    expect(screen.getByRole('button', { name: '보드왕 [3시즌]' })).toHaveAttribute('aria-haspopup', 'dialog');
+    expect(screen.getByRole('button', { name: '보드왕 Lv.3' })).toHaveAttribute('aria-haspopup', 'dialog');
     expect(getProfile).not.toHaveBeenCalled();
   });
 
-  it('최신 시즌 회장은 [회장], 배지가 없으면 닉네임만', () => {
+  it('최신 시즌 회장은 👑 회장(왕관은 장식이라 읽지 않음), 배지가 없으면 닉네임만', () => {
     const { rerender } = render(<UserName userId={UID} nickname="회장님" badge={{ kind: 'president' }} />);
-    expect(screen.getByRole('button', { name: '회장님 [회장]' })).toBeInTheDocument();
+    const button = screen.getByRole('button', { name: '회장님 회장' });
+    expect(button).toHaveTextContent('👑');
     rerender(<UserName userId={UID} nickname="새내기" badge={null} />);
     expect(screen.getByRole('button', { name: '새내기' })).toBeInTheDocument();
   });
@@ -29,7 +30,7 @@ describe('UserName', () => {
       badge: { kind: 'president' }, displayName: '김철수', department: '개발팀',
     });
     render(<UserName userId={UID} nickname="보드왕" badge={{ kind: 'president' }} />);
-    const open = () => fireEvent.click(screen.getByRole('button', { name: '보드왕 [회장]' }));
+    const open = () => fireEvent.click(screen.getByRole('button', { name: '보드왕 회장' }));
 
     open();
     const dialog = await screen.findByRole('dialog', { name: '보드왕 프로필' });
@@ -62,7 +63,8 @@ describe('UserName', () => {
     render(<UserName userId={UID} nickname="보드왕" badge={{ kind: 'seasons', count: 2 }} />);
     fireEvent.click(screen.getByRole('button'));
     const dialog = await screen.findByRole('dialog');
-    expect(await within(dialog).findByText('2시즌 참여')).toBeInTheDocument();
+    expect(await within(dialog).findByText('Lv.2')).toBeInTheDocument();
+    expect(within(dialog).getByText('2개 시즌 참여')).toBeInTheDocument();
     expect(within(dialog).queryByText('실명')).toBeNull();
     expect(within(dialog).queryByText('부서')).toBeNull();
   });

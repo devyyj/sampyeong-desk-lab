@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { badgeLabel, type MemberBadge } from '@/lib/badge';
+import type { MemberBadge } from '@/lib/badge';
+import LevelBadge from './LevelBadge';
 import ProfilePopup from './ProfilePopup';
 
 /**
@@ -19,12 +20,12 @@ export default function UserName({ userId, nickname, badge }: { userId: string; 
         type="button"
         aria-haspopup="dialog"
         onClick={() => setOpen(true)}
-        className="font-semibold text-sm hover:underline focus:outline-none focus:ring-2 focus:ring-primary-500 rounded"
+        className="inline-flex items-center gap-1 font-semibold text-[15px] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 rounded"
       >
         {nickname}
-        {/* 공백을 별도 텍스트로 두어 접근 가능한 이름이 "닉네임 [N시즌]"이 되게 한다. */}
+        {/* 공백을 별도 텍스트로 두어 접근 가능한 이름이 "닉네임 Lv.N" / "닉네임 회장"이 되게 한다. */}
         {badge && ' '}
-        {badge && <span className="text-xs font-medium text-primary-600">{`[${badgeLabel(badge)}]`}</span>}
+        {badge && <LevelBadge badge={badge} />}
       </button>
       {open && <ProfilePopup userId={userId} nickname={nickname} onClose={close} />}
     </>

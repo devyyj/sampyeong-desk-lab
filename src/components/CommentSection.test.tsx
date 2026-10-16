@@ -35,7 +35,7 @@ describe('CommentSection', () => {
     expect(first).toHaveTextContent('2026. 10. 16. 12:04');
     expect(first).toHaveTextContent('(수정됨)');
     expect(within(first).getByRole('button', { name: '좋아요 2' })).toHaveAttribute('aria-pressed', 'true');
-    expect(within(itemOf('남의 댓글')).getByRole('button', { name: '남 [3시즌]' })).toBeInTheDocument();
+    expect(within(itemOf('남의 댓글')).getByRole('button', { name: '남 Lv.3' })).toBeInTheDocument();
     expect(itemOf('남의 댓글')).not.toHaveTextContent('(수정됨)');
   });
 

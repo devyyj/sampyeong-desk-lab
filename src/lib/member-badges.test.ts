@@ -54,8 +54,9 @@ describe('getSeasonCounts', () => {
 });
 
 describe('badgeLabel', () => {
-  it('회장 / N시즌', () => {
+  it('레벨 시스템: 참여 시즌 수 N → Lv.N, 회장은 무조건 회장', () => {
     expect(badgeLabel({ kind: 'president' })).toBe('회장');
-    expect(badgeLabel({ kind: 'seasons', count: 4 })).toBe('4시즌');
+    expect(badgeLabel({ kind: 'seasons', count: 1 })).toBe('Lv.1');
+    expect(badgeLabel({ kind: 'seasons', count: 5 })).toBe('Lv.5');
   });
 });
