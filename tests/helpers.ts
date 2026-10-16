@@ -117,8 +117,11 @@ export async function loggedInPage(browser: Browser, user: TestUser, redirect = 
   return page;
 }
 
+/** 로그아웃은 MY 탭(허브) 맨 아래 버튼으로 한다(헤더의 계정 버튼은 모바일 개편에서 MY로 옮겼다). */
 export async function logout(page: Page) {
-  await page.getByRole('banner').getByRole('button', { name: '로그아웃' }).click();
+  await page.getByRole('navigation', { name: '주요 메뉴' }).getByRole('link', { name: 'MY' }).click();
+  await page.waitForURL('**/my');
+  await page.getByRole('button', { name: '로그아웃' }).click();
   await page.waitForURL('**/login');
 }
 

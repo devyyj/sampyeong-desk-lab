@@ -33,13 +33,15 @@ test('비회원: 보호된 경로는 모두 원래 경로를 기억한 채 로�
     await expect(page, path).toHaveURL(`/login?redirect=${encodeURIComponent(path)}`);
   }
 
-  // 공개 페이지는 그대로 열리고, 쓰기 버튼은 숨겨진다.
+  // 공개 페이지는 그대로 열린다. ＋ 버튼은 비회원에게도 보이지만 로그인 후 작성 화면으로 돌아오는 주소다.
   await page.goto('/');
   await expect(page.getByRole('heading', { name: '자유게시판' })).toBeVisible();
-  await expect(page.getByRole('link', { name: '글쓰기' })).toHaveCount(0);
-  await expect(page.getByRole('banner').getByRole('link', { name: '로그인' })).toBeVisible();
+  await expect(page.getByRole('link', { name: '글쓰기' })).toHaveAttribute('href', '/login?redirect=%2Fposts%2Fwrite');
   await page.goto('/boardgames');
-  await expect(page.getByRole('link', { name: '새 보드게임 등록' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: '보드게임 등록' })).toHaveAttribute('href', '/login?redirect=%2Fboardgames%2Fadd');
+  // 비회원 MY 탭에는 로그인 버튼이 있다.
+  await page.goto('/my');
+  await expect(page.getByRole('link', { name: '로그인' })).toHaveAttribute('href', '/login?redirect=%2Fmy');
 });
 
 test('로그인 실패: 없는 아이디와 틀린 PIN은 같은 메시지로 거부한다', async ({ page }) => {
@@ -66,13 +68,14 @@ test('로그인 성공: 원래 가려던 페이지로 이동하고, 로그아웃
   await page.waitForURL('**/boardgames/add');
   await expect(page.getByRole('heading', { name: '새 보드게임 등록' })).toBeVisible();
 
-  const banner = page.getByRole('banner');
-  await expect(banner.getByRole('link', { name: '마이페이지' })).toBeVisible();
-  // 일반 회원에게는 관리자 메뉴가 없다.
-  await expect(banner.getByRole('link', { name: '관리자' })).toHaveCount(0);
+  // 계정 메뉴는 MY 탭에 있다. 일반 회원에게는 관리자 메뉴(회원 관리)가 없다.
+  await page.goto('/my');
+  await expect(page.getByRole('link', { name: /프로필 편집/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /회원 관리/ })).toHaveCount(0);
 
   await logout(page);
-  await expect(banner.getByRole('link', { name: '로그인' })).toBeVisible();
+  await page.goto('/my');
+  await expect(page.getByRole('link', { name: '로그인' })).toBeVisible();
   await page.goto('/mypage');
   await expect(page).toHaveURL('/login?redirect=%2Fmypage');
 });

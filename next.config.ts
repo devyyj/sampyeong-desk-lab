@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // 개발 모드 표시(N 버튼)는 화면 네 모서리 어디에 두어도 모바일 UI를 가린다
+  // (왼쪽 아래 탭바 '피드', 오른쪽 아래 ＋ 버튼, 위쪽 양끝 작성 화면의 취소·게시). 그래서 끈다.
+  // 컴파일·런타임 오류 표시는 꺼지지 않으며, 운영 빌드에는 원래 나오지 않는다.
+  devIndicators: false,
   experimental: {
     serverActions: {
       // 프로필 사진(장당 최대 10MB)은 Server Action 본문으로 서버에 올린다. 기본 1MB면 1MB 넘는 사진이 실패한다.

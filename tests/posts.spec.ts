@@ -58,15 +58,17 @@ test('게시글: 사진 3장 작성 → 수정(1장 삭제·1장 추가) → 다
     expect(await storageFileExists('post_images', img.storagePath)).toBe(true);
   }
 
-  // 피드: 128px 썸네일 3장이 순서대로, 실제로 로드된다.
+  // 피드: 화면 폭 캐러셀에 사진 3장이 순서대로, 실제로 로드된다(2장째부터는 지연 로딩이라 넘겨서 확인).
+  await expect(firstPost.getByRole('region', { name: '사진 3장' })).toBeVisible();
   const thumbs = firstPost.getByRole('button', { name: /^게시글 사진 \d 크게 보기$/ });
   await expect(thumbs).toHaveCount(3);
   for (let i = 0; i < 3; i++) {
     const img = thumbs.nth(i).locator('img');
     await expect(img).toHaveAttribute('src', new RegExp(`/storage/v1/object/public/post_images/${created[i].storagePath}$`));
+    await img.scrollIntoViewIfNeeded();
     await expectImageLoaded(img);
   }
-  expect((await thumbs.first().boundingBox())!.width).toBeLessThanOrEqual(130);
+  expect((await thumbs.first().boundingBox())!.width).toBeGreaterThan(300);
 
   // 라이트박스: 누른 사진부터, 이전/다음·←/→, n / N
   await thumbs.nth(1).click();
@@ -81,7 +83,9 @@ test('게시글: 사진 3장 작성 → 수정(1장 삭제·1장 추가) → 다
   await expect(lightbox).toHaveCount(0);
 
   // 수정: 첫 사진 삭제, 새 사진 1장 추가 → 순서는 남은 사진(2,3) → 새 사진
-  await firstPost.getByRole('link', { name: '수정' }).click();
+  // 본인 글의 ··· 메뉴(바텀시트) → 수정
+  await firstPost.getByRole('button', { name: '게시글 메뉴' }).click();
+  await page.getByRole('dialog', { name: '게시글' }).getByRole('link', { name: '수정' }).click();
   await page.waitForURL(`**/posts/${row.id}/edit`);
   await expect(page.getByLabel(/내용/)).toHaveValue(content);
   await expect(page.getByRole('group', { name: '기존 사진' }).getByRole('img')).toHaveCount(3);
@@ -101,12 +105,16 @@ test('게시글: 사진 3장 작성 → 수정(1장 삭제·1장 추가) → 다
   // 뺀 사진은 DB 행과 함께 Storage 파일도 지워진다.
   await expect.poll(() => storageFileExists('post_images', created[0].storagePath)).toBe(false);
   expect(await storageFileExists('post_images', afterEdit[2].storagePath)).toBe(true);
-  for (const img of await editedPost.locator('img').all()) await expectImageLoaded(img);
+  for (const img of await editedPost.locator('img').all()) {
+    await img.scrollIntoViewIfNeeded();
+    await expectImageLoaded(img);
+  }
 
   // 다른 회원: 버튼이 없고, 수정 URL로 직접 들어가도 홈으로 돌려보낸다.
   const otherPage = await loggedInPage(browser, other);
   const seenByOther = otherPage.locator('article').filter({ hasText: updated });
   await expect(seenByOther).toHaveCount(1);
+  await expect(seenByOther.getByRole('button', { name: '게시글 메뉴' })).toHaveCount(0);
   await expect(seenByOther.getByRole('link', { name: '수정' })).toHaveCount(0);
   await expect(seenByOther.getByRole('button', { name: '삭제' })).toHaveCount(0);
   await otherPage.goto(`/posts/${row.id}/edit`);
@@ -118,14 +126,16 @@ test('게시글: 사진 3장 작성 → 수정(1장 삭제·1장 추가) → 다
   const seenByGuest = guest.locator('article').filter({ hasText: updated });
   await expect(seenByGuest).toHaveCount(1);
   await expect(seenByGuest.getByRole('button', { name: /크게 보기$/ })).toHaveCount(3);
+  await expect(seenByGuest.getByRole('button', { name: '게시글 메뉴' })).toHaveCount(0);
   await expect(seenByGuest.getByRole('link', { name: '수정' })).toHaveCount(0);
 
   // 작성자 삭제(확인 창 수락) → 남은 사진 파일도 Storage에서 지워진다.
   page.once('dialog', (dialog) => {
-    expect(dialog.message()).toBe('정말로 삭제하시겠습니까?');
+    expect(dialog.message()).toBe('게시글을 삭제할까요?');
     dialog.accept();
   });
-  await editedPost.getByRole('button', { name: '삭제' }).click();
+  await editedPost.getByRole('button', { name: '게시글 메뉴' }).click();
+  await page.getByRole('dialog', { name: '게시글' }).getByRole('button', { name: '삭제' }).click();
   await expect(page.locator('article').filter({ hasText: updated })).toHaveCount(0);
   expect(await db.select().from(posts).where(eq(posts.id, row.id))).toHaveLength(0);
   expect(await imagesOf(row.id)).toHaveLength(0);
@@ -168,7 +178,8 @@ test('게시글 삭제 확인 창에서 취소하면 지워지지 않는다', as
   // 사진 없이 쓴 글에는 이미지 영역이 없다.
   await expect(post.getByRole('button', { name: /크게 보기$/ })).toHaveCount(0);
   page.once('dialog', (dialog) => dialog.dismiss());
-  await post.getByRole('button', { name: '삭제' }).click();
+  await post.getByRole('button', { name: '게시글 메뉴' }).click();
+  await page.getByRole('dialog', { name: '게시글' }).getByRole('button', { name: '삭제' }).click();
   await page.reload();
   await expect(page.locator('article').filter({ hasText: content })).toHaveCount(1);
   await page.context().close();

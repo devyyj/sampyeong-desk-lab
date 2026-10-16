@@ -70,13 +70,14 @@ test('회원: 활동 사진이 signed URL로 실제 로드되고, 시즌 명부�
 
   await page.goto('/members');
   await expect(page.getByRole('heading', { name: /회원 명부 \(\d+명\)/ })).toBeVisible();
-  // 이름 옆에 [회장](그 시즌 직책) 또는 [N시즌](참여 수)이 붙는다. 회장 카드에는 참여 수를 붙이지 않는다.
-  await expect(page.getByText('[회장]', { exact: true })).toHaveCount(1);
-  const cards = page.locator('main h3').locator('..');
-  const cardCount = await cards.count();
-  for (let i = 0; i < cardCount; i++) {
-    await expect(cards.nth(i)).toHaveText(/\[(회장|\d+시즌)\]/);
-  }
+  // 레벨 안내가 있고, 이름 옆에 👑 회장(그 시즌 직책) 또는 Lv.N(참여 시즌 수)이 붙는다. 회장에게는 레벨을 붙이지 않는다.
+  await expect(page.getByRole('note', { name: '레벨 안내' })).toBeVisible();
+  const rows = page.locator('main ul > li');
+  await expect(rows.filter({ hasText: '회장' })).toHaveCount(1);
+  await expect(rows.filter({ hasText: '회장' })).not.toContainText('Lv.');
+  // 정렬: 회장 → 레벨 높은 순.
+  const levels = (await rows.allTextContents()).map((t) => (t.includes('회장') ? 99 : Number(/Lv\.(\d+)/.exec(t)?.[1] ?? 0)));
+  expect(levels).toEqual([...levels].sort((x, y) => y - x));
 });
 
 test('동호회 안내와 보드게임 필터', async ({ page }) => {
@@ -96,41 +97,6 @@ test('동호회 안내와 보드게임 필터', async ({ page }) => {
   for (let i = 0; i < count; i++) {
     await expect(cards.nth(i)).toContainText('공용 보관함');
   }
-});
-
-test('모바일: 햄버거 메뉴로 이동', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
-  await expect(page.getByRole('navigation', { name: '주요 메뉴' })).toBeHidden();
-  await page.getByRole('button', { name: '메뉴 열기' }).click();
-  await page.getByRole('navigation', { name: '모바일 메뉴' }).getByRole('link', { name: '활동 기록' }).click();
-  await page.waitForURL('**/activities');
-  await expect(page.getByRole('navigation', { name: '모바일 메뉴' })).toBeHidden();
-});
-
-test('모바일: 메뉴를 열지 않아도 헤더에 로그인/마이페이지·로그아웃 버튼이 보인다', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
-  const account = page.getByRole('banner').getByRole('group', { name: '계정' });
-  await expect(account.getByRole('link', { name: '로그인' })).toBeVisible();
-  await expect(account.getByRole('link', { name: '마이페이지' })).toHaveCount(0);
-
-  await account.getByRole('link', { name: '로그인' }).click();
-  await page.waitForURL('**/login');
-  await page.getByLabel('아이디').fill(member.username);
-  await page.getByLabel('비밀번호 (4자리 PIN)').fill(member.pin);
-  await page.getByRole('button', { name: '로그인' }).click();
-  await page.waitForURL((url) => url.pathname === '/');
-  await expect(account.getByRole('link', { name: '마이페이지' })).toBeVisible();
-  await expect(account.getByRole('button', { name: '로그아웃' })).toBeVisible();
-  await expect(account.getByRole('link', { name: '로그인' })).toHaveCount(0);
-  // 버튼이 화면 밖으로 밀려나지 않아야 한다(390px 폭 안에 들어옴).
-  const box = await account.boundingBox();
-  expect(box!.x + box!.width).toBeLessThanOrEqual(390);
-
-  await account.getByRole('button', { name: '로그아웃' }).click();
-  await page.waitForURL('**/login');
-  await expect(account.getByRole('link', { name: '로그인' })).toBeVisible();
 });
 
 test('활동 기록: 시즌 선택 없이 무한 스크롤로 모든 활동을 시즌별로 묶어 보여준다', async ({ page }) => {
@@ -175,15 +141,17 @@ test('활동 기록: 시즌 선택 없이 무한 스크롤로 모든 활동을 �
   await rows.first().click();
   await page.waitForURL(/\/activities\/[0-9a-f-]{36}$/);
   await expect(page.locator('header').getByText(perSeason[0].name, { exact: true })).toBeVisible();
-  await page.getByRole('link', { name: '← 활동 기록' }).click();
+  await page.getByRole('link', { name: '활동 기록으로 돌아가기' }).click();
   await page.waitForURL((url) => url.pathname === '/activities' && url.search === '');
 });
 
-test('회원 명부는 시즌 셀렉트로 고른 시즌을 보여주고 선택이 쿼리로 유지된다', async ({ page }) => {
+test('회원 명부는 시즌 칩으로 고른 시즌을 보여주고 선택이 쿼리로 유지된다', async ({ page }) => {
   const [{ id: seasonId, name: seasonName }] = await db.select().from(seasons).orderBy(seasons.id).limit(1);
-  await login(page, `/members?season=${seasonId}`);
-  const select = page.getByRole('combobox', { name: '시즌 선택' });
-  await expect(select).toHaveValue(String(seasonId));
+  await login(page, '/members');
+  const chips = page.getByRole('navigation', { name: '시즌 선택' });
+  await chips.getByRole('link', { name: seasonName }).click();
+  await page.waitForURL(`**/members?season=${seasonId}`);
+  await expect(chips.getByRole('link', { name: seasonName })).toHaveAttribute('aria-current', 'page');
   await expect(page.getByRole('heading', { name: new RegExp(`${seasonName} 회원 명부 \\(\\d+명\\)`) })).toBeVisible();
 });
 

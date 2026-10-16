@@ -18,8 +18,12 @@ test.beforeAll(async () => {
 test.afterAll(cleanupE2EData);
 
 test('일반 회원에게는 관리자 메뉴가 없고, 관리자 화면은 404로 숨긴다', async ({ page }) => {
-  await login(page, member);
-  await expect(page.getByRole('banner').getByRole('link', { name: '관리자' })).toHaveCount(0);
+  await login(page, member, '/my');
+  await expect(page.getByRole('link', { name: /회원 관리/ })).toHaveCount(0);
+  // 회원 탭의 ＋(회원 추가)도 관리자에게만 보이고, 주소로 들어가도 404다.
+  await page.goto('/members');
+  await expect(page.getByRole('link', { name: '회원 추가' })).toHaveCount(0);
+  expect((await page.goto('/members/new'))?.status()).toBe(404);
 
   const response = await page.goto('/admin/members');
   expect(response?.status()).toBe(404);
@@ -27,21 +31,32 @@ test('일반 회원에게는 관리자 메뉴가 없고, 관리자 화면은 404
 });
 
 test('관리자: 회원을 생성하면(PIN 비움=1234) 새 회원은 첫 로그인에서 PIN 변경을 강요받는다', async ({ page, browser }) => {
-  await login(page, admin);
-  await page.getByRole('banner').getByRole('link', { name: '관리자' }).click();
-  await page.waitForURL('**/admin/members');
-  await expect(page.getByRole('heading', { name: '회원 관리' })).toBeVisible();
+  // 회원 생성은 게시글·보드게임과 같은 방식: 회원 탭의 ＋ → 전체 화면 폼.
+  await login(page, admin, '/members');
+  await page.getByRole('link', { name: '회원 추가' }).click();
+  await page.waitForURL('**/members/new');
+  await expect(page.getByRole('heading', { name: '회원 추가' })).toBeVisible();
 
   const newUsername = uniqueName('created');
   const createForm = page.locator('form').filter({ has: page.getByRole('button', { name: '회원 생성' }) });
   // 아이디 앞뒤 공백은 서버에서 잘라 저장해야 로그인이 된다.
-  await createForm.getByPlaceholder('아이디 (사내 ID)').fill(`  ${newUsername}  `);
-  await createForm.getByPlaceholder('이름').fill('E2E 신규');
-  await createForm.getByPlaceholder('소속 부서(팀)').fill('신규팀');
+  await createForm.getByLabel('아이디 (사내 ID)').fill(`  ${newUsername}  `);
+  await createForm.getByLabel('이름').fill('E2E 신규');
+  await createForm.getByLabel('소속 부서(팀)').fill('신규팀');
   await createForm.getByRole('button', { name: '회원 생성' }).click();
   await expect(createForm.getByText(`${newUsername} 회원을 생성했습니다.`)).toBeVisible();
 
-  // 목록에 '초기 PIN' 상태로 나타난다.
+  // 같은 아이디는 다시 만들 수 없다.
+  await createForm.getByLabel('아이디 (사내 ID)').fill(newUsername);
+  await createForm.getByLabel('이름').fill('중복');
+  await createForm.getByLabel('소속 부서(팀)').fill('중복팀');
+  await createForm.getByRole('button', { name: '회원 생성' }).click();
+  await expect(createForm.getByText('이미 존재하는 아이디입니다.')).toBeVisible();
+
+  // 관리자 화면(MY → 회원 관리) 목록에 '초기 PIN' 상태로 나타난다.
+  await page.goto('/my');
+  await page.getByRole('link', { name: /회원 관리/ }).click();
+  await page.waitForURL('**/admin/members');
   const row = page.getByRole('row').filter({ hasText: newUsername });
   await expect(row).toContainText('E2E 신규');
   await expect(row).toContainText('신규팀');
@@ -50,13 +65,6 @@ test('관리자: 회원을 생성하면(PIN 비움=1234) 새 회원은 첫 로�
   const created = await getUser(newUsername);
   // 닉네임 최초값은 아이디.
   expect(created).toMatchObject({ username: newUsername, nickname: newUsername, mustChangePin: true, isAdmin: false });
-
-  // 같은 아이디는 다시 만들 수 없다.
-  await createForm.getByPlaceholder('아이디 (사내 ID)').fill(newUsername);
-  await createForm.getByPlaceholder('이름').fill('중복');
-  await createForm.getByPlaceholder('소속 부서(팀)').fill('중복팀');
-  await createForm.getByRole('button', { name: '회원 생성' }).click();
-  await expect(createForm.getByText('이미 존재하는 아이디입니다.')).toBeVisible();
 
   // 새 회원이 기본 PIN 1234로 로그인하면 PIN 변경 화면으로 간다.
   const context = await browser.newContext();

@@ -15,6 +15,14 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      // 모바일 전용 흐름은 아래 mobile 프로젝트에서만 돈다(같은 DB 쓰기를 두 번 하지 않게).
+      testIgnore: /mobile\.spec\.ts/,
+    },
+    {
+      // 모바일 중심 UI(로고 헤더·하단 탭바·바텀시트) 검증. 헤드리스로 iPhone 13 뷰포트·터치를 흉내 낸다.
+      name: 'mobile',
+      use: { ...devices['iPhone 13'], browserName: 'chromium' },
+      testMatch: /mobile\.spec\.ts/,
     },
   ],
 });

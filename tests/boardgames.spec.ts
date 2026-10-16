@@ -20,7 +20,8 @@ test('보드게임: 등록 → 미분류 필터 → 검색 → 공용 보관함 
   const renamed = `${name} 개정판`;
   const page = await loggedInPage(browser, member, '/boardgames');
 
-  await page.getByRole('link', { name: '새 보드게임 등록' }).click();
+  // 등록은 피드·회원과 같은 ＋ 버튼(Fab)으로 들어간다.
+  await page.getByRole('link', { name: '보드게임 등록' }).click();
   await page.waitForURL('**/boardgames/add');
   await page.getByLabel(/보드게임 이름/).fill(name);
   await page.getByLabel('추천 인원').fill('2~4명');
@@ -43,10 +44,12 @@ test('보드게임: 등록 → 미분류 필터 → 검색 → 공용 보관함 
   expect(row).toMatchObject({ addedById: member.id, status: 'AVAILABLE', inSharedCabinet: false, category: null, thumbnailUrl: null });
 
   // 카테고리 없는 새 게임은 '미분류' 필터에 나오고, 공용 보관함 필터에는 나오지 않는다.
+  // 카테고리는 필터 줄의 '카테고리' 칩 → 시트에서 고른다.
   const filters = page.getByRole('navigation', { name: '보드게임 필터' });
-  await filters.getByRole('link', { name: /^미분류 \d+$/ }).click();
+  await filters.getByRole('button', { name: '카테고리' }).click();
+  await page.getByRole('dialog', { name: '카테고리' }).getByRole('link', { name: /^미분류 \d+$/ }).click();
   await page.waitForURL(/category=%EB%AF%B8%EB%B6%84%EB%A5%98/);
-  await expect(filters.getByRole('link', { name: /^미분류 \d+$/ })).toHaveAttribute('aria-current', 'page');
+  await expect(filters.getByRole('button', { name: '카테고리: 미분류' })).toBeVisible();
   await expect(page.locator('article').filter({ hasText: name })).toHaveCount(1);
   await filters.getByRole('link', { name: /^공용 보관함 \d+$/ }).click();
   await page.waitForURL('**/boardgames?cabinet=1');
@@ -57,15 +60,20 @@ test('보드게임: 등록 → 미분류 필터 → 검색 → 공용 보관함 
   // 검색: 띄어쓰기·대소문자를 무시하고 이름으로 찾는다. 결과는 ?q= 주소로 남는다.
   const search = page.getByRole('searchbox', { name: '보드게임 검색' });
   await search.fill(name.replace('E2E', 'e2e').replace(/ /g, ''));
-  await page.getByRole('button', { name: '검색' }).click();
+  // 모바일 키보드의 검색 키처럼 Enter로 제출한다(별도 검색 버튼 없음).
+  await search.press('Enter');
   await page.waitForURL(/[?&]q=/);
   await expect(page.locator('article')).toHaveCount(1);
   await expect(page.locator('article')).toContainText(name);
   await page.getByRole('link', { name: '검색 지우기' }).click();
   await page.waitForURL((url) => url.pathname === '/boardgames' && url.search === '');
 
-  // 수정: 이름 변경 + 공용 보관함에 넣기 → 공용 보관함 필터에 나온다.
-  await page.locator('article').filter({ hasText: name }).getByRole('link', { name: '수정' }).click();
+  // 수정: 게임을 눌러 상세 시트 → 수정. 이름 변경 + 공용 보관함에 넣기 → 공용 보관함 필터에 나온다.
+  const openSheet = async (gameName: string) => {
+    await page.getByRole('button', { name: `${gameName} 상세 보기` }).click();
+    return page.getByRole('dialog', { name: gameName });
+  };
+  await (await openSheet(name)).getByRole('link', { name: '수정' }).click();
   await page.waitForURL(`**/boardgames/${row.id}/edit`);
   await expect(page.getByLabel(/보드게임 이름/)).toHaveValue(name);
   await expect(page.getByLabel('상태')).toHaveCount(0);
@@ -81,7 +89,7 @@ test('보드게임: 등록 → 미분류 필터 → 검색 → 공용 보관함 
   await expect(page.locator('article').filter({ hasText: renamed })).toHaveCount(1);
 
   // 다시 빼기(체크 해제는 값이 아예 오지 않는 경우라 따로 확인한다).
-  await page.locator('article').filter({ hasText: renamed }).getByRole('link', { name: '수정' }).click();
+  await (await openSheet(renamed)).getByRole('link', { name: '수정' }).click();
   await expect(page.getByRole('checkbox', { name: '공용 보관함에 보관' })).toBeChecked();
   await page.getByRole('checkbox', { name: '공용 보관함에 보관' }).uncheck();
   await page.getByRole('button', { name: '수정완료' }).click();
@@ -91,7 +99,7 @@ test('보드게임: 등록 → 미분류 필터 → 검색 → 공용 보관함 
 
   // 삭제(확인 창 수락)
   page.once('dialog', (dialog) => dialog.accept());
-  await page.locator('article').filter({ hasText: renamed }).getByRole('button', { name: '삭제' }).click();
+  await (await openSheet(renamed)).getByRole('button', { name: '삭제' }).click();
   await expect(page.locator('article').filter({ hasText: renamed })).toHaveCount(0);
   expect(await db.select().from(boardGames).where(eq(boardGames.id, row.id))).toHaveLength(0);
 
@@ -100,14 +108,15 @@ test('보드게임: 등록 → 미분류 필터 → 검색 → 공용 보관함 
 
 test('보드게임 필터: 카테고리를 고르면 그 카테고리 게임만 나온다', async ({ page }) => {
   await page.goto('/boardgames');
-  const filters = page.getByRole('navigation', { name: '보드게임 필터' });
-  // 전체·공용 보관함·미분류를 뺀 첫 실제 카테고리
-  const categoryLink = filters.getByRole('link').filter({ hasNotText: /^(전체|공용 보관함|미분류) / }).first();
+  await page.getByRole('navigation', { name: '보드게임 필터' }).getByRole('button', { name: '카테고리' }).click();
+  // 시트에서 미분류를 뺀 첫 실제 카테고리(게임 수가 가장 많은 카테고리)
+  const categoryLink = page.getByRole('dialog', { name: '카테고리' }).getByRole('link').filter({ hasNotText: /^미분류 / }).first();
   const label = (await categoryLink.textContent())!.trim();
   const [, category, count] = label.match(/^(.*) (\d+)$/)!;
 
   await categoryLink.click();
-  await page.waitForURL(`**/boardgames?category=${encodeURIComponent(category)}`);
+  // 쿼리의 공백은 URLSearchParams가 '+'로 인코딩하므로 주소 문자열 대신 파싱한 값으로 비교한다.
+  await page.waitForURL((url) => url.searchParams.get('category') === category);
   const cards = page.locator('article');
   await expect(cards).toHaveCount(Number(count));
   for (const card of await cards.all()) {
@@ -124,6 +133,12 @@ test('목록은 이미지 없이 정보만 보여주고, 비회원에게는 보�
   await expect(page.getByText(/보유자/)).toHaveCount(0);
   await expect(page.getByRole('link', { name: '수정' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: '삭제' })).toHaveCount(0);
+  // 상세 시트를 열어도 비회원에게는 보유자·수정·삭제가 없다.
+  await page.locator('article h3 button').first().click();
+  const sheet = page.getByRole('dialog');
+  await expect(sheet).not.toContainText('보유자');
+  await expect(sheet.getByRole('link', { name: '수정' })).toHaveCount(0);
+  await page.keyboard.press('Escape');
 
   // 회원에게는 이관 데이터의 보유자가 보인다.
   const memberPage = await loggedInPage(browser, member, '/boardgames');
