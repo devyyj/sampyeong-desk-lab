@@ -73,9 +73,9 @@ describe('PostForm', () => {
     fireEvent.click(screen.getByRole('button', { name: '게시하기' }));
 
     await waitFor(() => expect(createPost).toHaveBeenCalled());
-    expect(requestPostImageUploads).toHaveBeenCalledWith([{ type: 'image/png', size: 10 }, { type: 'image/png', size: 20 }], 0, 'general');
-    expect(uploadToSignedUrl).toHaveBeenCalledWith('post_images', 'me/0.png', 't0', a);
-    expect(uploadToSignedUrl).toHaveBeenCalledWith('post_images', 'me/1.png', 't1', b);
+    expect(requestPostImageUploads).toHaveBeenCalledWith([{ type: 'image/png', size: 10 }, { type: 'image/png', size: 20 }], 0);
+    expect(uploadToSignedUrl).toHaveBeenCalledWith('activity_photos', 'me/0.png', 't0', a);
+    expect(uploadToSignedUrl).toHaveBeenCalledWith('activity_photos', 'me/1.png', 't1', b);
     expect(submitted().get('content')).toBe('사진 글');
     expect(submitted().getAll('imagePaths')).toEqual(['me/0.png', 'me/1.png']);
   });
@@ -118,83 +118,78 @@ describe('PostForm', () => {
     expect(uploadToSignedUrl).not.toHaveBeenCalled();
   });
 
-  describe('활동 기록', () => {
+  describe('선택 정보(태그·모임 날짜·시즌)', () => {
     const SEASONS = [
-      { id: 5, name: '시즌 5' },
       { id: 4, name: '시즌 4' },
+      { id: 5, name: '시즌 5' },
     ];
+    const tagBox = () => screen.getByRole('textbox', { name: /태그/ });
+    const tagList = () =>
+      screen.queryAllByRole('button', { name: /^#.+ 빼기$/ }).map((b) => b.getAttribute('aria-label')!.replace(/ 빼기$/, ''));
 
-    it('작성할 때 종류를 고를 수 있고(기본 일반 글), 활동 기록을 고르면 제목·종류·날짜·시즌 칸이 나온다', () => {
-      render(<PostForm mode="create" seasons={SEASONS} today="2026-10-17" />);
-      const kinds = screen.getByRole('radiogroup', { name: '글 종류' });
-      expect(within(kinds).getByRole('radio', { name: '일반 글' })).toBeChecked();
+    it('양식은 하나다: 종류 전환·제목 칸이 없다', () => {
+      render(<PostForm mode="create" seasons={SEASONS} />);
+      expect(screen.queryByRole('radiogroup', { name: '글 종류' })).toBeNull();
       expect(screen.queryByLabelText('제목')).toBeNull();
-
-      fireEvent.click(within(kinds).getByRole('radio', { name: '활동 기록' }));
-      expect(screen.getByLabelText('제목')).toBeRequired();
-      // 날짜 기본값은 서버가 넘긴 오늘(한국 날짜), 시즌 기본값은 최신 시즌.
-      expect(screen.getByLabelText('모임 날짜')).toHaveValue('2026-10-17');
-      expect(screen.getByLabelText('시즌')).toHaveValue('5');
-      // 종류는 글자로 입력하고, 예시를 누르면 입력란에 채워진다.
-      const type = screen.getByRole('textbox', { name: '활동 종류' });
-      expect(type).toBeRequired();
-      // 플레이스홀더는 예시가 아니라 입력 요청 문구다(예시는 아래 칩으로 보여준다).
-      expect(type).toHaveAttribute('placeholder', '활동 종류를 입력하세요');
-      expect(screen.getByLabelText('제목')).toHaveAttribute('placeholder', '제목을 입력하세요');
-      expect(screen.getByLabelText('내용')).toHaveAttribute('placeholder', '활동 내용과 후기를 입력하세요');
-      const examples = screen.getAllByRole('button', { name: /^(방탈출|정기 모임|점심|저녁)$/ });
-      expect(examples.map((b) => b.textContent)).toEqual(['방탈출', '정기 모임', '점심', '저녁']);
-      fireEvent.click(screen.getByRole('button', { name: '점심' }));
-      expect(type).toHaveValue('점심');
-      expect(screen.getByRole('button', { name: '점심' })).toHaveAttribute('aria-pressed', 'true');
-      // 예시에 없는 종류도 직접 쓸 수 있다.
-      fireEvent.change(type, { target: { value: '보드게임 카페' } });
-      expect(type).toHaveValue('보드게임 카페');
-      expect(screen.getByRole('button', { name: '점심' })).toHaveAttribute('aria-pressed', 'false');
     });
 
-    it('활동 기록 사진은 activity_photos(비공개)에 올리고, 활동 칸을 함께 보낸다', async () => {
-      render(<PostForm mode="create" seasons={SEASONS} today="2026-10-17" />);
-      fireEvent.click(screen.getByRole('radio', { name: '활동 기록' }));
-      fireEvent.change(screen.getByLabelText('제목'), { target: { value: '제 9회 정기모임' } });
-      fireEvent.click(screen.getByRole('button', { name: '정기 모임' }));
-      fireEvent.change(screen.getByLabelText('시즌'), { target: { value: '4' } });
-      fireEvent.change(screen.getByLabelText(/내용/), { target: { value: '• 인원 8명' } });
-      const a = png('a.png', 10);
-      pick([a]);
+    it('태그는 Enter·쉼표로 추가하고, 예시를 눌러도 추가된다. ×로 뺀다', () => {
+      render(<PostForm mode="create" seasons={SEASONS} />);
+      expect(tagBox()).toHaveAttribute('placeholder', '태그를 입력하세요');
+      fireEvent.change(tagBox(), { target: { value: '#스컬킹' } });
+      fireEvent.keyDown(tagBox(), { key: 'Enter' });
+      fireEvent.change(tagBox(), { target: { value: '점심,' } });
+      fireEvent.click(screen.getByRole('button', { name: '#방탈출' }));
+      expect(tagList()).toEqual(['#스컬킹', '#점심', '#방탈출']);
+      // 이미 단 예시는 다시 누를 수 없다.
+      expect(screen.getByRole('button', { name: '#방탈출' })).toBeDisabled();
+      fireEvent.click(screen.getByRole('button', { name: '#점심 빼기' }));
+      expect(tagList()).toEqual(['#스컬킹', '#방탈출']);
+    });
+
+    it('태그는 5개까지만', () => {
+      render(<PostForm mode="create" seasons={SEASONS} />);
+      for (const t of ['a', 'b', 'c', 'd', 'e']) {
+        fireEvent.change(tagBox(), { target: { value: t } });
+        fireEvent.keyDown(tagBox(), { key: 'Enter' });
+      }
+      expect(tagList()).toHaveLength(5);
+      expect(tagBox()).toBeDisabled();
+      expect(screen.getByText('5/5')).toBeInTheDocument();
+    });
+
+    it('모임 날짜·시즌은 기본값 없이 비어 있고(선택), 고른 값과 태그를 함께 보낸다', async () => {
+      render(<PostForm mode="create" seasons={SEASONS} />);
+      expect(screen.getByLabelText(/모임 날짜/)).toHaveValue('');
+      expect(screen.getByLabelText(/모임 날짜/)).not.toBeRequired();
+      expect(screen.getByLabelText(/시즌/)).toHaveValue('');
+      // 최신 시즌이 위에 온다.
+      expect(within(screen.getByLabelText(/시즌/)).getAllByRole('option').map((o) => o.textContent)).toEqual(['선택 안 함', '시즌 5', '시즌 4']);
+
+      fireEvent.change(screen.getByLabelText(/내용/), { target: { value: '스컬킹 했어요' } });
+      fireEvent.click(screen.getByRole('button', { name: '#점심' }));
+      fireEvent.change(screen.getByLabelText(/모임 날짜/), { target: { value: '2026-10-16' } });
+      fireEvent.change(screen.getByLabelText(/시즌/), { target: { value: '5' } });
       fireEvent.click(screen.getByRole('button', { name: '게시하기' }));
-
       await waitFor(() => expect(createPost).toHaveBeenCalled());
-      expect(requestPostImageUploads).toHaveBeenCalledWith([{ type: 'image/png', size: 10 }], 0, 'activity');
-      expect(uploadToSignedUrl).toHaveBeenCalledWith('activity_photos', 'me/0.png', 't0', a);
       const fd = submitted();
-      expect(Object.fromEntries(['kind', 'title', 'activityType', 'activityDate', 'seasonId'].map((k) => [k, fd.get(k)]))).toEqual({
-        kind: 'activity', title: '제 9회 정기모임', activityType: '정기 모임', activityDate: '2026-10-17', seasonId: '4',
-      });
+      expect(fd.getAll('tags')).toEqual(['점심']);
+      expect(fd.get('activityDate')).toBe('2026-10-16');
+      expect(fd.get('seasonId')).toBe('5');
     });
 
-    it('수정 화면에서는 종류를 바꿀 수 없고, 활동 칸이 기존 값으로 채워진다', async () => {
+    it('수정 화면은 같은 양식에 기존 값이 채워진다', () => {
       render(
         <PostForm
           mode="edit"
           seasons={SEASONS}
-          post={{
-            id: 'a1', content: '• 테마', images: [], kind: 'activity',
-            activity: { title: '제 7회 방탈출', activityType: 'ESCAPE_ROOM', activityDate: '2026-07-31', seasonId: 4 },
-          }}
+          post={{ id: 'a1', content: '제 7회 방탈출\n• 테마', images: [], tags: ['방탈출'], activityDate: '2026-07-31', seasonId: 4 }}
         />,
       );
-      expect(screen.queryByRole('radiogroup', { name: '글 종류' })).toBeNull();
-      expect(screen.getByText('활동 기록 수정')).toBeInTheDocument();
-      expect(screen.getByLabelText('제목')).toHaveValue('제 7회 방탈출');
-      // 예전 코드(ESCAPE_ROOM)로 저장된 글도 이름으로 채워진다.
-      expect(screen.getByRole('textbox', { name: '활동 종류' })).toHaveValue('방탈출');
-      expect(screen.getByLabelText('모임 날짜')).toHaveValue('2026-07-31');
-      expect(screen.getByLabelText('시즌')).toHaveValue('4');
-      pick([png('n.png')]);
-      fireEvent.click(screen.getByRole('button', { name: '수정완료' }));
-      await waitFor(() => expect(updatePost).toHaveBeenCalled());
-      expect(requestPostImageUploads).toHaveBeenCalledWith(expect.any(Array), 0, 'activity');
+      expect(screen.getByText('게시글 수정')).toBeInTheDocument();
+      expect(tagList()).toEqual(['#방탈출']);
+      expect(screen.getByLabelText(/모임 날짜/)).toHaveValue('2026-07-31');
+      expect(screen.getByLabelText(/시즌/)).toHaveValue('4');
     });
   });
 
@@ -222,7 +217,7 @@ describe('PostForm', () => {
       fireEvent.click(screen.getByRole('button', { name: '수정완료' }));
       await waitFor(() => expect(updatePost).toHaveBeenCalled());
       // 남은 기존 사진 수(1)를 함께 보내 서버가 개수를 검사한다.
-      expect(requestPostImageUploads).toHaveBeenCalledWith([{ type: 'image/png', size: 100 }], 1, 'general');
+      expect(requestPostImageUploads).toHaveBeenCalledWith([{ type: 'image/png', size: 100 }], 1);
       expect(submitted().get('id')).toBe('p1');
       expect(submitted().getAll('removeImageIds')).toEqual(['img0']);
       expect(submitted().getAll('imagePaths')).toEqual(['me/0.png']);

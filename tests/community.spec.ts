@@ -113,12 +113,12 @@ test('게시글: 좋아요 토글·유지, 댓글 작성·수정·좋아요·삭
   await Promise.all([page.context().close(), writerPage.context().close(), adminPage.context().close(), guest.close()]);
 });
 
-test('활동 기록: 상세에서 좋아요·댓글, 피드 카드에 좋아요·댓글 수 표시', async ({ browser }) => {
-  // 이관된 활동 중 가장 최근 것(피드의 활동 기록 첫 페이지에 나온다). 테스트 회원의 반응은 정리 때 cascade로 지워진다.
+test('이관된 활동 글: 상세에서 좋아요·댓글, 태그 모아 보기 카드에 좋아요·댓글 수 표시', async ({ browser }) => {
+  // 이관된 활동 중 가장 최근 것(그 태그 모아 보기 첫 페이지에 나온다). 테스트 회원의 반응은 정리 때 cascade로 지워진다.
   const [activity] = await db
     .select()
     .from(posts)
-    .where(and(eq(posts.kind, 'activity'), isNotNull(posts.sourceKey)))
+    .where(isNotNull(posts.sourceKey))
     .orderBy(desc(posts.createdAt), posts.id)
     .limit(1);
   const before = (await db.select().from(postLikes).where(eq(postLikes.postId, activity.id))).length;
@@ -146,9 +146,9 @@ test('활동 기록: 상세에서 좋아요·댓글, 피드 카드에 좋아요�
   await expect(activityLike).toHaveAccessibleName(`좋아요 ${before + 1}`);
   await expect(activityLike).toHaveAttribute('aria-pressed', 'true');
 
-  // 피드의 활동 기록 첫 페이지, 그 활동 카드에 좋아요·댓글 수가 보인다.
-  await page.goto('/?kind=activity');
-  const card = page.locator('article').filter({ has: page.getByRole('link', { name: activity.title!, exact: true }) });
+  // 그 글의 태그 모아 보기 첫 페이지, 그 카드(상세 링크로 찾는다)에 좋아요·댓글 수가 보인다.
+  await page.goto(`/?tag=${encodeURIComponent(activity.tags[0])}`);
+  const card = page.locator('article').filter({ has: page.locator(`header a[href="/posts/${activity.id}"]`) });
   await expect(card.getByRole('button', { name: `좋아요 ${before + 1}` })).toHaveAttribute('aria-pressed', 'true');
   await expect(card.getByRole('button', { name: `댓글 ${commentCount}`, exact: true })).toBeVisible();
 

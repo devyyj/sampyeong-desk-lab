@@ -1,24 +1,23 @@
-import { and, asc, count, desc, eq, type SQL } from 'drizzle-orm';
+import { arrayContains, asc, desc, eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { postImages, posts } from '../../drizzle/schema';
 import type { MemberBadge } from './badge';
 import { getComments, getLikeSummaries, type CommentView } from './community';
 import { getMemberBadges } from './member-badges';
-import { postImagePublicUrl } from './post-images';
 import { createSignedPhotoUrls } from './storage-admin';
 import type { FeedFilter } from './feed-filter';
 import { relativeDay, relativeTime } from './time';
-import { getActivityType } from './activity-types';
 
 /*
- * 통합 피드(자유글 + 활동 기록) 데이터. 설계: docs/superpowers/specs/2026-10-16-feed-activity-merge-design.md §5.2
+ * 피드 데이터. 설계: docs/superpowers/specs/2026-10-17-unified-post-form-design.md §4
+ * 글 종류 구분 없이 모든 글이 같은 모양이다: 사진·내용 + 선택 정보(태그·모임 날짜·시즌).
  * 첫 페이지는 서버 컴포넌트가, 다음 페이지는 서버 액션(loadMoreFeed)이, 상세는 getPostView가 같은 변환(toItems)을 거쳐
  * 세 경로의 카드 모양·권한 표시가 어긋나지 않게 한다.
  */
 
-export type { FeedFilter, FeedKind } from './feed-filter';
+export type { FeedFilter } from './feed-filter';
 
-/** 활동 사진은 장마다 signed URL을 발급해야 해서 한 번에 많이 그리지 않는다. */
+/** 사진은 장마다 signed URL을 발급해야 해서 한 번에 많이 그리지 않는다. */
 export const FEED_PAGE_SIZE = 10;
 
 export type Viewer = { id: string; isAdmin: boolean } | null;
@@ -31,16 +30,17 @@ export type FeedItem = {
   badge: MemberBadge | null;
   content: string;
   /**
-   * 카드에 보이는 날짜는 하나뿐이다: 자유글은 작성 시각, 활동 기록은 모임 날짜(그 글에서 의미 있는 날짜).
+   * 카드에 보이는 날짜는 하나뿐이다: 모임 날짜를 입력했으면 모임 날짜, 아니면 작성 시각.
    * createdAt은 <time dateTime>용 기계 값(ISO 시각 또는 YYYY-MM-DD), createdLabel은 앱 공통 표기("30분 전", "10월 8일").
    */
   createdAt: string;
   createdLabel: string;
-  /** 활동 기록이면 머리 정보, 자유글이면 null. 모임 날짜는 위 createdAt·createdLabel로 보여준다. */
-  activity: { title: string; type: string; seasonName: string } | null;
+  /** 입력한 경우에만 카드에 보이는 선택 정보 */
+  seasonName: string | null;
+  tags: string[];
   images: { src: string; alt: string }[];
   photoCount: number;
-  /** 비회원이라 활동 사진을 숨겼는지(사진 자리에 로그인 안내를 그린다) */
+  /** 비회원이라 사진을 숨겼는지(사진 자리에 로그인 안내를 그린다). 모든 글의 사진은 회원 전용이다. */
   photosLocked: boolean;
   likeCount: number;
   liked: boolean;
@@ -50,14 +50,6 @@ export type FeedItem = {
 };
 
 export type FeedPage = { items: FeedItem[]; hasMore: boolean };
-
-function whereOf(filter: FeedFilter): SQL | undefined {
-  if (filter.kind === 'general') return eq(posts.kind, 'general');
-  if (filter.kind === 'activity') {
-    return filter.type ? and(eq(posts.kind, 'activity'), eq(posts.activityType, filter.type)) : eq(posts.kind, 'activity');
-  }
-  return undefined;
-}
 
 // 카드에 필요한 칼럼만. 아이디·실명·부서는 피드에 쓰지 않으므로 가져오지도 않는다(프로필 팝업에서 회원에게만).
 const WITH = {
@@ -69,10 +61,8 @@ const WITH = {
 type Row = {
   id: string;
   authorId: string;
-  kind: string;
-  title: string | null;
-  activityType: string | null;
   activityDate: string | null;
+  tags: string[];
   content: string;
   createdAt: Date;
   author: { id: string; nickname: string; profileImageUrl: string | null };
@@ -81,31 +71,30 @@ type Row = {
 };
 
 /**
- * DB 행 → 카드. 화면의 작성자 배지·좋아요·댓글·활동 사진 서명을 종류별로 한 번씩만 조회한다(N+1 방지).
- * 활동 사진은 private 버킷이라 비회원이면 Storage를 부르지도 않는다(HTML에 사진 주소가 남지 않게, 설계 §6).
+ * DB 행 → 카드. 화면의 작성자 배지·좋아요·댓글·사진 서명을 종류별로 한 번씩만 조회한다(N+1 방지).
+ * 사진은 모두 private 버킷이라 비회원이면 Storage를 부르지도 않는다(HTML에 사진 주소가 남지 않게).
  */
 async function toItems(rows: Row[], viewer: Viewer, now: Date): Promise<FeedItem[]> {
   const ids = rows.map((r) => r.id);
   const viewerId = viewer?.id ?? null;
-  const activityPaths = viewer ? rows.filter((r) => r.kind === 'activity').flatMap((r) => r.images.map((i) => i.storagePath)) : [];
+  const paths = viewer ? rows.flatMap((r) => r.images.map((i) => i.storagePath)) : [];
   const [badges, likes, comments, signed] = await Promise.all([
     getMemberBadges(rows.map((r) => r.authorId)),
     getLikeSummaries('post', ids, viewerId),
     // 카드와 댓글이 같은 기준 시각으로 "N분 전"을 계산하게 now를 넘긴다.
     getComments('post', ids, viewerId, now),
-    activityPaths.length > 0 ? createSignedPhotoUrls(activityPaths) : Promise.resolve([] as (string | null)[]),
+    paths.length > 0 ? createSignedPhotoUrls(paths) : Promise.resolve([] as (string | null)[]),
   ]);
-  const signedByPath = new Map(activityPaths.map((p, i) => [p, signed[i] ?? null]));
+  const signedByPath = new Map(paths.map((p, i) => [p, signed[i] ?? null]));
 
   return rows.map((r) => {
-    const isActivity = r.kind === 'activity';
-    const locked = isActivity && !viewer && r.images.length > 0;
+    const locked = !viewer && r.images.length > 0;
     // 서명에 실패한 사진(null)은 빼고 나머지만 보여준다.
     const images = locked
       ? []
       : r.images.flatMap((img, i) => {
-          const src = isActivity ? signedByPath.get(img.storagePath) : postImagePublicUrl(img.storagePath);
-          return src ? [{ src, alt: isActivity ? `${r.title} 사진 ${i + 1}` : `게시글 사진 ${i + 1}` }] : [];
+          const src = signedByPath.get(img.storagePath);
+          return src ? [{ src, alt: `게시글 사진 ${i + 1}` }] : [];
         });
     const like = likes.get(r.id) ?? { count: 0, liked: false };
     return {
@@ -114,10 +103,11 @@ async function toItems(rows: Row[], viewer: Viewer, now: Date): Promise<FeedItem
       author: r.author,
       badge: badges.get(r.authorId) ?? null,
       content: r.content,
-      // 활동 기록은 작성 시각 대신 모임 날짜를 보여준다(두 날짜를 나란히 두면 헷갈려 하나만 남김).
-      createdAt: isActivity && r.activityDate ? r.activityDate : r.createdAt.toISOString(),
-      createdLabel: isActivity && r.activityDate ? relativeDay(r.activityDate, now) : relativeTime(r.createdAt, now),
-      activity: isActivity ? { title: r.title ?? '', type: r.activityType ?? 'OTHER', seasonName: r.season?.name ?? '' } : null,
+      // 모임 날짜가 있으면 그 날짜를 보여준다(두 날짜를 나란히 두면 헷갈려 하나만 남김).
+      createdAt: r.activityDate ?? r.createdAt.toISOString(),
+      createdLabel: r.activityDate ? relativeDay(r.activityDate, now) : relativeTime(r.createdAt, now),
+      seasonName: r.season?.name ?? null,
+      tags: r.tags,
       images,
       photoCount: r.images.length,
       photosLocked: locked,
@@ -130,13 +120,14 @@ async function toItems(rows: Row[], viewer: Viewer, now: Date): Promise<FeedItem
 }
 
 /**
- * offset부터 한 페이지(최신순). 다음 페이지가 있는지는 1건을 더 읽어 판단한다(전체 수를 세지 않음).
+ * offset부터 한 페이지(최신순). 태그로 모아 볼 때는 그 태그가 달린 글만(GIN 인덱스, tags @> ARRAY[tag]).
+ * 다음 페이지가 있는지는 1건을 더 읽어 판단한다(전체 수를 세지 않음).
  * 글은 드물게 올라와 커서 대신 offset을 쓰고, 스크롤 중 새 글로 한 칸 밀려 겹친 글은 화면에서 id로 거른다.
  * id는 같은 시각 글의 순서를 고정하는 마지막 기준이다.
  */
 export async function getFeedPage(filter: FeedFilter, offset: number, viewer: Viewer, now: Date = new Date()): Promise<FeedPage> {
   const rows: Row[] = await db.query.posts.findMany({
-    where: whereOf(filter),
+    where: filter.tag ? arrayContains(posts.tags, [filter.tag]) : undefined,
     orderBy: [desc(posts.createdAt), asc(posts.id)],
     with: WITH,
     limit: FEED_PAGE_SIZE + 1,
@@ -152,23 +143,4 @@ export async function getPostView(id: string, viewer: Viewer, now: Date = new Da
   if (!row) return null;
   const [item] = await toItems([row], viewer, now);
   return item;
-}
-
-/**
- * 피드의 활동 종류 칩 목록: 실제로 쓰인 종류 이름을 많이 쓴 순서로(같으면 가나다순).
- * 종류를 자유 입력으로 받으므로 고정 목록 대신 데이터에서 만든다. 0007 적용 전의 예전 코드는 이름으로 합쳐 센다.
- */
-export async function getActivityTypes(): Promise<string[]> {
-  const rows = await db
-    .select({ type: posts.activityType, count: count() })
-    .from(posts)
-    .where(eq(posts.kind, 'activity'))
-    .groupBy(posts.activityType);
-  const counts = new Map<string, number>();
-  for (const row of rows) {
-    if (!row.type) continue;
-    const { label } = getActivityType(row.type);
-    counts.set(label, (counts.get(label) ?? 0) + row.count);
-  }
-  return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ko')).map(([label]) => label);
 }

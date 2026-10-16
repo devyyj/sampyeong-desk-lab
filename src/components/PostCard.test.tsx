@@ -17,7 +17,8 @@ const base: FeedItem = {
   content: '오늘 재밌었어요',
   createdAt: '2026-10-17T02:30:00.000Z',
   createdLabel: '30분 전',
-  activity: null,
+  seasonName: null,
+  tags: [],
   images: [],
   photoCount: 0,
   photosLocked: false,
@@ -26,59 +27,64 @@ const base: FeedItem = {
   comments: [],
   canEdit: false,
 };
-const activity: FeedItem = {
+/** 태그·모임 날짜·시즌을 입력하고 사진이 있는 글 */
+const meeting: FeedItem = {
   ...base,
   id: 'a1',
-  content: '• 테마',
-  activity: { title: '제 7회 방탈출 정기모임', type: 'ESCAPE_ROOM', seasonName: '시즌 4' },
-  // 활동 기록의 카드 날짜는 모임 날짜(feed.ts가 createdAt·createdLabel에 넣는다).
+  content: '제 7회 방탈출 정기모임\n• 테마',
   createdAt: '2026-07-31',
   createdLabel: '7월 31일',
-  images: [{ src: 'https://signed/0', alt: '제 7회 방탈출 정기모임 사진 1' }],
+  seasonName: '시즌 4',
+  tags: ['방탈출', '정기 모임'],
+  images: [{ src: 'https://signed/0', alt: '게시글 사진 1' }],
   photoCount: 1,
 };
 
 describe('PostCard', () => {
-  it('자유글: 작성자·상대 시간·본문·반응. 시간을 누르면 상세로 간다', () => {
+  it('선택 정보가 없는 글: 작성자·날짜 하나·본문·반응만. 시간을 누르면 상세로 간다', () => {
     render(<PostCard item={base} />);
     const card = screen.getByRole('article');
     expect(within(card).getByRole('button', { name: '보드왕 Lv.3' })).toBeInTheDocument();
     expect(within(card).getByRole('link', { name: '30분 전' })).toHaveAttribute('href', '/posts/p1');
-    expect(card.querySelector('time')).toHaveAttribute('dateTime', '2026-10-17T02:30:00.000Z');
+    expect(card.querySelectorAll('time')).toHaveLength(1);
     expect(within(card).getByText('오늘 재밌었어요')).toBeInTheDocument();
     expect(within(card).getByRole('button', { name: '좋아요 4' })).toBeInTheDocument();
-    // 자유글에는 활동 머리 정보가 없다.
-    expect(within(card).queryByRole('heading')).toBeNull();
+    // 입력하지 않은 시즌·태그는 그리지 않는다.
+    expect(within(card).queryByRole('list', { name: '태그' })).toBeNull();
+    expect(within(card).queryByText(/^시즌/)).toBeNull();
   });
 
-  it('활동 기록: 종류·시즌·모임 날짜와 굵은 제목(상세 링크), 사진 캐러셀', () => {
-    render(<PostCard item={activity} />);
+  it('선택 정보를 입력한 글: 날짜는 모임 날짜 하나, 시즌 칩, #태그 링크(누르면 그 태그 모아 보기)', () => {
+    render(<PostCard item={meeting} />);
     const card = screen.getByRole('article');
-    expect(within(card).getByText('방탈출')).toBeInTheDocument();
-    expect(within(card).getByText('시즌 4')).toBeInTheDocument();
-    // 날짜는 작성자 줄에 하나만(모임 날짜), 앱 공통 표기로.
     const times = card.querySelectorAll('time');
     expect(times).toHaveLength(1);
     expect(times[0]).toHaveAttribute('dateTime', '2026-07-31');
     expect(times[0]).toHaveTextContent('7월 31일');
-    const title = within(card).getByRole('heading', { name: '제 7회 방탈출 정기모임' });
-    expect(within(title).getByRole('link')).toHaveAttribute('href', '/posts/a1');
+    expect(within(card).getByText('시즌 4')).toBeInTheDocument();
+    const tags = within(within(card).getByRole('list', { name: '태그' })).getAllByRole('link');
+    expect(tags.map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
+      ['#방탈출', '/?tag=%EB%B0%A9%ED%83%88%EC%B6%9C'],
+      ['#정기 모임', '/?tag=%EC%A0%95%EA%B8%B0+%EB%AA%A8%EC%9E%84'],
+    ]);
     // 피드에서는 사진을 작은 썸네일 줄로 보여준다(화면 폭 캐러셀이 아님).
     const photos = within(card).getByRole('region', { name: '사진 1장' });
     expect(photos).not.toHaveAttribute('aria-roledescription', 'carousel');
-    expect(within(photos).getByRole('button', { name: '제 7회 방탈출 정기모임 사진 1 크게 보기' })).toBeInTheDocument();
   });
 
-  it('상세에서는 사진을 화면 폭 캐러셀로 크게 보여준다', () => {
-    render(<PostCard item={activity} variant="detail" />);
+  it('상세에서는 사진을 화면 폭 캐러셀로 크게, 본문을 접지 않고, 댓글을 펼쳐 둔다', () => {
+    render(<PostCard item={{ ...meeting, content: '가'.repeat(300) }} variant="detail" />);
     expect(screen.getByRole('region', { name: '사진 1장' })).toHaveAttribute('aria-roledescription', 'carousel');
+    expect(screen.queryByRole('button', { name: '더 보기' })).toBeNull();
+    expect(screen.getByRole('heading', { name: '댓글 0' })).toBeInTheDocument();
+    expect(screen.getByRole('list', { name: '태그' })).toBeInTheDocument();
   });
 
-  it('비회원에게 잠긴 활동 사진은 장수와 로그인 안내만 보여준다', () => {
-    render(<PostCard item={{ ...activity, images: [], photoCount: 3, photosLocked: true }} loginHref="/login?redirect=%2F" />);
+  it('비회원에게 잠긴 사진은 장수와 로그인 안내만 보여준다', () => {
+    render(<PostCard item={{ ...base, photoCount: 3, photosLocked: true }} loginHref="/login?redirect=%2F" />);
     const card = screen.getByRole('article');
     expect(within(card).getByText('로그인하면 사진 3장을 볼 수 있어요')).toBeInTheDocument();
-    expect(within(card).getByRole('link', { name: '로그인' })).toHaveAttribute('href', '/login?redirect=%2F');
+    expect(within(card).getAllByRole('link', { name: '로그인' })[0]).toHaveAttribute('href', '/login?redirect=%2F');
     expect(card.querySelector('img')).toBeNull();
   });
 
@@ -88,15 +94,5 @@ describe('PostCard', () => {
     unmount();
     render(<PostCard item={{ ...base, canEdit: true }} />);
     expect(screen.getByRole('button', { name: '게시글 메뉴' })).toBeInTheDocument();
-  });
-
-  it('상세에서는 제목이 링크가 아니고 본문을 접지 않으며 댓글을 펼쳐 둔다', () => {
-    const long = '가'.repeat(300);
-    render(<PostCard item={{ ...activity, content: long }} variant="detail" />);
-    const card = screen.getByRole('article');
-    expect(within(card).getByRole('heading', { level: 2, name: '제 7회 방탈출 정기모임' })).toBeInTheDocument();
-    expect(within(card).queryByRole('link', { name: '제 7회 방탈출 정기모임' })).toBeNull();
-    expect(within(card).queryByRole('button', { name: '더 보기' })).toBeNull();
-    expect(within(card).getByRole('heading', { name: '댓글 0' })).toBeInTheDocument();
   });
 });

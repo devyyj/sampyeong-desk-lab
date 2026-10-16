@@ -31,19 +31,10 @@ export function extensionFor(type: string): string {
   return /^[a-z0-9]{1,10}$/.test(sub) ? sub : 'img';
 }
 
-/** 공개 버킷(post_images)의 경로를 공개 URL로 바꾼다. DB에는 경로만 저장한다(설계 §3.2). */
-export function postImagePublicUrl(path: string): string {
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/post_images/${path}`;
-}
-
 /**
- * 게시글 사진 버킷. 자유글은 post_images(공개), 활동 기록은 activity_photos(비공개, 회원에게만 signed URL)다(설계 §3.1).
- * 한 글의 사진은 모두 같은 공개 범위여야 하므로 행마다 버킷을 저장하지 않고 게시글 종류로 정한다.
- * 그래서 작성 후에는 종류를 바꾸지 않는다(바꾸면 사진이 엉뚱한 버킷을 가리킨다).
+ * 게시글 사진 버킷. 모든 글의 사진은 회원 전용이라 비공개 버킷에 두고, 회원에게만 signed URL로 보여준다
+ * (설계: 2026-10-17-unified-post-form-design.md §3.3). 이름이 activity_photos인 것은 이관한 활동 사진 197장을
+ * 옮기지 않으려고 기존 버킷을 그대로 쓰기 때문이다. 코드에서는 이 상수로만 가리킨다.
+ * 브라우저(서명 토큰으로 업로드)와 서버(토큰 발급·검사·삭제)가 같은 버킷을 써야 해서 클라이언트에서도 읽는 이 파일에 둔다.
  */
-export type PostImageBucket = 'post_images' | 'activity_photos';
-export type PostKind = 'general' | 'activity';
-
-export function bucketForKind(kind: string): PostImageBucket {
-  return kind === 'activity' ? 'activity_photos' : 'post_images';
-}
+export const POST_PHOTOS_BUCKET = 'activity_photos';

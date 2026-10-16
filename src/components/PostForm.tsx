@@ -3,14 +3,13 @@
 import { startTransition, useActionState, useEffect, useRef, useState, type FormEvent } from 'react';
 import { createPost, updatePost, requestPostImageUploads } from '@/app/actions/post';
 import { createClient } from '@/utils/supabase/client';
-import { bucketForKind, checkImageFiles, MAX_POST_IMAGES, type PostKind } from '@/lib/post-images';
-import { ACTIVITY_TYPE_EXAMPLES, MAX_ACTIVITY_TYPE_LENGTH, getActivityType } from '@/lib/activity-types';
+import { checkImageFiles, MAX_POST_IMAGES, POST_PHOTOS_BUCKET } from '@/lib/post-images';
+import { addTag, MAX_TAG_LENGTH, MAX_TAGS, TAG_EXAMPLES } from '@/lib/tags';
 import { fieldInput, fieldLabel } from '@/lib/form-styles';
 import { CameraIcon } from './icons';
 import FormHeader from './FormHeader';
 
 type ExistingImage = { id: string; url: string };
-type ActivityValues = { title: string; activityType: string; activityDate: string; seasonId: number };
 type Season = { id: number; name: string };
 type NewImage = { file: File; preview: string };
 type ActionState = { error?: string } | null;
@@ -24,20 +23,17 @@ type ActionState = { error?: string } | null;
  *
  * 사진 규칙(개수·크기·형식)은 고르는 즉시 검사해 바로 알려 준다. 수정 화면의 개수는 "남겨 둔 기존 사진 + 새 사진"이다.
  *
- * 글 종류(설계 §5.3): 작성 화면에서만 "일반 글 | 활동 기록"을 고른다. 종류에 따라 사진 버킷이 달라서
- * (활동 기록은 회원 전용 activity_photos) 수정 화면에서는 바꿀 수 없다. 활동 기록이면 제목·종류·모임 날짜·시즌을 더 받는다.
- * 모임 날짜 기본값(today)은 서버가 한국 날짜로 계산해 넘긴다(브라우저 계산은 hydration 불일치·시간대 문제).
+ * 양식은 하나다(설계: 2026-10-17-unified-post-form-design.md §4.1): 사진 + 내용이 기본이고,
+ * 태그·모임 날짜·시즌은 선택 입력이다(입력한 경우에만 카드에 보인다). 사진은 모두 회원 전용 버킷에 올라간다.
  */
 export default function PostForm({
   mode,
   post,
   seasons = [],
-  today = '',
 }: {
   mode: 'create' | 'edit';
-  post?: { id: string; content: string; images: ExistingImage[]; kind?: PostKind; activity?: ActivityValues | null };
+  post?: { id: string; content: string; images: ExistingImage[]; tags?: string[]; activityDate?: string | null; seasonId?: number | null };
   seasons?: Season[];
-  today?: string;
 }) {
   const action = mode === 'create' ? createPost : updatePost;
   const [state, dispatch, isSaving] = useActionState<ActionState, FormData>(
@@ -49,8 +45,6 @@ export default function PostForm({
   const [newImages, setNewImages] = useState<NewImage[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [kind, setKind] = useState<PostKind>(post?.kind ?? 'general');
-  const isActivity = kind === 'activity';
 
   const keptCount = existing.length - removedIds.size;
   const total = keptCount + newImages.length;
@@ -100,13 +94,13 @@ export default function PostForm({
       setUploading(true);
       try {
         const files = newImages.map((img) => img.file);
-        const issued = await requestPostImageUploads(files.map((f) => ({ type: f.type, size: f.size })), keptCount, kind);
+        const issued = await requestPostImageUploads(files.map((f) => ({ type: f.type, size: f.size })), keptCount);
         if ('error' in issued) {
           setError(issued.error);
           return;
         }
-        // 토큰을 발급한 버킷과 같은 버킷에 올려야 한다(서버와 같은 규칙 bucketForKind).
-        const storage = createClient().storage.from(bucketForKind(kind));
+        // 토큰을 발급한 버킷(서버와 같은 상수)에 올려야 한다.
+        const storage = createClient().storage.from(POST_PHOTOS_BUCKET);
         const results = await Promise.all(
           issued.uploads.map(({ path, token }, i) => storage.uploadToSignedUrl(path, token, files[i])),
         );
@@ -142,15 +136,12 @@ export default function PostForm({
 
       {/* 게시글·보드게임·회원 생성 공통 상단 바. 탭바는 이 화면에서 숨겨진다(nav.hidesAppChrome). */}
       <FormHeader
-        title={mode === 'create' ? '새 게시글' : isActivity ? '활동 기록 수정' : '게시글 수정'}
+        title={mode === 'create' ? '새 게시글' : '게시글 수정'}
         cancelHref="/"
         submitLabel={mode === 'create' ? '게시하기' : '수정완료'}
         busy={busy}
         busyLabel={uploading ? '사진 올리는 중…' : undefined}
       />
-
-      {mode === 'create' && <KindSwitch kind={kind} onChange={setKind} />}
-      {isActivity && <ActivityFields values={post?.activity ?? null} seasons={seasons} today={today} />}
 
       {/* 사진을 먼저 고르는 흐름(모임 직후 사진부터 올리는 사용 장면). 한 줄 가로 스크롤에 추가 칸 + 미리보기를 둔다. */}
       <div className="-mx-4 px-4 pb-4 flex gap-2 overflow-x-auto no-scrollbar">
@@ -242,113 +233,119 @@ export default function PostForm({
         rows={8}
         defaultValue={post?.content}
         className="w-full min-h-48 px-4 py-3 rounded-xl bg-muted text-[16px] leading-relaxed text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-foreground/20 resize-y"
-        placeholder={isActivity ? '활동 내용과 후기를 입력하세요' : '내용을 입력하세요'}
+        placeholder="내용을 입력하세요"
       />
       <p className="mt-2 text-xs text-muted-foreground">사진은 한 장에 10MB 이하, 최대 {MAX_POST_IMAGES}장까지 올릴 수 있어요.</p>
+
+      <TagField initial={post?.tags ?? []} />
+      <MeetingFields activityDate={post?.activityDate ?? null} seasonId={post?.seasonId ?? null} seasons={seasons} />
     </form>
   );
 }
 
 /**
- * 글 종류 고르기(작성 화면 전용). 라디오 그룹이라 폼 값 kind로 그대로 전송된다.
- * 두 칸짜리 분할 버튼 모양이지만 실제 입력은 라디오라 키보드(←/→)·스크린리더가 기본으로 동작한다.
+ * 태그 칸(선택). 입력하고 Enter·쉼표를 누르거나 칸을 벗어나면 #칩으로 추가되고, 예시 칩을 눌러도 추가된다.
+ * 칩마다 숨은 입력(name="tags")을 두어 폼 값으로 그대로 전송한다. 규칙(정리·중복·5개)은 서버와 같은 addTag로 맞춘다.
  */
-function KindSwitch({ kind, onChange }: { kind: PostKind; onChange: (kind: PostKind) => void }) {
-  const options: { value: PostKind; label: string }[] = [
-    { value: 'general', label: '일반 글' },
-    { value: 'activity', label: '활동 기록' },
-  ];
+function TagField({ initial }: { initial: string[] }) {
+  const [tags, setTags] = useState<string[]>(initial);
+  const [text, setText] = useState('');
+  const full = tags.length >= MAX_TAGS;
+  const commit = (value = text) => {
+    setTags((prev) => addTag(prev, value));
+    setText('');
+  };
   return (
-    <div role="radiogroup" aria-label="글 종류" className="mb-4 grid grid-cols-2 p-1 rounded-xl bg-muted">
-      {options.map((o) => (
-        <label
-          key={o.value}
-          className="h-10 rounded-lg flex items-center justify-center text-[15px] font-semibold text-muted-foreground cursor-pointer has-[:checked]:bg-background has-[:checked]:text-foreground has-[:checked]:shadow-sm has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-foreground/30"
-        >
-          <input
-            type="radio"
-            name="kind"
-            value={o.value}
-            checked={kind === o.value}
-            onChange={() => onChange(o.value)}
-            className="sr-only"
-          />
-          {o.label}
+    <div className="mt-5">
+      <div className="flex items-baseline justify-between">
+        <label htmlFor="tag-input" className={fieldLabel}>
+          태그 <span className="font-normal">(선택)</span>
         </label>
+        <span className="text-xs text-muted-foreground tabular-nums">{`${tags.length}/${MAX_TAGS}`}</span>
+      </div>
+      {tags.map((tag) => (
+        <input key={tag} type="hidden" name="tags" value={tag} />
       ))}
+      <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-xl bg-muted focus-within:ring-2 focus-within:ring-foreground/20">
+        {tags.map((tag) => (
+          <span key={tag} className="h-8 pl-3 pr-1 inline-flex items-center gap-1 rounded-full bg-background text-[14px] font-medium">
+            {`#${tag}`}
+            <button
+              type="button"
+              aria-label={`#${tag} 빼기`}
+              onClick={() => setTags(tags.filter((t) => t !== tag))}
+              className="w-6 h-6 rounded-full text-muted-foreground hover:bg-muted flex items-center justify-center"
+            >
+              ×
+            </button>
+          </span>
+        ))}
+        <input
+          id="tag-input"
+          value={text}
+          disabled={full}
+          maxLength={MAX_TAG_LENGTH + 1}
+          onChange={(e) => {
+            // 쉼표를 치면 그 앞까지를 태그로 넣는다(모바일 키보드에서 Enter보다 쉬움).
+            const value = e.target.value;
+            if (value.includes(',')) commit(value.replace(/,/g, ''));
+            else setText(value);
+          }}
+          onKeyDown={(e) => {
+            // 한글 조합 중 Enter는 조합 확정이라 태그로 넣지 않는다.
+            if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+              e.preventDefault(); // 폼 제출 대신 태그 추가
+              commit();
+            } else if (e.key === 'Backspace' && !text && tags.length > 0) {
+              setTags(tags.slice(0, -1));
+            }
+          }}
+          onBlur={() => text && commit()}
+          placeholder={full ? `태그는 ${MAX_TAGS}개까지예요` : '태그를 입력하세요'}
+          className="flex-1 min-w-32 h-8 px-2 bg-transparent text-[16px] text-foreground placeholder:text-muted-foreground focus:outline-none"
+        />
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <span className="text-xs text-muted-foreground">예시</span>
+        {TAG_EXAMPLES.map((example) => (
+          <button
+            key={example}
+            type="button"
+            disabled={full || tags.includes(example)}
+            onClick={() => commit(example)}
+            className="h-8 px-3 rounded-full border border-border text-[13px] font-medium text-foreground disabled:opacity-40"
+          >
+            {`#${example}`}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
 
-/**
- * 활동 기록 칸: 제목(필수) · 종류(글자 입력, 필수) · 모임 날짜 · 시즌(기본 최신).
- * 종류는 정해진 목록이 아니라 회원이 입력한다. 무엇을 쓰면 되는지 알 수 있게 예시 칩을 두고, 누르면 입력란에 채운다.
- * 서버(parseActivityFields)가 다시 검사하므로 여기서는 required로 빠뜨림만 막는다.
- */
-function ActivityFields({ values, seasons, today }: { values: ActivityValues | null; seasons: Season[]; today: string }) {
-  const latest = seasons.reduce<Season | null>((a, b) => (a && a.id > b.id ? a : b), null);
+/** 모임 날짜·시즌(선택). 비워 두면 저장하지 않고 카드에도 보이지 않는다. 기본값을 두지 않아 "입력한 경우에만"이 지켜진다. */
+function MeetingFields({ activityDate, seasonId, seasons }: { activityDate: string | null; seasonId: number | null; seasons: Season[] }) {
   const sorted = [...seasons].sort((a, b) => b.id - a.id);
-  // 예시 칩으로 값을 채워야 해서 제어 입력으로 둔다. 예전 코드(ESCAPE_ROOM 등)는 이름으로 바꿔 보여준다.
-  const [type, setType] = useState(values ? getActivityType(values.activityType).label : '');
   return (
-    <div className="mb-4 space-y-4">
+    <div className="mt-5 grid grid-cols-2 gap-3">
       <div>
-        <label htmlFor="title" className={fieldLabel}>
-          제목
+        <label htmlFor="activityDate" className={fieldLabel}>
+          모임 날짜 <span className="font-normal">(선택)</span>
         </label>
-        <input id="title" name="title" required maxLength={100} defaultValue={values?.title} className={fieldInput} placeholder="제목을 입력하세요" />
+        <input id="activityDate" name="activityDate" type="date" defaultValue={activityDate ?? ''} className={fieldInput} />
       </div>
-
       <div>
-        <label htmlFor="activityType" className={fieldLabel}>
-          활동 종류
+        <label htmlFor="seasonId" className={fieldLabel}>
+          시즌 <span className="font-normal">(선택)</span>
         </label>
-        <input
-          id="activityType"
-          name="activityType"
-          required
-          maxLength={MAX_ACTIVITY_TYPE_LENGTH}
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-          className={fieldInput}
-          placeholder="활동 종류를 입력하세요"
-          aria-describedby="activityType-examples"
-        />
-        <div id="activityType-examples" className="mt-2 flex flex-wrap items-center gap-1.5">
-          <span className="text-xs text-muted-foreground">예시</span>
-          {ACTIVITY_TYPE_EXAMPLES.map((example) => (
-            <button
-              key={example}
-              type="button"
-              aria-pressed={type === example}
-              onClick={() => setType(example)}
-              className="h-8 px-3 rounded-full border border-border text-[13px] font-medium text-foreground aria-pressed:bg-foreground aria-pressed:text-background aria-pressed:border-foreground"
-            >
-              {example}
-            </button>
+        <select id="seasonId" name="seasonId" defaultValue={seasonId ? String(seasonId) : ''} className={fieldInput}>
+          <option value="">선택 안 함</option>
+          {sorted.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
           ))}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label htmlFor="activityDate" className={fieldLabel}>
-            모임 날짜
-          </label>
-          <input id="activityDate" name="activityDate" type="date" required defaultValue={values?.activityDate ?? today} className={fieldInput} />
-        </div>
-        <div>
-          <label htmlFor="seasonId" className={fieldLabel}>
-            시즌
-          </label>
-          <select id="seasonId" name="seasonId" required defaultValue={String(values?.seasonId ?? latest?.id ?? '')} className={fieldInput}>
-            {sorted.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        </select>
       </div>
     </div>
   );

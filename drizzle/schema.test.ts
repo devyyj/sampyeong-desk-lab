@@ -73,9 +73,19 @@ describe('schema: 피드·활동 통합(0006)', () => {
     expect(column(posts, 'source_key').isUnique).toBe(true);
   });
 
-  it('종류별 필수 칼럼을 CHECK로 DB가 보장하고, 피드 필터용 (kind, created_at) 인덱스가 있다', () => {
+});
+
+describe('schema: 양식 통합(0008)', () => {
+  it('posts.tags는 필수 text 배열(기본 빈 배열)이고, 5개 이하를 CHECK로 보장하며 태그 조회용 인덱스가 있다', () => {
+    expect(column(posts, 'tags')).toMatchObject({ notNull: true, columnType: 'PgArray' });
     const config = getTableConfig(posts);
-    expect(config.checks.map((c) => c.name)).toContain('posts_kind_fields');
-    expect(config.indexes.map((i) => i.config.name)).toContain('posts_kind_created_at_idx');
+    expect(config.checks.map((c) => c.name)).toContain('posts_tags_max');
+    expect(config.indexes.map((i) => i.config.name)).toContain('posts_tags_idx');
+  });
+
+  it('글 종류 구분(posts_kind_fields CHECK·kind 인덱스)은 없앴다: 모든 글이 날짜·시즌·태그를 선택으로 가진다', () => {
+    const config = getTableConfig(posts);
+    expect(config.checks.map((c) => c.name)).not.toContain('posts_kind_fields');
+    expect(config.indexes.map((i) => i.config.name)).not.toContain('posts_kind_created_at_idx');
   });
 });

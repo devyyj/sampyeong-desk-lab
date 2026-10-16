@@ -108,7 +108,7 @@ describe('업로드용 서비스 키 함수', () => {
     await expect(uploadAvatar('u1/a.png', Buffer.from('x'), 'image/png')).rejects.toThrow();
   });
 
-  it('createPostImageUploadUrls: post_images 버킷의 경로마다 서명 업로드 토큰을 발급(덮어쓰기 불가)', async () => {
+  it('createPostImageUploadUrls: 비공개 게시글 사진 버킷의 경로마다 서명 업로드 토큰을 발급(덮어쓰기 불가)', async () => {
     createSignedUploadUrl
       .mockResolvedValueOnce({ data: { path: 'u1/1.png', token: 't1', signedUrl: 's1' }, error: null })
       .mockResolvedValueOnce({ data: { path: 'u1/2.jpg', token: 't2', signedUrl: 's2' }, error: null });
@@ -116,7 +116,7 @@ describe('업로드용 서비스 키 함수', () => {
       { path: 'u1/1.png', token: 't1' },
       { path: 'u1/2.jpg', token: 't2' },
     ]);
-    expect(from).toHaveBeenCalledWith('post_images');
+    expect(from).toHaveBeenCalledWith('activity_photos');
     expect(createSignedUploadUrl).toHaveBeenCalledWith('u1/1.png', { upsert: false });
   });
 
@@ -133,10 +133,10 @@ describe('업로드용 서비스 키 함수', () => {
       { size: 1234, contentType: 'image/png' },
       null,
     ]);
-    expect(from).toHaveBeenCalledWith('post_images');
+    expect(from).toHaveBeenCalledWith('activity_photos');
   });
 
-  it('removePostImages: post_images에서 지우고, 실패해도 예외 없이 로그만 남긴다', async () => {
+  it('removePostImages: 게시글 사진 버킷에서 지우고, 실패해도 예외 없이 로그만 남긴다', async () => {
     remove.mockResolvedValueOnce({ data: [], error: null });
     await removePostImages(['u1/1.png']);
     expect(remove).toHaveBeenCalledWith(['u1/1.png']);
@@ -145,18 +145,6 @@ describe('업로드용 서비스 키 함수', () => {
     await expect(removePostImages(['u1/2.png'])).resolves.toBeUndefined();
     expect(spy).toHaveBeenCalled();
     spy.mockRestore();
-  });
-
-  it('활동 기록 사진은 activity_photos(비공개) 버킷을 지정해 같은 함수로 올리고·확인하고·지운다', async () => {
-    createSignedUploadUrl.mockResolvedValueOnce({ data: { path: 'u1/1.png', token: 't1', signedUrl: 's1' }, error: null });
-    await createPostImageUploadUrls(['u1/1.png'], 'activity_photos');
-    expect(from).toHaveBeenLastCalledWith('activity_photos');
-    info.mockResolvedValueOnce({ data: { size: 1, contentType: 'image/png' }, error: null });
-    await getPostImageInfo(['u1/1.png'], 'activity_photos');
-    expect(from).toHaveBeenLastCalledWith('activity_photos');
-    remove.mockResolvedValueOnce({ data: [], error: null });
-    await removePostImages(['u1/1.png'], 'activity_photos');
-    expect(from).toHaveBeenLastCalledWith('activity_photos');
   });
 
   it('removePostImages: 지울 것이 없으면 Storage를 호출하지 않는다', async () => {

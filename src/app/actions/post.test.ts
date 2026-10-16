@@ -71,9 +71,9 @@ beforeEach(() => {
   vi.mocked(db.query.seasons.findFirst).mockResolvedValue({ id: 5, name: '시즌 5', period: '26년 4분기' } as never);
 });
 
-/** 활동 기록 작성 폼의 기본 입력. */
-const activityForm = (o: Record<string, string | string[]> = {}) =>
-  form({ kind: 'activity', title: '제 9회 정기모임', activityType: ' 정기  모임 ', activityDate: '2026-10-16', seasonId: '5', content: '• 인원 8명', ...o });
+/** 선택 정보(태그·모임 날짜·시즌)를 모두 채운 폼. */
+const metaForm = (o: Record<string, string | string[]> = {}) =>
+  form({ content: '• 인원 8명', tags: ['#정기  모임', '스컬킹'], activityDate: '2026-10-16', seasonId: '5', ...o });
 
 describe('requestPostImageUploads', () => {
   it('로그인이 필요하다', async () => {
@@ -92,14 +92,9 @@ describe('requestPostImageUploads', () => {
     });
   });
 
-  it('버킷은 종류로 정한다: 자유글은 공개 post_images, 활동 기록은 비공개 activity_photos', async () => {
+  it('모든 글의 사진은 비공개 버킷 하나에 올린다(버킷 선택 인자 없음)', async () => {
     await requestPostImageUploads([{ type: 'image/png', size: 10 }]);
-    expect(createPostImageUploadUrls).toHaveBeenLastCalledWith([expect.stringMatching(`^${ME}/`)], 'post_images');
-    await requestPostImageUploads([{ type: 'image/png', size: 10 }], 0, 'activity');
-    expect(createPostImageUploadUrls).toHaveBeenLastCalledWith([expect.stringMatching(`^${ME}/`)], 'activity_photos');
-    // 모르는 값은 자유글로 본다(Storage 정책이 없는 비공개 버킷에 아무 값으로나 들어가지 않게).
-    await requestPostImageUploads([{ type: 'image/png', size: 10 }], 0, 'weird' as never);
-    expect(createPostImageUploadUrls).toHaveBeenLastCalledWith(expect.any(Array), 'post_images');
+    expect(createPostImageUploadUrls).toHaveBeenLastCalledWith([expect.stringMatching(`^${ME}/`)]);
   });
 
   it('개수(기존 사진 포함)·형식·크기 규칙을 서버에서 다시 검사한다', async () => {
@@ -123,9 +118,9 @@ describe('createPost', () => {
 
   it('게시글과 사진 경로를 순서대로 한 트랜잭션에 저장하고 피드로 이동한다', async () => {
     await createPost(null, form({ content: '안녕', imagePaths: [myPath(2), myPath(1)] }));
-    expect(getPostImageInfo).toHaveBeenCalledWith([myPath(2), myPath(1)], 'post_images');
+    expect(getPostImageInfo).toHaveBeenCalledWith([myPath(2), myPath(1)]);
     expect(writes).toEqual([
-      { op: 'insert:posts', values: { content: '안녕', authorId: ME } },
+      { op: 'insert:posts', values: { content: '안녕', authorId: ME, tags: [], activityDate: null, seasonId: null } },
       {
         op: 'insert:post_images',
         values: [
@@ -172,45 +167,39 @@ describe('createPost', () => {
   it('브라우저 검사를 우회해 올라간 큰 파일·이미지 아닌 파일은 지우고 거부한다', async () => {
     vi.mocked(getPostImageInfo).mockResolvedValueOnce([{ size: 11 * 1024 * 1024, contentType: 'image/png' }]);
     expect(await createPost(null, form({ content: 'x', imagePaths: myPath(1) }))).toEqual({ error: '사진은 한 장에 10MB 이하여야 합니다.' });
-    expect(removePostImages).toHaveBeenCalledWith([myPath(1)], 'post_images');
+    expect(removePostImages).toHaveBeenCalledWith([myPath(1)]);
     vi.mocked(getPostImageInfo).mockResolvedValueOnce([{ size: 10, contentType: 'text/html' }]);
     expect(await createPost(null, form({ content: 'x', imagePaths: myPath(2) }))).toEqual({ error: '이미지 파일만 올릴 수 있습니다.' });
     expect(db.transaction).not.toHaveBeenCalled();
   });
 });
 
-describe('createPost (활동 기록)', () => {
-  it('활동 칼럼과 함께 저장하고, 사진은 activity_photos에서 확인한다', async () => {
-    await createPost(null, activityForm({ imagePaths: myPath(1) }));
-    expect(getPostImageInfo).toHaveBeenCalledWith([myPath(1)], 'activity_photos');
+describe('createPost (선택 정보: 태그·모임 날짜·시즌)', () => {
+  it('정리한 태그·날짜·시즌을 함께 저장한다', async () => {
+    await createPost(null, metaForm({ imagePaths: myPath(1) }));
     expect(writes[0]).toEqual({
       op: 'insert:posts',
-      values: {
-        content: '• 인원 8명', authorId: ME, kind: 'activity',
-        // 종류는 입력한 글자를 공백만 정리해 저장한다.
-        title: '제 9회 정기모임', activityType: '정기 모임', activityDate: '2026-10-16', seasonId: 5,
-      },
+      values: { content: '• 인원 8명', authorId: ME, tags: ['정기 모임', '스컬킹'], activityDate: '2026-10-16', seasonId: 5 },
     });
     expect(redirect).toHaveBeenCalledWith('/');
   });
 
-  it('활동 입력이 잘못되면 저장하지 않는다', async () => {
-    expect(await createPost(null, activityForm({ title: ' ' }))).toEqual({ error: '제목을 입력해주세요.' });
-    expect(await createPost(null, activityForm({ activityType: '  ' }))).toEqual({ error: '활동 종류를 입력해주세요.' });
+  it('선택 정보가 잘못되면 저장하지 않는다', async () => {
+    expect(await createPost(null, metaForm({ activityDate: '2026-02-30' }))).toEqual({ error: '모임 날짜를 확인해주세요.' });
+    expect(await createPost(null, metaForm({ tags: ['a', 'b', 'c', 'd', 'e', 'f'] }))).toEqual({ error: '태그는 최대 5개까지 달 수 있습니다.' });
     vi.mocked(db.query.seasons.findFirst).mockResolvedValueOnce(undefined as never);
-    expect(await createPost(null, activityForm({ seasonId: '99' }))).toEqual({ error: '시즌을 골라주세요.' });
+    expect(await createPost(null, metaForm({ seasonId: '99' }))).toEqual({ error: '시즌을 다시 골라주세요.' });
     expect(db.transaction).not.toHaveBeenCalled();
   });
 
-  it('규칙을 어긴 활동 사진은 activity_photos에서 지운다', async () => {
-    vi.mocked(getPostImageInfo).mockResolvedValueOnce([{ size: 11 * 1024 * 1024, contentType: 'image/png' }]);
-    await createPost(null, activityForm({ imagePaths: myPath(1) }));
-    expect(removePostImages).toHaveBeenCalledWith([myPath(1)], 'activity_photos');
+  it('시즌을 고르지 않으면 시즌 확인 조회를 하지 않는다', async () => {
+    await createPost(null, form({ content: '글' }));
+    expect(db.query.seasons.findFirst).not.toHaveBeenCalled();
   });
 
-  it('자유글에 활동 칼럼을 섞어 보내도 무시한다(kind가 activity일 때만 활동 기록)', async () => {
-    await createPost(null, form({ content: '글', title: '몰래', activityType: 'REGULAR' }));
-    expect(writes[0]).toEqual({ op: 'insert:posts', values: { content: '글', authorId: ME } });
+  it('예전 폼 값(kind·title·activityType)은 무시한다', async () => {
+    await createPost(null, form({ content: '글', kind: 'activity', title: '몰래', activityType: 'REGULAR' }));
+    expect(writes[0]).toEqual({ op: 'insert:posts', values: { content: '글', authorId: ME, tags: [], activityDate: null, seasonId: null } });
   });
 });
 
@@ -249,15 +238,15 @@ describe('updatePost', () => {
       },
     ]);
     // 새 사진만 Storage 존재·규칙을 확인한다(기존 사진은 이미 검증됨).
-    expect(getPostImageInfo).toHaveBeenCalledWith([myPath(3)], 'post_images');
-    expect(removePostImages).toHaveBeenCalledWith([myPath(1)], 'post_images');
+    expect(getPostImageInfo).toHaveBeenCalledWith([myPath(3)]);
+    expect(removePostImages).toHaveBeenCalledWith([myPath(1)]);
     expect(redirect).toHaveBeenCalledWith('/');
   });
 
   it('이 글의 사진이 아닌 id는 무시한다(남의 글 사진을 지울 수 없음)', async () => {
     vi.mocked(db.query.posts.findFirst).mockResolvedValueOnce(existing() as never);
     await updatePost(null, form({ id: POST, content: '수정', removeImageIds: ['someone-elses', 'img-b'] }));
-    expect(removePostImages).toHaveBeenCalledWith([myPath(2)], 'post_images');
+    expect(removePostImages).toHaveBeenCalledWith([myPath(2)]);
     expect(writes.at(-1)).toEqual({ op: 'insert:post_images', values: [{ postId: POST, storagePath: myPath(1), position: 0 }] });
   });
 
@@ -275,21 +264,22 @@ describe('updatePost', () => {
     expect(writes[0]).toEqual({ op: 'update:posts', values: expect.objectContaining({ content: '정리' }) });
   });
 
-  it('활동 기록은 활동 칼럼도 고치고, 사진은 activity_photos에서 다룬다. 종류는 바꿀 수 없다', async () => {
-    vi.mocked(db.query.posts.findFirst).mockResolvedValueOnce({ ...existing(), kind: 'activity' } as never);
-    await updatePost(null, activityForm({ id: POST, kind: 'general', title: '고친 제목', removeImageIds: 'img-a', imagePaths: myPath(3) }));
+  it('선택 정보도 폼 값으로 바꾸고, 비우면 지운다', async () => {
+    vi.mocked(db.query.posts.findFirst).mockResolvedValueOnce(existing() as never);
+    await updatePost(null, metaForm({ id: POST }));
     expect(writes[0]).toEqual({
       op: 'update:posts',
-      values: expect.objectContaining({ content: '• 인원 8명', title: '고친 제목', activityType: '정기 모임', activityDate: '2026-10-16', seasonId: 5 }),
+      values: expect.objectContaining({ content: '• 인원 8명', tags: ['정기 모임', '스컬킹'], activityDate: '2026-10-16', seasonId: 5 }),
     });
-    expect(writes[0].values).not.toHaveProperty('kind');
-    expect(getPostImageInfo).toHaveBeenCalledWith([myPath(3)], 'activity_photos');
-    expect(removePostImages).toHaveBeenCalledWith([myPath(1)], 'activity_photos');
+    writes.length = 0;
+    vi.mocked(db.query.posts.findFirst).mockResolvedValueOnce(existing() as never);
+    await updatePost(null, form({ id: POST, content: '정리', activityDate: '', seasonId: '' }));
+    expect(writes[0].values).toMatchObject({ tags: [], activityDate: null, seasonId: null });
   });
 
-  it('활동 기록 수정도 입력을 검사한다', async () => {
-    vi.mocked(db.query.posts.findFirst).mockResolvedValueOnce({ ...existing(), kind: 'activity' } as never);
-    expect(await updatePost(null, activityForm({ id: POST, activityDate: '2026-02-30' }))).toEqual({ error: '모임 날짜를 확인해주세요.' });
+  it('수정도 선택 정보를 검사한다', async () => {
+    vi.mocked(db.query.posts.findFirst).mockResolvedValueOnce(existing() as never);
+    expect(await updatePost(null, metaForm({ id: POST, activityDate: '2026-02-30' }))).toEqual({ error: '모임 날짜를 확인해주세요.' });
     expect(db.transaction).not.toHaveBeenCalled();
   });
 
@@ -297,7 +287,7 @@ describe('updatePost', () => {
     vi.mocked(db.query.posts.findFirst).mockResolvedValueOnce(existing() as never);
     await updatePost(null, form({ id: POST, content: 'x', removeImageIds: ['img-a', 'img-b'] }));
     expect(writes.map((w) => w.op)).toEqual(['update:posts', 'delete:post_images']);
-    expect(removePostImages).toHaveBeenCalledWith([myPath(1), myPath(2)], 'post_images');
+    expect(removePostImages).toHaveBeenCalledWith([myPath(1), myPath(2)]);
   });
 });
 
@@ -310,16 +300,16 @@ describe('deletePost', () => {
     expect(db.delete).not.toHaveBeenCalled();
   });
 
-  it('관리자는 남의 활동 기록도 지우고, 사진은 activity_photos에서 지운다', async () => {
+  it('관리자는 남의 글도 지우고, 사진 파일도 지운다', async () => {
     vi.mocked(db.query.posts.findFirst).mockResolvedValueOnce({
-      id: POST, authorId: OTHER, kind: 'activity', images: [{ id: 'a', storagePath: 's4/a/0.jpg', position: 0 }],
+      id: POST, authorId: OTHER, images: [{ id: 'a', storagePath: 's4/a/0.jpg', position: 0 }],
     } as never);
     vi.mocked(getAdminUser).mockResolvedValueOnce({ id: ME, isAdmin: true } as never);
     const where = vi.fn().mockResolvedValue(undefined);
     vi.mocked(db.delete).mockReturnValueOnce({ where } as never);
     await deletePost(POST);
     expect(where).toHaveBeenCalled();
-    expect(removePostImages).toHaveBeenCalledWith(['s4/a/0.jpg'], 'activity_photos');
+    expect(removePostImages).toHaveBeenCalledWith(['s4/a/0.jpg']);
   });
 
   it('글을 지운 뒤 사진 파일도 Storage에서 지운다', async () => {
@@ -330,6 +320,6 @@ describe('deletePost', () => {
     vi.mocked(db.delete).mockReturnValueOnce({ where } as never);
     await deletePost(POST);
     expect(where).toHaveBeenCalled();
-    expect(removePostImages).toHaveBeenCalledWith([myPath(1)], 'post_images');
+    expect(removePostImages).toHaveBeenCalledWith([myPath(1)]);
   });
 });

@@ -6,7 +6,7 @@ import {
 import { posts, postImages } from '../drizzle/schema';
 
 /**
- * 자유게시판 E2E. 사진은 실제 파일을 첨부해 브라우저가 서명 업로드 URL로 Supabase Storage(post_images)에
+ * 게시글 E2E. 사진은 실제 파일을 첨부해 브라우저가 서명 업로드 URL로 Supabase Storage(비공개 activity_photos)에
  * 직접 올리고, 피드에서 공개 URL 이미지가 실제로 로드되는지, 수정·삭제 때 Storage 파일이 정리되는지까지 본다
  * (AGENTS.md 5번).
  */
@@ -55,7 +55,7 @@ test('게시글: 사진 3장 작성 → 수정(1장 삭제·1장 추가) → 다
   expect(created.map((img) => img.position)).toEqual([0, 1, 2]);
   for (const img of created) {
     expect(img.storagePath).toMatch(new RegExp(`^${author.id}/[0-9a-f-]{36}\\.png$`));
-    expect(await storageFileExists('post_images', img.storagePath)).toBe(true);
+    expect(await storageFileExists('activity_photos', img.storagePath)).toBe(true);
   }
 
   // 피드: 화면 폭 캐러셀에 사진 3장이 순서대로, 실제로 로드된다(2장째부터는 지연 로딩이라 넘겨서 확인).
@@ -64,7 +64,8 @@ test('게시글: 사진 3장 작성 → 수정(1장 삭제·1장 추가) → 다
   await expect(thumbs).toHaveCount(3);
   for (let i = 0; i < 3; i++) {
     const img = thumbs.nth(i).locator('img');
-    await expect(img).toHaveAttribute('src', new RegExp(`/storage/v1/object/public/post_images/${created[i].storagePath}$`));
+    // 모든 글의 사진은 회원 전용이라 서명 URL로 내려온다.
+    await expect(img).toHaveAttribute('src', new RegExp(`/storage/v1/object/sign/activity_photos/${created[i].storagePath}\\?`));
     await img.scrollIntoViewIfNeeded();
     await expectImageLoaded(img);
   }
@@ -104,8 +105,8 @@ test('게시글: 사진 3장 작성 → 수정(1장 삭제·1장 추가) → 다
   expect(afterEdit.map((img) => img.storagePath).slice(0, 2)).toEqual([created[1].storagePath, created[2].storagePath]);
   expect(afterEdit.map((img) => img.position)).toEqual([0, 1, 2]);
   // 뺀 사진은 DB 행과 함께 Storage 파일도 지워진다.
-  await expect.poll(() => storageFileExists('post_images', created[0].storagePath)).toBe(false);
-  expect(await storageFileExists('post_images', afterEdit[2].storagePath)).toBe(true);
+  await expect.poll(() => storageFileExists('activity_photos', created[0].storagePath)).toBe(false);
+  expect(await storageFileExists('activity_photos', afterEdit[2].storagePath)).toBe(true);
   for (const img of await editedPost.locator('img').all()) {
     await img.scrollIntoViewIfNeeded();
     await expectImageLoaded(img);
@@ -121,12 +122,14 @@ test('게시글: 사진 3장 작성 → 수정(1장 삭제·1장 추가) → 다
   await otherPage.goto(`/posts/${row.id}/edit`);
   await expect(otherPage).toHaveURL('/');
 
-  // 비회원도 글과 사진은 볼 수 있지만 버튼은 없다.
+  // 비회원은 글은 보지만 사진은 장수 안내만(모든 사진 회원 전용), 버튼도 없다. HTML에 사진 주소가 없다.
   const guest = await browser.newPage();
   await guest.goto('/');
   const seenByGuest = guest.locator('article').filter({ hasText: updated });
   await expect(seenByGuest).toHaveCount(1);
-  await expect(seenByGuest.getByRole('button', { name: /크게 보기$/ })).toHaveCount(3);
+  await expect(seenByGuest.getByText('로그인하면 사진 3장을 볼 수 있어요')).toBeVisible();
+  await expect(seenByGuest.getByRole('button', { name: /크게 보기$/ })).toHaveCount(0);
+  expect(await guest.content()).not.toContain('/storage/v1/object/sign/');
   await expect(seenByGuest.getByRole('button', { name: '게시글 메뉴' })).toHaveCount(0);
   await expect(seenByGuest.getByRole('link', { name: '수정' })).toHaveCount(0);
 
@@ -141,7 +144,7 @@ test('게시글: 사진 3장 작성 → 수정(1장 삭제·1장 추가) → 다
   expect(await db.select().from(posts).where(eq(posts.id, row.id))).toHaveLength(0);
   expect(await imagesOf(row.id)).toHaveLength(0);
   for (const img of afterEdit) {
-    await expect.poll(() => storageFileExists('post_images', img.storagePath)).toBe(false);
+    await expect.poll(() => storageFileExists('activity_photos', img.storagePath)).toBe(false);
   }
 
   await Promise.all([page.context().close(), otherPage.context().close(), guest.close()]);

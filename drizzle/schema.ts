@@ -28,27 +28,26 @@ export const posts = pgTable('posts', {
   content: text('content').notNull(),
   // 예전 단일 사진의 공개 URL. 0005에서 post_images로 옮겼고 코드에서는 더 이상 쓰지 않는다(되돌리기용으로 컬럼만 남김).
   imageUrl: text('image_url'),
-  // 게시글 종류(0006). 'general' = 자유글, 'activity' = 활동 기록(예전 activities 테이블을 합친 것).
-  // 종류에 따라 사진 버킷이 다르다: general → post_images(공개), activity → activity_photos(회원 전용, signed URL).
-  // 그래서 작성 후에는 종류를 바꾸지 않는다.
+  // [0009에서 삭제 예정] 예전 글 종류(0006). 양식 통합(0008)으로 앱은 더 이상 읽지 않는다. 되돌릴 여지를 두려고 칼럼만 남김.
   kind: varchar('kind', { length: 20 }).notNull().default('general'),
-  // 아래 4개는 활동 기록에만 있다(general이면 모두 NULL, activity면 모두 필수 — posts_kind_fields CHECK).
+  // [0009에서 삭제 예정] 예전 활동 제목. 0008에서 본문 첫 줄로 옮겼다.
   title: text('title'),
-  // 활동 종류 이름(회원이 입력, 예: 방탈출·정기 모임). 예전 코드값(ESCAPE_ROOM 등)은 0007에서 이름으로 바꿨다.
+  // [0009에서 삭제 예정] 예전 활동 종류. 0008에서 태그(tags)로 옮겼다.
   activityType: varchar('activity_type', { length: 20 }),
+  // 시즌·모임 날짜는 모든 글의 선택 입력이다(입력한 경우에만 카드에 보인다).
+
   seasonId: integer('season_id').references(() => seasons.id),
   activityDate: date('activity_date', { mode: 'string' }),
   // 활동 이관 멱등성 키(예전 activities.source_key, Confluence "<pageId>:<행 번호>")
   sourceKey: text('source_key').unique(),
+  // 태그(0008). 예전 "활동 종류"를 대신한다. 앞의 #는 빼고 저장하고 최대 5개(src/lib/tags.ts, posts_tags_max CHECK).
+  tags: text('tags').array().notNull().default(sql`'{}'::text[]`),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (t) => [
-  check(
-    'posts_kind_fields',
-    sql`(${t.kind} = 'general' AND ${t.title} IS NULL AND ${t.activityType} IS NULL AND ${t.seasonId} IS NULL AND ${t.activityDate} IS NULL)
-     OR (${t.kind} = 'activity' AND ${t.title} IS NOT NULL AND ${t.activityType} IS NOT NULL AND ${t.seasonId} IS NOT NULL AND ${t.activityDate} IS NOT NULL)`,
-  ),
-  index('posts_kind_created_at_idx').on(t.kind, t.createdAt),
+  check('posts_tags_max', sql`cardinality(${t.tags}) <= 5`),
+  // 태그 모아 보기(tags @> ARRAY['방탈출'])용 GIN 인덱스.
+  index('posts_tags_idx').using('gin', t.tags),
 ]);
 
 export const boardGames = pgTable('board_games', {

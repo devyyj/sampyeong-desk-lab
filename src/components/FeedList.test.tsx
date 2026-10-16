@@ -31,7 +31,8 @@ const item = (id: string, o: Partial<FeedItem> = {}): FeedItem => ({
   content: `글 ${id}`,
   createdAt: '2026-10-17T00:00:00.000Z',
   createdLabel: '방금',
-  activity: null,
+  seasonName: null,
+  tags: [],
   images: [],
   photoCount: 0,
   photosLocked: false,
@@ -41,7 +42,7 @@ const item = (id: string, o: Partial<FeedItem> = {}): FeedItem => ({
   canEdit: false,
   ...o,
 });
-const FILTER = { kind: 'activity' as const, type: null };
+const FILTER = { tag: '방탈출' };
 
 describe('FeedList', () => {
   beforeEach(() => {

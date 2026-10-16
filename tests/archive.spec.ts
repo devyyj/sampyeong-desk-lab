@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { desc, eq, isNotNull, sql } from 'drizzle-orm';
 import { cleanupE2EData, createTestUser, db, login as loginAs, type TestUser } from './helpers';
 import { postImages, posts, seasons } from '../drizzle/schema';
 
 /**
  * 이관 데이터 조회 메뉴(활동 기록·회원 명부·동호회 안내·보드게임 필터) E2E.
- * 활동 기록은 게시글의 한 종류(kind='activity')로 합쳐져 피드의 "활동 기록" 필터와 /posts/[id]에서 본다.
+ * 활동 기록은 게시글로 합쳐졌다(종류는 태그, 제목은 본문 첫 줄). 피드·태그 모아 보기·/posts/[id]에서 본다.
  * 실제 DB(이관 데이터)와 실제 Storage(private activity_photos 버킷)를 대상으로,
  * 회원에게 발급한 signed URL 사진이 브라우저에서 실제로 로드되는지까지 확인한다(AGENTS.md 5·6번).
  */
@@ -17,14 +17,15 @@ test.beforeAll(async () => {
   member = await createTestUser('archive');
 
   const [row] = await db
-    .select({ id: posts.id, title: posts.title, photoCount: sql<number>`count(${postImages.id})::int` })
+    .select({ id: posts.id, content: posts.content, photoCount: sql<number>`count(${postImages.id})::int` })
     .from(posts)
     .innerJoin(postImages, eq(postImages.postId, posts.id))
-    .where(eq(posts.kind, 'activity'))
+    .where(isNotNull(posts.sourceKey))
     .groupBy(posts.id)
     .orderBy(desc(posts.activityDate))
     .limit(1);
-  activityWithPhotos = { ...row, title: row.title! };
+  // 이관 때 제목을 본문 첫 줄로 옮겼다.
+  activityWithPhotos = { id: row.id, title: row.content.split('\n')[0], photoCount: row.photoCount };
 });
 
 test.afterAll(cleanupE2EData);
@@ -32,16 +33,16 @@ test.afterAll(cleanupE2EData);
 const login = (page: Parameters<typeof loginAs>[0], redirect: string) => loginAs(page, member, redirect);
 
 test('비회원: 활동 기록은 보이지만 사진은 로그인 안내, 회원 명부는 로그인 안내만', async ({ page }) => {
-  // 예전 주소는 피드의 활동 기록 필터로 영구 이동한다.
+  // 예전 주소는 피드로 영구 이동한다(필터 칩은 없다).
   await page.goto('/activities');
-  await page.waitForURL((url) => url.pathname === '/' && url.searchParams.get('kind') === 'activity');
-  await expect(page.getByRole('navigation', { name: '글 종류' }).getByRole('link', { name: '활동 기록' })).toHaveAttribute('aria-current', 'page');
+  await page.waitForURL((url) => url.pathname === '/' && url.search === '');
+  await expect(page.getByRole('navigation', { name: '글 종류' })).toHaveCount(0);
   await expect(page.getByRole('article').first()).toBeVisible();
 
   // 예전 상세 주소는 같은 id의 게시글 상세로 간다(이관 때 id 유지).
   await page.goto(`/activities/${activityWithPhotos.id}`);
   await page.waitForURL(`**/posts/${activityWithPhotos.id}`);
-  await expect(page.getByRole('heading', { name: activityWithPhotos.title })).toBeVisible();
+  await expect(page.getByText(activityWithPhotos.title).first()).toBeVisible();
   await expect(page.getByText(`로그인하면 사진 ${activityWithPhotos.photoCount}장을 볼 수 있어요`)).toBeVisible();
   // 비회원 HTML에는 signed URL이 아예 없어야 한다.
   expect(await page.content()).not.toContain('/storage/v1/object/sign/activity_photos');
@@ -102,16 +103,16 @@ test('동호회 안내와 보드게임 필터', async ({ page }) => {
   }
 });
 
-test('활동 기록 필터: 무한 스크롤로 모든 활동을 불러오고, 종류 칩으로 좁힌다', async ({ page }) => {
-  // 실제 DB 기준 기대값(이관 91건 + 다른 테스트가 만든 활동이 있을 수 있어 DB에서 센다).
-  const [{ total }] = await db.select({ total: sql<number>`count(*)::int` }).from(posts).where(eq(posts.kind, 'activity'));
+test('피드: 무한 스크롤로 모든 글을 불러오고, 태그를 누르면 그 태그 글만 모아 본다', async ({ page }) => {
+  test.setTimeout(120_000);
+  // 실제 DB 기준 기대값(다른 테스트가 만든 글이 있을 수 있어 DB에서 센다).
+  const [{ total }] = await db.select({ total: sql<number>`count(*)::int` }).from(posts);
   const [{ escape }] = await db
     .select({ escape: sql<number>`count(*)::int` })
     .from(posts)
-    // 필터는 저장값(종류 이름)으로 비교한다. 이관 데이터의 예전 코드는 0007에서 이름으로 바꿨다.
-    .where(and(eq(posts.kind, 'activity'), eq(posts.activityType, '방탈출')));
+    .where(sql`${posts.tags} @> ARRAY['방탈출']::text[]`);
 
-  await page.goto('/?kind=activity');
+  await page.goto('/');
   // 첫 화면에는 한 페이지(10건)만 있고, 바닥까지 스크롤하면 이어서 불러온다.
   const cards = page.getByRole('article');
   if (total > 10) await expect(cards).toHaveCount(10);
@@ -126,16 +127,17 @@ test('활동 기록 필터: 무한 스크롤로 모든 활동을 불러오고, �
   const hrefs = await cards.evaluateAll((els) => els.map((el) => el.querySelector('header a[href^="/posts/"]')?.getAttribute('href')));
   expect(new Set(hrefs).size).toBe(total);
 
-  // 종류 칩: 방탈출만.
-  await page.getByRole('navigation', { name: '활동 종류' }).getByRole('link', { name: '방탈출' }).click();
-  await page.waitForURL((url) => url.searchParams.get('type') === '방탈출');
+  // 카드의 #방탈출 태그를 누르면 그 태그 글만 모인다.
+  await page.getByRole('link', { name: '#방탈출' }).first().click();
+  await page.waitForURL((url) => url.searchParams.get('tag') === '방탈출');
+  await expect(page.getByRole('heading', { level: 1, name: '#방탈출' })).toBeVisible();
   if (escape <= 10) {
     await expect(cards).toHaveCount(escape);
-    for (const card of await cards.all()) await expect(card).toContainText('방탈출');
+    for (const card of await cards.all()) await expect(card.getByRole('link', { name: '#방탈출' })).toBeVisible();
   }
 
-  // 제목을 누르면 상세로 가고, 돌아가기는 피드로 간다.
-  await cards.first().getByRole('heading').getByRole('link').click();
+  // 시간 링크를 누르면 상세로 가고, 돌아가기는 피드로 간다.
+  await cards.first().locator('header a[href^="/posts/"]').click();
   await page.waitForURL(/\/posts\/[0-9a-f-]{36}$/);
   await page.getByRole('link', { name: '피드로 돌아가기' }).click();
   await page.waitForURL((url) => url.pathname === '/');

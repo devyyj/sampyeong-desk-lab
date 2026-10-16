@@ -1,27 +1,21 @@
-import { normalizeActivityType } from './activity-types';
+import { normalizeTag } from './tags';
 
 /*
- * 피드 필터(?kind=&type=) ↔ 주소. 서버(페이지·액션)와 클라이언트(필터 칩)가 함께 쓰므로
+ * 피드 주소(?tag=) ↔ 필터. 피드에는 필터 칩이 없고, 카드의 태그를 누르면 그 태그 글만 모아 본다
+ * (설계: 2026-10-17-unified-post-form-design.md §4.3). 서버(페이지·액션)와 클라이언트(태그 링크)가 함께 쓰므로
  * DB·Storage 코드가 있는 feed.ts와 분리한다(클라이언트 번들에 서버 전용 모듈이 끌려 들어가지 않게).
  */
 
-export type FeedKind = 'all' | 'activity' | 'general';
-/** type은 활동 종류 이름(회원이 입력한 글자). */
-export type FeedFilter = { kind: FeedKind; type: string | null };
+export type FeedFilter = { tag: string | null };
+
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
-/** 주소의 ?kind=&type= 을 필터로. 모르는 값은 조용히 기본값으로 둔다(오래된 링크·오타로 오류 화면을 띄우지 않게). */
-export function parseFeedFilter(params: { kind?: string | string[]; type?: string | string[] }): FeedFilter {
-  const kind = first(params.kind);
-  if (kind === 'general') return { kind: 'general', type: null };
-  if (kind !== 'activity') return { kind: 'all', type: null };
-  // 예전 주소의 코드(?type=ESCAPE_ROOM)는 이름으로 바뀐다. 너무 긴 값은 무시한다.
-  return { kind: 'activity', type: normalizeActivityType(first(params.type)) };
+/** 주소의 ?tag= 을 필터로. 예전 주소의 ?kind=·?type=은 무시한다(전체를 보여준다). 잘못된 태그도 무시한다. */
+export function parseFeedFilter(params: { tag?: string | string[] }): FeedFilter {
+  return { tag: normalizeTag(first(params.tag)) };
 }
 
+/** 태그 모아 보기 주소. 태그가 없으면 전체 피드. */
 export function feedFilterHref(filter: FeedFilter): string {
-  if (filter.kind === 'all') return '/';
-  const query = new URLSearchParams({ kind: filter.kind });
-  if (filter.kind === 'activity' && filter.type) query.set('type', filter.type);
-  return `/?${query}`;
+  return filter.tag ? `/?${new URLSearchParams({ tag: filter.tag })}` : '/';
 }

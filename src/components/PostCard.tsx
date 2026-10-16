@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { FeedItem } from '@/lib/feed';
-import { getActivityType } from '@/lib/activity-types';
+import { feedFilterHref } from '@/lib/feed-filter';
 import Avatar from './Avatar';
 import UserName from './UserName';
 import PhotoCarousel from './PhotoCarousel';
@@ -30,14 +30,14 @@ type Props = {
 };
 
 /**
- * 게시글 카드(자유글·활동 기록 공용). 설계 §5.2·§5.4.
+ * 게시글 카드. 설계: 2026-10-17-unified-post-form-design.md §4.2
+ * 글 종류 구분 없이 모두 같은 모양이고, 선택 정보(모임 날짜·시즌·태그)는 입력한 경우에만 보인다.
  *
- * 피드: 작성자 줄 → (활동) 종류·시즌·모임 날짜와 굵은 제목 → 본문(3줄 접기) → 작은 사진 줄 → 반응(댓글은 시트).
+ * 피드: 작성자 줄(날짜 하나) → 시즌 칩 → 본문(3줄 접기) → 태그 → 작은 사진 줄 → 반응(댓글은 시트).
  *   사진은 피드를 훑기 쉽도록 작게(3칸 썸네일) 보여주고, 크게 보기는 Lightbox·상세에 맡긴다.
- *   그래서 사진이 카드의 주인공이 아니고, 본문을 사진보다 먼저 둔다(사진 없는 자유글은 본문을 크게).
- * 상세: 작성자 줄 → (활동) 머리 → 화면 폭 캐러셀 → 본문 전체 → 좋아요·댓글 펼침.
+ * 상세: 작성자 줄 → 시즌 칩 → 화면 폭 캐러셀 → 본문 전체 → 태그 → 좋아요·댓글 펼침.
  *
- * 날짜는 작성자 줄에 하나만 둔다(자유글은 작성 시각, 활동 기록은 모임 날짜 — feed.ts가 정한다).
+ * 날짜는 작성자 줄에 하나만 둔다(모임 날짜가 있으면 모임 날짜, 없으면 작성 시각 — feed.ts가 정한다).
  * 무한 스크롤 목록(클라이언트)에서도 그려야 해서 클라이언트 컴포넌트이고, 날짜 문구는 서버가 만들어 넘긴다
  * (브라우저에서 계산하면 서버 렌더와 어긋나 hydration 불일치가 난다).
  */
@@ -63,7 +63,9 @@ export default function PostCard({ item, variant = 'feed', loginHref = '/login?r
         {item.canEdit && <PostMenu postId={item.id} onDeleted={afterDelete} />}
       </header>
 
-      {item.activity && <ActivityHead activity={item.activity} href={detail ? null : href} />}
+      {item.seasonName && (
+        <span className="inline-block mt-0.5 px-1.5 py-px rounded-md text-[11px] font-bold bg-muted text-muted-foreground">{item.seasonName}</span>
+      )}
 
       {detail ? (
         <>
@@ -75,6 +77,7 @@ export default function PostCard({ item, variant = 'feed', loginHref = '/login?r
           )}
           {item.photosLocked && <LockedPhotos count={item.photoCount} loginHref={loginHref} />}
           <p className="mt-3 whitespace-pre-wrap break-words text-[16px] leading-relaxed">{item.content}</p>
+          <TagLinks tags={item.tags} />
           {/* 상세는 반응·댓글을 아래에 펼쳐 둔다(피드처럼 시트로 접지 않음). */}
           <section className="mt-6 pt-3 border-t border-border space-y-2">
             <div className="flex items-center gap-2 -ml-2">
@@ -87,8 +90,9 @@ export default function PostCard({ item, variant = 'feed', loginHref = '/login?r
       ) : (
         <>
           <div className="mt-1">
-            <PostCaption content={item.content} large={!hasImages && !item.activity && !item.photosLocked} />
+            <PostCaption content={item.content} large={!hasImages && !item.photosLocked} />
           </div>
+          <TagLinks tags={item.tags} />
           {hasImages && (
             <div className="mt-2">
               <PhotoThumbs images={item.images} />
@@ -113,7 +117,7 @@ export default function PostCard({ item, variant = 'feed', loginHref = '/login?r
 }
 
 /**
- * 비회원에게 잠긴 활동 사진 안내. 활동 사진은 회원 전용이라 주소를 발급하지 않고 장수만 알린다(설계 §6).
+ * 비회원에게 잠긴 사진 안내. 모든 글의 사진은 회원 전용이라 주소를 발급하지 않고 장수만 알린다.
  * 사진 줄과 같은 자리를 차지하도록 한 줄 높이로 작게 둔다.
  */
 function LockedPhotos({ count, loginHref }: { count: number; loginHref: string }) {
@@ -128,27 +132,21 @@ function LockedPhotos({ count, loginHref }: { count: number; loginHref: string }
   );
 }
 
-/**
- * 활동 기록 머리: 종류 배지 · 시즌, 그 아래 굵은 제목(피드에서는 상세 링크, 상세에서는 크게). 모임 날짜는 작성자 줄에 있다.
- * 페이지 h1은 TopBar가 가지므로 제목은 h2로 둔다.
- */
-function ActivityHead({ activity, href }: { activity: NonNullable<FeedItem['activity']>; href: string | null }) {
-  const type = getActivityType(activity.type);
+/** 태그 칩. 누르면 그 태그 글만 모아 본다(/?tag=). 태그가 없으면 아무것도 그리지 않는다. */
+function TagLinks({ tags }: { tags: string[] }) {
+  if (tags.length === 0) return null;
   return (
-    <div className="mt-1 mb-2 space-y-1">
-      <div className="flex flex-wrap items-center gap-1.5 text-[13px] text-muted-foreground">
-        <span className={`px-1.5 py-px rounded-md text-[11px] font-bold ${type.badgeClass}`}>{type.label}</span>
-        <span className="px-1.5 py-px rounded-md text-[11px] font-bold bg-muted text-muted-foreground">{activity.seasonName}</span>
-      </div>
-      {href ? (
-        <h2 className="text-[17px] font-bold leading-snug tracking-tight">
-          <Link href={href} className="hover:underline">
-            {activity.title}
+    <ul aria-label="태그" className="mt-2 flex flex-wrap gap-1.5">
+      {tags.map((tag) => (
+        <li key={tag}>
+          <Link
+            href={feedFilterHref({ tag })}
+            className="h-7 px-2.5 inline-flex items-center rounded-full bg-muted text-[13px] font-medium text-foreground hover:bg-border"
+          >
+            {`#${tag}`}
           </Link>
-        </h2>
-      ) : (
-        <h2 className="text-[22px] font-bold leading-snug tracking-tight">{activity.title}</h2>
-      )}
-    </div>
+        </li>
+      ))}
+    </ul>
   );
 }

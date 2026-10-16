@@ -15,7 +15,7 @@ const MAX_OFFSET = 100_000;
  */
 export async function loadMoreFeed(filter: FeedFilter, offset: number): Promise<FeedPage> {
   if (!Number.isInteger(offset) || offset < 0 || offset > MAX_OFFSET) return { items: [], hasMore: false };
-  const safe = parseFeedFilter({ kind: String(filter?.kind ?? ''), type: String(filter?.type ?? '') });
+  const safe = parseFeedFilter({ tag: String(filter?.tag ?? '') });
   const session = await getSession();
   return getFeedPage(safe, offset, session ? { id: session.userId, isAdmin: session.isAdmin } : null);
 }

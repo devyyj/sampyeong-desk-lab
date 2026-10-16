@@ -24,7 +24,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
 
   return (
     <div>
-      <TopBar title={item.activity ? '활동 기록' : '게시글'} backHref="/" backLabel="피드로 돌아가기" />
+      <TopBar title="게시글" backHref="/" backLabel="피드로 돌아가기" />
       <PostCard
         item={item}
         variant="detail"

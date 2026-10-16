@@ -5,11 +5,11 @@ const nextConfig: NextConfig = {
   // (왼쪽 아래 탭바 '피드', 오른쪽 아래 ＋ 버튼, 위쪽 양끝 작성 화면의 취소·게시). 그래서 끈다.
   // 컴파일·런타임 오류 표시는 꺼지지 않으며, 운영 빌드에는 원래 나오지 않는다.
   devIndicators: false,
-  // 활동 기록은 게시글의 한 종류로 합쳐졌다(설계 §5.1). 북마크·공유된 예전 주소가 깨지지 않게 영구 이동시킨다.
+  // 활동 기록은 게시글로 합쳐졌다(종류 구분도 없앰, 2026-10-17 설계). 북마크·공유된 예전 주소가 깨지지 않게 영구 이동시킨다.
   // 이관 때 게시글 id를 활동 id 그대로 두었으므로 상세 주소는 id만 바꿔 끼우면 된다.
   async redirects() {
     return [
-      { source: '/activities', destination: '/?kind=activity', permanent: true },
+      { source: '/activities', destination: '/', permanent: true },
       { source: '/activities/:id', destination: '/posts/:id', permanent: true },
     ];
   },
