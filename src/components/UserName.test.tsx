@@ -50,8 +50,8 @@ describe('UserName', () => {
 
     open();
     const again = await screen.findByRole('dialog');
-    // 팝업 안쪽을 누르면 닫히지 않고, 배경(오버레이)을 눌러야 닫힌다.
-    fireEvent.click(within(again).getByText('보드왕', { selector: 'h2' }));
+    // 시트 안쪽을 누르면 닫히지 않고, 배경(오버레이)을 눌러야 닫힌다. (h2는 시트 제목 "보드왕 프로필")
+    fireEvent.click(within(again).getByText('보드왕', { selector: 'p' }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     fireEvent.click(again);
     expect(screen.queryByRole('dialog')).toBeNull();

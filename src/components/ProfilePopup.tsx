@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react';
 import { getProfile, type ProfileView } from '@/app/actions/profile';
 import { badgeLabel } from '@/lib/badge';
-import Overlay from './Overlay';
+import BottomSheet from './BottomSheet';
+import Avatar from './Avatar';
 
 /**
- * 닉네임을 눌렀을 때 뜨는 프로필 팝업. 내용은 열릴 때 getProfile로 받아 온다.
+ * 닉네임을 눌렀을 때 아래에서 올라오는 프로필 시트. 내용은 열릴 때 getProfile로 받아 온다.
  * 실명·부서는 회원에게만 오므로(서버가 세션으로 판단) 페이지 HTML에 미리 실리지 않는다.
  */
 export default function ProfilePopup({ userId, nickname, onClose }: { userId: string; nickname: string; onClose: () => void }) {
@@ -25,28 +26,14 @@ export default function ProfilePopup({ userId, nickname, onClose }: { userId: st
   }, [userId]);
 
   return (
-    <Overlay label={`${nickname} 프로필`} onClose={onClose} className="bg-black/50">
-      <div className="relative w-full max-w-sm bg-card text-card-foreground border border-border rounded-2xl shadow-lg p-6 space-y-4">
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute top-3 right-3 px-3 py-1 rounded-full text-sm font-semibold hover:bg-muted"
-        >
-          닫기
-        </button>
-
+    <BottomSheet open title={`${nickname} 프로필`} onClose={onClose}>
+      <div className="space-y-5 pt-1">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 shrink-0 rounded-full bg-muted overflow-hidden flex items-center justify-center">
-            {profile?.profileImageUrl ? (
-              <img src={profile.profileImageUrl} alt={`${nickname} 프로필 사진`} className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-2xl font-bold text-muted-foreground">{[...nickname][0]?.toUpperCase()}</span>
-            )}
-          </div>
+          <Avatar src={profile?.profileImageUrl} name={nickname} size={64} alt={`${nickname} 프로필 사진`} />
           <div className="min-w-0">
-            <h2 className="text-lg font-bold truncate">{nickname}</h2>
+            <p className="text-lg font-bold truncate">{nickname}</p>
             {profile?.badge && (
-              <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 text-xs font-semibold">
+              <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-primary-50 text-primary-600 text-xs font-semibold">
                 {profile.badge.kind === 'president' ? badgeLabel(profile.badge) : `${badgeLabel(profile.badge)} 참여`}
               </span>
             )}
@@ -56,25 +43,25 @@ export default function ProfilePopup({ userId, nickname, onClose }: { userId: st
         {profile === undefined && <p className="text-sm text-muted-foreground">불러오는 중…</p>}
         {profile === null && <p className="text-sm text-muted-foreground">프로필을 불러오지 못했습니다.</p>}
         {profile && (
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+          <dl className="rounded-2xl bg-muted/60 divide-y divide-border text-[15px]">
             {/* 회원 전용 항목: 비회원 응답에는 키가 없어 줄 자체를 그리지 않는다. */}
-            {'displayName' in profile && (
-              <>
-                <dt className="text-muted-foreground">실명</dt>
-                <dd>{profile.displayName || '-'}</dd>
-              </>
-            )}
-            {'department' in profile && (
-              <>
-                <dt className="text-muted-foreground">부서</dt>
-                <dd>{profile.department || '-'}</dd>
-              </>
-            )}
-            <dt className="text-muted-foreground">소개</dt>
-            <dd className="whitespace-pre-wrap">{profile.bio || '-'}</dd>
+            {'displayName' in profile && <Row label="실명">{profile.displayName || '-'}</Row>}
+            {'department' in profile && <Row label="부서">{profile.department || '-'}</Row>}
+            <Row label="소개">
+              <span className="whitespace-pre-wrap">{profile.bio || '-'}</span>
+            </Row>
           </dl>
         )}
       </div>
-    </Overlay>
+    </BottomSheet>
+  );
+}
+
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex gap-4 px-4 py-3">
+      <dt className="w-10 shrink-0 text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 flex-1">{children}</dd>
+    </div>
   );
 }

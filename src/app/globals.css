@@ -86,6 +86,12 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* 바텀시트가 아래에서 살짝 올라오며 나타난다(reduced-motion이면 아래 규칙이 사실상 끈다). */
+@keyframes sheet-up {
+  from { transform: translateY(32px); opacity: 0.6; }
+  to { transform: none; opacity: 1; }
+}
+
 /* 가로 캐러셀·칩 줄 등에서 스크롤바를 숨긴다(스와이프로 넘기는 영역). */
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
