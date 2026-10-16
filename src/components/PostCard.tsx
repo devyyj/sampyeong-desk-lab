@@ -24,6 +24,8 @@ type Props = {
   loginHref?: string;
   /** 보는 회원(좋아요·댓글 작성, 댓글 삭제 버튼 표시용). 실제 권한은 서버 액션이 다시 확인한다. */
   viewer?: { id: string; isAdmin: boolean } | null;
+  /** 댓글이 바뀐 뒤 처리(목록이 이 글을 다시 받아 바꿔 끼운다). */
+  onChanged?: () => void;
   /** 삭제가 끝난 뒤 처리(목록에서 빼기·피드로 이동). 없으면 PostMenu가 화면을 새로 그린다. */
   onDeleted?: () => void;
 };
@@ -36,7 +38,7 @@ type Props = {
  * 무한 스크롤 목록(클라이언트)에서도 그려야 해서 클라이언트 컴포넌트다. 날짜·시간 문구는 서버가 만들어 넘긴다
  * (createdLabel). 모임 날짜(shortDate)는 시각이 없는 날짜라 서버·브라우저 시간대와 무관하게 같은 결과가 나온다.
  */
-export default function PostCard({ item, variant = 'feed', loginHref = '/login?redirect=%2F', viewer = null, onDeleted }: Props) {
+export default function PostCard({ item, variant = 'feed', loginHref = '/login?redirect=%2F', viewer = null, onChanged, onDeleted }: Props) {
   const detail = variant === 'detail';
   const router = useRouter();
   // 상세에서 지우면 그 글은 더 볼 수 없으니 피드로 돌아간다(새로 그리면 404가 된다).
@@ -50,6 +52,7 @@ export default function PostCard({ item, variant = 'feed', loginHref = '/login?r
     comments: item.comments,
     viewer,
     loginHref,
+    onChanged,
   };
 
   const caption = detail ? (

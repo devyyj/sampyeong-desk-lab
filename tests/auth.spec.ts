@@ -35,7 +35,7 @@ test('비회원: 보호된 경로는 모두 원래 경로를 기억한 채 로�
 
   // 공개 페이지는 그대로 열린다. ＋ 버튼은 비회원에게도 보이지만 로그인 후 작성 화면으로 돌아오는 주소다.
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: '자유게시판' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: '피드' })).toBeVisible();
   await expect(page.getByRole('link', { name: '글쓰기' })).toHaveAttribute('href', '/login?redirect=%2Fposts%2Fwrite');
   await page.goto('/boardgames');
   await expect(page.getByRole('link', { name: '보드게임 등록' })).toHaveAttribute('href', '/login?redirect=%2Fboardgames%2Fadd');
@@ -94,7 +94,7 @@ test('발급 PIN 사용자: PIN을 바꾸기 전에는 PIN 변경 화면에만 �
   await expect(page.getByRole('heading', { name: '초기 비밀번호를 변경해주세요' })).toBeVisible();
 
   // 다른 페이지(공개 페이지 포함)로 가도 다시 PIN 변경 화면으로 돌아온다.
-  for (const path of ['/', '/boardgames', '/mypage', '/activities']) {
+  for (const path of ['/', '/boardgames', '/mypage', '/?kind=activity']) {
     await page.goto(path);
     await expect(page, path).toHaveURL('/change-pin');
   }

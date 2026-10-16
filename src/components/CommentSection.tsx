@@ -18,6 +18,8 @@ const inputClass =
  * 권한 규칙(설계 §2): 회원만 작성, 본인은 수정·삭제, 관리자는 남의 댓글 삭제만. 버튼을 감추는 것은 화면 편의이고,
  * 실제 권한은 각 Server Action이 서버에서 다시 확인한다.
  * 저장·삭제 후의 목록 갱신은 액션의 revalidatePath가 서버 데이터를 다시 내려 주는 것으로 처리한다.
+ * 다만 무한 스크롤 피드처럼 클라이언트 상태로 그린 목록은 그것만으로 바뀌지 않으므로, 성공할 때마다 onChanged로 알려
+ * 부모가 그 글을 다시 받게 한다.
  */
 export default function CommentSection({
   target,
@@ -25,12 +27,14 @@ export default function CommentSection({
   comments,
   viewer,
   loginHref,
+  onChanged,
 }: {
   target: 'post';
   targetId: string;
   comments: CommentView[];
   viewer: Viewer;
   loginHref: string;
+  onChanged?: () => void;
 }) {
   return (
     <section aria-label="댓글" className="space-y-4">
@@ -39,13 +43,13 @@ export default function CommentSection({
       ) : (
         <ul className="divide-y divide-border">
           {comments.map((comment) => (
-            <CommentItem key={comment.id} comment={comment} viewer={viewer} />
+            <CommentItem key={comment.id} comment={comment} viewer={viewer} onChanged={onChanged} />
           ))}
         </ul>
       )}
 
       {viewer ? (
-        <NewCommentForm target={target} targetId={targetId} />
+        <NewCommentForm target={target} targetId={targetId} onChanged={onChanged} />
       ) : (
         <p className="py-2 text-sm text-muted-foreground text-center">
           <Link href={loginHref} className="font-semibold text-foreground underline underline-offset-2">
@@ -58,12 +62,17 @@ export default function CommentSection({
   );
 }
 
-function NewCommentForm({ target, targetId }: { target: 'post'; targetId: string }) {
+function NewCommentForm({ target, targetId, onChanged }: { target: 'post'; targetId: string; onChanged?: () => void }) {
   const [state, formAction, isPending] = useActionState<CommentActionState, FormData>(addComment, null);
   const formRef = useRef<HTMLFormElement>(null);
-  // 저장에 성공하면 입력란을 비운다. 실패하면 쓴 내용을 남겨 다시 시도할 수 있게 한다.
+  // 저장에 성공하면 입력란을 비우고 부모에 알린다. 실패하면 쓴 내용을 남겨 다시 시도할 수 있게 한다.
+  // onChanged는 렌더마다 새 함수일 수 있어 의존성에 넣지 않는다(같은 성공 결과로 두 번 부르지 않게 state에만 반응).
   useEffect(() => {
-    if (state && 'ok' in state) formRef.current?.reset();
+    if (state && 'ok' in state) {
+      formRef.current?.reset();
+      onChanged?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
   return (
@@ -95,7 +104,7 @@ function NewCommentForm({ target, targetId }: { target: 'post'; targetId: string
   );
 }
 
-function CommentItem({ comment, viewer }: { comment: CommentView; viewer: Viewer }) {
+function CommentItem({ comment, viewer, onChanged }: { comment: CommentView; viewer: Viewer; onChanged?: () => void }) {
   const isMine = viewer?.id === comment.authorId;
   const canDelete = isMine || Boolean(viewer?.isAdmin);
   const [editing, setEditing] = useState(false);
@@ -107,6 +116,7 @@ function CommentItem({ comment, viewer }: { comment: CommentView; viewer: Viewer
     startDelete(async () => {
       const result = await deleteComment(comment.id);
       if (result && 'error' in result) setDeleteError(result.error);
+      else onChanged?.();
     });
   };
 
@@ -133,7 +143,14 @@ function CommentItem({ comment, viewer }: { comment: CommentView; viewer: Viewer
       </div>
 
       {editing ? (
-        <EditCommentForm comment={comment} onDone={() => setEditing(false)} />
+        <EditCommentForm
+          comment={comment}
+          onCancel={() => setEditing(false)}
+          onSaved={() => {
+            setEditing(false);
+            onChanged?.();
+          }}
+        />
       ) : (
         // 일반 텍스트로 보여준다(마크다운·HTML 아님). 줄바꿈은 살린다.
         <p className="text-[15px] whitespace-pre-wrap break-words">{comment.content}</p>
@@ -147,11 +164,13 @@ function CommentItem({ comment, viewer }: { comment: CommentView; viewer: Viewer
   );
 }
 
-function EditCommentForm({ comment, onDone }: { comment: CommentView; onDone: () => void }) {
+function EditCommentForm({ comment, onCancel, onSaved }: { comment: CommentView; onCancel: () => void; onSaved: () => void }) {
   const [state, formAction, isPending] = useActionState<CommentActionState, FormData>(updateComment, null);
+  // onSaved는 렌더마다 새 함수라 의존성에 넣지 않는다(같은 성공 결과로 두 번 부르지 않게 state에만 반응).
   useEffect(() => {
-    if (state && 'ok' in state) onDone();
-  }, [state, onDone]);
+    if (state && 'ok' in state) onSaved();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
 
   return (
     <form
@@ -166,7 +185,7 @@ function EditCommentForm({ comment, onDone }: { comment: CommentView; onDone: ()
       <textarea name="content" aria-label="댓글 수정" required maxLength={1000} rows={2} defaultValue={comment.content} className={inputClass} />
       {state && 'error' in state && <p className="text-sm text-red-500">{state.error}</p>}
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onDone} className="h-9 px-3 rounded-full text-sm hover:bg-muted">
+        <button type="button" onClick={onCancel} className="h-9 px-3 rounded-full text-sm hover:bg-muted">
           취소
         </button>
         <button

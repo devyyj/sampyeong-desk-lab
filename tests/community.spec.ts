@@ -1,10 +1,10 @@
 import { test, expect, type Page } from '@playwright/test';
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, isNotNull } from 'drizzle-orm';
 import { cleanupE2EData, createTestUser, db, loggedInPage, type TestUser } from './helpers';
-import { activities, activityLikes, commentLikes, comments, postLikes, posts } from '../drizzle/schema';
+import { commentLikes, comments, postLikes, posts } from '../drizzle/schema';
 
 /**
- * 좋아요·댓글 E2E(실제 DB). 게시글·활동 기록·댓글 좋아요 토글이 새로고침 후에도 유지되는지,
+ * 좋아요·댓글 E2E(실제 DB). 게시글(자유글·활동 기록)·댓글 좋아요 토글이 새로고침 후에도 유지되는지,
  * 댓글 작성·수정·삭제와 권한(본인/타 회원/관리자/비회원)이 화면과 DB 모두에서 지켜지는지 본다.
  * 테스트 회원이 남긴 좋아요·댓글은 회원 삭제(cleanup) 때 FK cascade로 함께 지워진다.
  */
@@ -113,47 +113,48 @@ test('게시글: 좋아요 토글·유지, 댓글 작성·수정·좋아요·삭
   await Promise.all([page.context().close(), writerPage.context().close(), adminPage.context().close(), guest.close()]);
 });
 
-test('활동 기록: 상세에서 좋아요·댓글, 목록에 좋아요·댓글 수 표시', async ({ browser }) => {
-  // 목록 첫 줄(최신 시즌의 가장 최근 활동, getActivityPage와 같은 정렬)에 단다. 테스트 회원의 반응은 정리 때 cascade로 지워진다.
+test('활동 기록: 상세에서 좋아요·댓글, 피드 카드에 좋아요·댓글 수 표시', async ({ browser }) => {
+  // 이관된 활동 중 가장 최근 것(피드의 활동 기록 첫 페이지에 나온다). 테스트 회원의 반응은 정리 때 cascade로 지워진다.
   const [activity] = await db
     .select()
-    .from(activities)
-    .orderBy(desc(activities.seasonId), desc(activities.date), desc(activities.createdAt), asc(activities.id))
+    .from(posts)
+    .where(and(eq(posts.kind, 'activity'), isNotNull(posts.sourceKey)))
+    .orderBy(desc(posts.createdAt), posts.id)
     .limit(1);
-  const before = (await db.select().from(activityLikes).where(eq(activityLikes.activityId, activity.id))).length;
+  const before = (await db.select().from(postLikes).where(eq(postLikes.postId, activity.id))).length;
 
-  const page = await loggedInPage(browser, fan, `/activities/${activity.id}`);
+  const page = await loggedInPage(browser, fan, `/posts/${activity.id}`);
   // 상세에서는 댓글 영역이 항상 펼쳐져 있다.
   await expect(page.getByRole('textbox', { name: '댓글 쓰기' })).toBeVisible();
-  // 실제 데이터의 댓글에도 같은 개수의 좋아요 버튼이 있을 수 있어, 댓글 영역 밖의 활동 좋아요 버튼만 고른다.
+  // 실제 데이터의 댓글에도 같은 개수의 좋아요 버튼이 있을 수 있어, 댓글 영역 밖의 글 좋아요 버튼만 고른다.
   const activityLike = page.getByRole('button', { name: /^좋아요 \d+$/ }).and(page.locator(':not([aria-label="댓글"] *)')).first();
   await expect(activityLike).toHaveAccessibleName(`좋아요 ${before}`);
   await activityLike.click();
   await expect(activityLike).toHaveAccessibleName(`좋아요 ${before + 1}`);
   await expect(activityLike).toHaveAttribute('aria-pressed', 'true');
   await expect.poll(async () =>
-    (await db.select().from(activityLikes).where(and(eq(activityLikes.activityId, activity.id), eq(activityLikes.userId, fan.id)))).length,
+    (await db.select().from(postLikes).where(and(eq(postLikes.postId, activity.id), eq(postLikes.userId, fan.id)))).length,
   ).toBe(1);
 
   await page.getByRole('textbox', { name: '댓글 쓰기' }).fill('E2E 활동 댓글');
   await page.getByRole('button', { name: '댓글 달기' }).click();
   await expect(page.getByRole('listitem').filter({ hasText: 'E2E 활동 댓글' })).toBeVisible();
-  const commentCount = (await db.select().from(comments).where(eq(comments.activityId, activity.id))).length;
+  const commentCount = (await db.select().from(comments).where(eq(comments.postId, activity.id))).length;
   await expect(page.getByRole('heading', { name: `댓글 ${commentCount}` })).toBeVisible();
 
   await page.reload();
   await expect(activityLike).toHaveAccessibleName(`좋아요 ${before + 1}`);
   await expect(activityLike).toHaveAttribute('aria-pressed', 'true');
 
-  // 목록 첫 페이지의 그 활동 줄에 좋아요·댓글 수가 보인다.
-  await page.goto('/activities');
-  const row = page.locator(`a[href="/activities/${activity.id}"]`);
-  await expect(row).toContainText(`좋아요 ${before + 1}`);
-  await expect(row).toContainText(`댓글 ${commentCount}`);
+  // 피드의 활동 기록 첫 페이지, 그 활동 카드에 좋아요·댓글 수가 보인다.
+  await page.goto('/?kind=activity');
+  const card = page.locator('article').filter({ has: page.getByRole('link', { name: activity.title!, exact: true }) });
+  await expect(card.getByRole('button', { name: `좋아요 ${before + 1}` })).toHaveAttribute('aria-pressed', 'true');
+  await expect(card.getByRole('button', { name: `댓글 ${commentCount}`, exact: true })).toBeVisible();
 
   // 비회원: 상세의 댓글은 보이지만 작성 폼 대신 로그인 안내
   const guest = await browser.newPage();
-  await guest.goto(`/activities/${activity.id}`);
+  await guest.goto(`/posts/${activity.id}`);
   await expect(guest.getByText('E2E 활동 댓글')).toBeVisible();
   await expect(guest.getByRole('textbox', { name: '댓글 쓰기' })).toHaveCount(0);
   await expect(guest.getByText(/하면 댓글을 쓸 수 있습니다/)).toBeVisible();

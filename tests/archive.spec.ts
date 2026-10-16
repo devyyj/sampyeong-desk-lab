@@ -1,10 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { cleanupE2EData, createTestUser, db, login as loginAs, type TestUser } from './helpers';
-import { activities, activityPhotos, seasons } from '../drizzle/schema';
+import { postImages, posts, seasons } from '../drizzle/schema';
 
 /**
  * 이관 데이터 조회 메뉴(활동 기록·회원 명부·동호회 안내·보드게임 필터) E2E.
+ * 활동 기록은 게시글의 한 종류(kind='activity')로 합쳐져 피드의 "활동 기록" 필터와 /posts/[id]에서 본다.
  * 실제 DB(이관 데이터)와 실제 Storage(private activity_photos 버킷)를 대상으로,
  * 회원에게 발급한 signed URL 사진이 브라우저에서 실제로 로드되는지까지 확인한다(AGENTS.md 5·6번).
  */
@@ -16,13 +17,14 @@ test.beforeAll(async () => {
   member = await createTestUser('archive');
 
   const [row] = await db
-    .select({ id: activities.id, title: activities.title, photoCount: sql<number>`count(${activityPhotos.id})::int` })
-    .from(activities)
-    .innerJoin(activityPhotos, eq(activityPhotos.activityId, activities.id))
-    .groupBy(activities.id)
-    .orderBy(desc(activities.date))
+    .select({ id: posts.id, title: posts.title, photoCount: sql<number>`count(${postImages.id})::int` })
+    .from(posts)
+    .innerJoin(postImages, eq(postImages.postId, posts.id))
+    .where(eq(posts.kind, 'activity'))
+    .groupBy(posts.id)
+    .orderBy(desc(posts.activityDate))
     .limit(1);
-  activityWithPhotos = row;
+  activityWithPhotos = { ...row, title: row.title! };
 });
 
 test.afterAll(cleanupE2EData);
@@ -30,15 +32,17 @@ test.afterAll(cleanupE2EData);
 const login = (page: Parameters<typeof loginAs>[0], redirect: string) => loginAs(page, member, redirect);
 
 test('비회원: 활동 기록은 보이지만 사진은 로그인 안내, 회원 명부는 로그인 안내만', async ({ page }) => {
+  // 예전 주소는 피드의 활동 기록 필터로 영구 이동한다.
   await page.goto('/activities');
-  await expect(page.getByRole('heading', { name: '활동 기록' })).toBeVisible();
-  // 시즌 선택 없이 전체 목록이 시즌 제목으로 묶여 나온다.
-  await expect(page.getByRole('combobox', { name: '시즌 선택' })).toHaveCount(0);
-  await expect(page.getByRole('heading', { level: 2, name: /^시즌 \d+/ }).first()).toBeVisible();
+  await page.waitForURL((url) => url.pathname === '/' && url.searchParams.get('kind') === 'activity');
+  await expect(page.getByRole('navigation', { name: '글 종류' }).getByRole('link', { name: '활동 기록' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('article').first()).toBeVisible();
 
+  // 예전 상세 주소는 같은 id의 게시글 상세로 간다(이관 때 id 유지).
   await page.goto(`/activities/${activityWithPhotos.id}`);
+  await page.waitForURL(`**/posts/${activityWithPhotos.id}`);
   await expect(page.getByRole('heading', { name: activityWithPhotos.title })).toBeVisible();
-  await expect(page.getByText(`로그인하면 사진 ${activityWithPhotos.photoCount}장을 볼 수 있습니다.`)).toBeVisible();
+  await expect(page.getByText(`로그인하면 사진 ${activityWithPhotos.photoCount}장을 볼 수 있어요`)).toBeVisible();
   // 비회원 HTML에는 signed URL이 아예 없어야 한다.
   expect(await page.content()).not.toContain('/storage/v1/object/sign/activity_photos');
 
@@ -59,9 +63,9 @@ test('비회원: 활동 기록은 보이지만 사진은 로그인 안내, 회�
 });
 
 test('회원: 활동 사진이 signed URL로 실제 로드되고, 시즌 명부가 보인다', async ({ page }) => {
-  await login(page, `/activities/${activityWithPhotos.id}`);
+  await login(page, `/posts/${activityWithPhotos.id}`);
 
-  const photos = page.locator('article img');
+  const photos = page.getByRole('region', { name: `사진 ${activityWithPhotos.photoCount}장` }).locator('img');
   await expect(photos).toHaveCount(activityWithPhotos.photoCount);
   const first = photos.first();
   await expect(first).toHaveAttribute('src', /\/storage\/v1\/object\/sign\/activity_photos\//);
@@ -98,50 +102,42 @@ test('동호회 안내와 보드게임 필터', async ({ page }) => {
   }
 });
 
-test('활동 기록: 시즌 선택 없이 무한 스크롤로 모든 활동을 시즌별로 묶어 보여준다', async ({ page }) => {
-  // 실제 DB 기준 기대값: 전체 수와 시즌별 수(최신 시즌부터).
-  const [{ total }] = await db.select({ total: sql<number>`count(*)::int` }).from(activities);
-  const perSeason = await db
-    .select({ id: seasons.id, name: seasons.name, count: sql<number>`count(${activities.id})::int` })
-    .from(seasons)
-    .innerJoin(activities, eq(activities.seasonId, seasons.id))
-    .groupBy(seasons.id)
-    .orderBy(desc(seasons.id));
+test('활동 기록 필터: 무한 스크롤로 모든 활동을 불러오고, 종류 칩으로 좁힌다', async ({ page }) => {
+  // 실제 DB 기준 기대값(이관 91건 + 다른 테스트가 만든 활동이 있을 수 있어 DB에서 센다).
+  const [{ total }] = await db.select({ total: sql<number>`count(*)::int` }).from(posts).where(eq(posts.kind, 'activity'));
+  const [{ escape }] = await db
+    .select({ escape: sql<number>`count(*)::int` })
+    .from(posts)
+    .where(and(eq(posts.kind, 'activity'), eq(posts.activityType, 'ESCAPE_ROOM')));
 
-  await page.goto('/activities');
-  await expect(page.getByRole('combobox', { name: '시즌 선택' })).toHaveCount(0);
-  await expect(page.getByText(`활동 ${total}건`)).toBeVisible();
-
-  // 첫 화면에는 한 페이지(20건)만 있고, 바닥까지 스크롤하면 이어서 불러온다.
-  const rows = page.locator('section ul li a');
-  if (total > 20) await expect(rows).toHaveCount(20);
-  const done = page.getByText('모든 활동을 불러왔습니다.');
+  await page.goto('/?kind=activity');
+  // 첫 화면에는 한 페이지(10건)만 있고, 바닥까지 스크롤하면 이어서 불러온다.
+  const cards = page.getByRole('article');
+  if (total > 10) await expect(cards).toHaveCount(10);
+  const done = page.getByText('모든 글을 불러왔어요');
   while (!(await done.isVisible())) {
-    await page.mouse.wheel(0, 5000);
+    await page.mouse.wheel(0, 8000);
     // 다음 페이지가 붙거나 끝 문구가 나올 때까지 기다린다.
     await expect.poll(async () => (await done.isVisible()) || (await page.getByRole('status').count()) === 0).toBe(true);
   }
-  await expect(rows).toHaveCount(total);
-  // 같은 활동이 두 번 나오지 않는다.
-  const hrefs = await rows.evaluateAll((els) => els.map((el) => el.getAttribute('href')));
+  await expect(cards).toHaveCount(total);
+  // 같은 글이 두 번 나오지 않는다(카드의 시간 링크 = 상세 주소).
+  const hrefs = await cards.evaluateAll((els) => els.map((el) => el.querySelector('header a[href^="/posts/"]')?.getAttribute('href')));
   expect(new Set(hrefs).size).toBe(total);
 
-  // 시즌마다 제목이 한 번씩, 최신 시즌부터, 시즌 전체 건수와 함께 나온다.
-  const headings = page.getByRole('heading', { level: 2 });
-  await expect(headings).toHaveCount(perSeason.length);
-  for (const [i, season] of perSeason.entries()) {
-    await expect(headings.nth(i)).toContainText(season.name);
-    const section = page.getByRole('region', { name: new RegExp(`^${season.name}`) });
-    await expect(section).toContainText(`${season.count}건`);
-    await expect(section.locator('ul li a')).toHaveCount(season.count);
+  // 종류 칩: 방탈출만.
+  await page.getByRole('navigation', { name: '활동 종류' }).getByRole('link', { name: '방탈출' }).click();
+  await page.waitForURL((url) => url.searchParams.get('type') === 'ESCAPE_ROOM');
+  if (escape <= 10) {
+    await expect(cards).toHaveCount(escape);
+    for (const card of await cards.all()) await expect(card).toContainText('방탈출');
   }
 
-  // 상세로 들어가면 시즌이 머리말에 보이고, 돌아가기 링크는 전체 목록으로 간다.
-  await rows.first().click();
-  await page.waitForURL(/\/activities\/[0-9a-f-]{36}$/);
-  await expect(page.locator('header').getByText(perSeason[0].name, { exact: true })).toBeVisible();
-  await page.getByRole('link', { name: '활동 기록으로 돌아가기' }).click();
-  await page.waitForURL((url) => url.pathname === '/activities' && url.search === '');
+  // 제목을 누르면 상세로 가고, 돌아가기는 피드로 간다.
+  await cards.first().getByRole('heading').getByRole('link').click();
+  await page.waitForURL(/\/posts\/[0-9a-f-]{36}$/);
+  await page.getByRole('link', { name: '피드로 돌아가기' }).click();
+  await page.waitForURL((url) => url.pathname === '/');
 });
 
 test('회원 명부는 시즌 칩으로 고른 시즌을 보여주고 선택이 쿼리로 유지된다', async ({ page }) => {
@@ -154,8 +150,8 @@ test('회원 명부는 시즌 칩으로 고른 시즌을 보여주고 선택이 
   await expect(page.getByRole('heading', { name: new RegExp(`${seasonName} 회원 명부 \\(\\d+명\\)`) })).toBeVisible();
 });
 
-test('없는 활동·문서는 500이 아닌 404로 응답한다', async ({ page }) => {
-  for (const path of ['/activities/not-a-uuid', '/activities/00000000-0000-4000-8000-000000000000', '/about/unknown']) {
+test('없는 글·문서는 500이 아닌 404로 응답한다(예전 활동 주소는 리디렉트 후 404)', async ({ page }) => {
+  for (const path of ['/posts/not-a-uuid', '/posts/00000000-0000-4000-8000-000000000000', '/activities/00000000-0000-4000-8000-000000000000', '/about/unknown']) {
     const response = await page.goto(path);
     expect(response?.status(), path).toBe(404);
   }

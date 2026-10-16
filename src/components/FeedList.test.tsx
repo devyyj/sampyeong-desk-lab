@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import type { FeedItem } from '@/lib/feed';
-import { loadMoreFeed } from '@/app/actions/feed';
+import { loadFeedItem, loadMoreFeed } from '@/app/actions/feed';
+import { addComment } from '@/app/actions/comments';
 import { deletePost } from '@/app/actions/post';
 import FeedList from './FeedList';
 
-vi.mock('@/app/actions/feed', () => ({ loadMoreFeed: vi.fn() }));
+vi.mock('@/app/actions/feed', () => ({ loadMoreFeed: vi.fn(), loadFeedItem: vi.fn() }));
 vi.mock('@/app/actions/profile', () => ({ getProfile: vi.fn() }));
 vi.mock('@/app/actions/comments', () => ({ addComment: vi.fn(), updateComment: vi.fn(), deleteComment: vi.fn() }));
 vi.mock('@/app/actions/reactions', () => ({ toggleLike: vi.fn() }));
@@ -85,6 +86,21 @@ describe('FeedList', () => {
     fireEvent.click(screen.getByRole('button', { name: '삭제' }));
     await waitFor(() => expect(deletePost).toHaveBeenCalledWith('a'));
     await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(1));
+  });
+
+  it('댓글을 달면 그 카드만 서버에서 다시 받아 바꿔 끼운다(무한 스크롤 목록은 revalidate로 안 바뀜)', async () => {
+    vi.mocked(addComment).mockResolvedValueOnce({ ok: true });
+    const comment = {
+      id: 'c1', authorId: 'u1', nickname: '보드왕', badge: null, content: '새 댓글', createdLabel: '2026. 10. 17. 12:00',
+      edited: false, likeCount: 0, liked: false,
+    };
+    vi.mocked(loadFeedItem).mockResolvedValueOnce(item('a', { comments: [comment] }));
+    render(<FeedList filter={FILTER} initial={{ items: [item('a'), item('b')], hasMore: false }} viewer={{ id: 'u1', isAdmin: false }} />);
+    fireEvent.click(screen.getAllByRole('button', { name: '댓글 0' })[0]);
+    fireEvent.change(screen.getByRole('textbox', { name: '댓글 쓰기' }), { target: { value: '새 댓글' } });
+    fireEvent.click(screen.getByRole('button', { name: '댓글 달기' }));
+    await waitFor(() => expect(loadFeedItem).toHaveBeenCalledWith('a'));
+    expect(await screen.findByRole('button', { name: '댓글 1' })).toBeInTheDocument();
   });
 
   it('글이 없으면 빈 화면 안내', () => {

@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getFeedPage } from '@/lib/feed';
+import { getFeedPage, getPostView } from '@/lib/feed';
 import { getSession } from '@/lib/session';
-import { loadMoreFeed } from './feed';
+import { loadFeedItem, loadMoreFeed } from './feed';
 
-vi.mock('@/lib/feed', () => ({ getFeedPage: vi.fn() }));
+vi.mock('@/lib/feed', () => ({ getFeedPage: vi.fn(), getPostView: vi.fn() }));
 vi.mock('@/lib/session', () => ({ getSession: vi.fn() }));
 
 const EMPTY = { items: [], hasMore: false };
@@ -37,5 +37,22 @@ describe('loadMoreFeed', () => {
       expect(await loadMoreFeed({ kind: 'all', type: null }, bad as never)).toEqual(EMPTY);
     }
     expect(getFeedPage).not.toHaveBeenCalled();
+  });
+});
+
+describe('loadFeedItem', () => {
+  const ID = '0b5c9a52-6f1e-4c55-9d8e-0d1f6c2a7b11';
+  beforeEach(() => vi.clearAllMocks());
+
+  it('세션의 회원 기준으로 카드 한 장을 다시 받는다', async () => {
+    vi.mocked(getSession).mockResolvedValue({ userId: 'u1', username: 'u', isAdmin: false, mustChangePin: false, expiresAt: new Date() });
+    vi.mocked(getPostView).mockResolvedValue(null);
+    expect(await loadFeedItem(ID)).toBeNull();
+    expect(getPostView).toHaveBeenCalledWith(ID, { id: 'u1', isAdmin: false });
+  });
+
+  it('id 형식이 아니면 조회하지 않는다', async () => {
+    expect(await loadFeedItem('nope')).toBeNull();
+    expect(getPostView).not.toHaveBeenCalled();
   });
 });

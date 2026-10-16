@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { loadMoreFeed } from '@/app/actions/feed';
+import { loadFeedItem, loadMoreFeed } from '@/app/actions/feed';
 import type { FeedFilter } from '@/lib/feed-filter';
 import type { FeedPage } from '@/lib/feed';
 import PostCard from './PostCard';
@@ -75,6 +75,20 @@ export default function FeedList({
     return () => observer.disconnect();
   }, [loadMore, failed]);
 
+  // 댓글이 바뀐 글은 그 카드만 서버에서 다시 받아 바꿔 끼운다(목록이 클라이언트 상태라 revalidate만으로는 안 바뀜).
+  // 그 사이 지워졌으면 뺀다. 실패하면 그대로 둔다(다음 새로고침에 맞춰진다).
+  const refresh = async (id: string) => {
+    try {
+      const fresh = await loadFeedItem(id);
+      setList((prev) => ({
+        ...prev,
+        items: fresh ? prev.items.map((p) => (p.id === id ? fresh : p)) : prev.items.filter((p) => p.id !== id),
+      }));
+    } catch {
+      // 카드 갱신 실패는 치명적이지 않다.
+    }
+  };
+
   // 삭제한 글은 목록에서 바로 뺀다. 서버 offset은 그대로라 다음 페이지에서 한 건이 겹칠 수 있지만 위의 id 거르기로 막힌다.
   const remove = (id: string) => setList((prev) => ({ ...prev, items: prev.items.filter((p) => p.id !== id) }));
 
@@ -86,7 +100,14 @@ export default function FeedList({
     <div>
       <div className="divide-y divide-border">
         {list.items.map((item) => (
-          <PostCard key={item.id} item={item} viewer={viewer} loginHref={loginHref} onDeleted={() => remove(item.id)} />
+          <PostCard
+            key={item.id}
+            item={item}
+            viewer={viewer}
+            loginHref={loginHref}
+            onChanged={() => void refresh(item.id)}
+            onDeleted={() => remove(item.id)}
+          />
         ))}
       </div>
 

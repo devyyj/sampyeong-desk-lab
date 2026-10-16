@@ -19,6 +19,7 @@ export default function PostReactions({
   comments,
   viewer,
   loginHref,
+  onChanged,
   children,
 }: {
   postId: string;
@@ -27,6 +28,8 @@ export default function PostReactions({
   comments: CommentView[];
   viewer: { id: string; isAdmin: boolean } | null;
   loginHref: string;
+  /** 댓글이 바뀐 뒤 부모(무한 스크롤 목록)가 이 글을 다시 받게 알린다. */
+  onChanged?: () => void;
   children?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -57,7 +60,7 @@ export default function PostReactions({
       )}
 
       <BottomSheet open={open} title="댓글" onClose={() => setOpen(false)}>
-        <CommentSection target="post" targetId={postId} comments={comments} viewer={viewer} loginHref={loginHref} />
+        <CommentSection target="post" targetId={postId} comments={comments} viewer={viewer} loginHref={loginHref} onChanged={onChanged} />
       </BottomSheet>
     </div>
   );

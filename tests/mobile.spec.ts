@@ -23,11 +23,11 @@ const tabs = (page: import('@playwright/test').Page) => page.getByRole('navigati
 test('비회원: 로고 헤더와 하단 탭바로 이동하고, ＋는 로그인으로 보낸다', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('link', { name: 'SDL 삼평동 책상 전략 연구소 홈' })).toBeVisible();
-  await expect(tabs(page).getByRole('link')).toHaveCount(5);
+  await expect(tabs(page).getByRole('link')).toHaveCount(4);
   // 가로 스크롤이 생기지 않는다.
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 
-  for (const [label, path] of [['활동', '/activities'], ['보드게임', '/boardgames'], ['회원', '/members'], ['MY', '/my']] as const) {
+  for (const [label, path] of [['보드게임', '/boardgames'], ['회원', '/members'], ['MY', '/my']] as const) {
     await tabs(page).getByRole('link', { name: label }).click();
     await page.waitForURL((url) => url.pathname === path);
     await expect(tabs(page).getByRole('link', { name: label })).toHaveAttribute('aria-current', 'page');
