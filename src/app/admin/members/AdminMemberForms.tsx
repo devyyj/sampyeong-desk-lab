@@ -21,7 +21,8 @@ export function CreateMemberForm() {
 
   return (
     <form action={formAction} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      <input name="username" required placeholder="아이디 (사내 ID)" className={inputClass} />
+      {/* 아이디가 닉네임 최초값이 되므로 닉네임 길이(20자)에 맞춘다. 서버도 다시 검사한다. */}
+      <input name="username" required maxLength={20} placeholder="아이디 (사내 ID)" className={inputClass} />
       <input name="displayName" required placeholder="이름" className={inputClass} />
       <input name="department" required placeholder="소속 부서(팀)" className={inputClass} />
       <input name="pin" maxLength={4} pattern="\d{4}" inputMode="numeric" placeholder="초기 PIN (비우면 1234)" className={inputClass} />

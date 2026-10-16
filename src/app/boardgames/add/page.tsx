@@ -12,7 +12,7 @@ export default function AddBoardGamePage() {
       <div className="bg-card border border-border p-6 rounded-2xl shadow-sm">
         <div className="mb-6">
           <h1 className="text-xl font-bold text-foreground">새 보드게임 등록</h1>
-          <p className="text-sm text-muted-foreground mt-1">회사에 새로 들어온 보드게임을 등록해주세요. 썸네일 이미지를 함께 올리면 찾기 쉬워요!</p>
+          <p className="text-sm text-muted-foreground mt-1">회사에 새로 들어온 보드게임을 등록해주세요.</p>
         </div>
         
         <form action={formAction} className="space-y-4">
@@ -57,19 +57,15 @@ export default function AddBoardGamePage() {
             </div>
           </div>
 
-          <div>
-            <label htmlFor="image" className="block text-sm font-medium text-foreground mb-1">
-              썸네일 이미지 첨부 (선택)
-            </label>
+          {/* 보드게임은 보관 상태 대신 공용 보관함에 있는지만 관리한다. 대부분 개인 보유라 기본은 꺼 둔다. */}
+          <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
             <input
-              type="file"
-              id="image"
-              name="image"
-              accept="image/*"
-              className="w-full file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 text-sm text-muted-foreground"
+              type="checkbox"
+              name="inSharedCabinet"
+              className="h-4 w-4 rounded border-border accent-primary-600"
             />
-            <p className="text-xs text-muted-foreground mt-1">1MB 이하의 JPG, PNG, WEBP 이미지를 권장합니다.</p>
-          </div>
+            공용 보관함에 보관
+          </label>
 
           {state?.error && (
             <p className="text-sm text-red-500 font-medium">{state.error}</p>

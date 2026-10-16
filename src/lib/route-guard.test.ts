@@ -12,8 +12,8 @@ describe('guardRoute', () => {
     // 기존 middleware가 놓치던 동적 편집 경로
     ['/posts/abc/edit', null, '/login?redirect=%2Fposts%2Fabc%2Fedit'],
     ['/boardgames/xyz/edit', null, '/login?redirect=%2Fboardgames%2Fxyz%2Fedit'],
-    // 시즌 회원 명부(실명/부서)는 회원 전용
-    ['/members', null, '/login?redirect=%2Fmembers'],
+    // 회원 명부는 로그인 화면으로 보내지 않고, 페이지가 비회원에게 '로그인해야 볼 수 있다'고 안내한다.
+    ['/members', null, null],
     // 공개 경로
     ['/', null, null],
     ['/boardgames', null, null],

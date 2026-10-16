@@ -38,3 +38,61 @@ export async function createSignedPhotoUrls(paths: string[]): Promise<(string | 
   }
   return data.map((item) => (item.error ? null : item.signedUrl));
 }
+
+// 사용자 업로드용 공개 버킷. 0005에서 익명 업로드 정책을 지웠으므로 이 버킷들에 쓰는 일은 서비스 키로만 가능하다.
+const AVATARS_BUCKET = 'avatars';
+const POST_IMAGES_BUCKET = 'post_images';
+
+/**
+ * 프로필 사진을 서버에서 올리고 공개 URL을 돌려준다. 한 장이라 서명 URL 대신 서버 업로드를 유지한다.
+ * body는 Buffer여야 한다: Server Action의 Web File을 SDK에 그대로 넘기면 Node에서 실패할 수 있다(AGENTS.md 7번).
+ */
+export async function uploadAvatar(path: string, body: Buffer, contentType: string): Promise<string> {
+  const bucket = createAdminStorage().from(AVATARS_BUCKET);
+  const { error } = await bucket.upload(path, body, { contentType });
+  if (error) throw new Error(`avatar upload failed: ${error.message}`);
+  return bucket.getPublicUrl(path).data.publicUrl;
+}
+
+/**
+ * 게시글 사진을 브라우저가 Storage에 직접 올릴 수 있도록 경로별 서명 업로드 토큰을 발급한다.
+ * 사진 여러 장(최대 10MB × 10)을 Server Action 본문으로 받지 않기 위한 방식이다(설계 §5).
+ * upsert=false라 이미 있는 파일(다른 글의 사진)을 토큰으로 덮어쓸 수 없다. 경로는 호출하는 액션이
+ * 로그인한 회원 폴더 안에서 새 uuid로 만든다.
+ */
+export async function createPostImageUploadUrls(paths: string[]): Promise<{ path: string; token: string }[]> {
+  const bucket = createAdminStorage().from(POST_IMAGES_BUCKET);
+  return Promise.all(
+    paths.map(async (path) => {
+      const { data, error } = await bucket.createSignedUploadUrl(path, { upsert: false });
+      if (error || !data) throw new Error(`signed upload URL failed: ${error?.message}`);
+      return { path, token: data.token };
+    }),
+  );
+}
+
+/**
+ * 게시글 저장 직전에 브라우저가 실제로 올린 파일의 크기·형식을 Storage에서 확인한다.
+ * 서명 업로드 URL은 크기·형식을 강제하지 않으므로, 클라이언트 검사를 우회한 파일을 여기서 걸러낸다.
+ * 없는 파일(업로드 실패, 지어낸 경로)은 null.
+ */
+export async function getPostImageInfo(paths: string[]): Promise<({ size?: number; contentType?: string } | null)[]> {
+  const bucket = createAdminStorage().from(POST_IMAGES_BUCKET);
+  return Promise.all(
+    paths.map(async (path) => {
+      const { data, error } = await bucket.info(path);
+      if (error || !data) return null;
+      return { size: data.size, contentType: data.contentType };
+    }),
+  );
+}
+
+/**
+ * 게시글에서 뺀 사진·삭제된 게시글의 사진 파일을 지운다.
+ * 실패해도 예외를 던지지 않는다: 파일이 남는 것보다 사용자의 글 수정·삭제가 실패하는 편이 더 나쁘다(설계 §4.3).
+ */
+export async function removePostImages(paths: string[]): Promise<void> {
+  if (paths.length === 0) return;
+  const { error } = await createAdminStorage().from(POST_IMAGES_BUCKET).remove(paths);
+  if (error) console.error('post image cleanup failed', paths, error);
+}

@@ -34,6 +34,9 @@ export default function GNB({ isLoggedIn, isAdmin }: { isLoggedIn: boolean; isAd
   const [mobileOpen, setMobileOpen] = useState(false);
   const closeMobile = () => setMobileOpen(false);
 
+  const accountButtonClass =
+    'px-3 py-1.5 rounded-full border border-border text-sm font-medium whitespace-nowrap hover:bg-muted transition-colors';
+
   const navLinkClass = (active: boolean) =>
     `text-sm font-medium transition-colors hover:text-primary-500 ${active ? 'text-primary-600' : 'text-muted-foreground'}`;
 
@@ -56,43 +59,46 @@ export default function GNB({ isLoggedIn, isAdmin }: { isLoggedIn: boolean; isAd
           </nav>
         </div>
 
-        <div className="hidden md:flex items-center gap-4">
-          {isLoggedIn ? (
-            <>
-              {/* 표시 여부만 세션 값으로 정한다. 관리자 화면·액션은 서버에서 DB로 다시 권한을 확인한다. */}
-              {isAdmin && (
-                <Link href="/admin/members" className="text-sm font-medium hover:text-primary-500">
-                  관리자
-                </Link>
-              )}
-              <Link href="/mypage" className="text-sm font-medium hover:text-primary-500">
-                마이페이지
-              </Link>
-              <form action={handleLogout}>
-                <button type="submit" className="text-sm font-medium text-muted-foreground hover:text-foreground">
-                  로그아웃
-                </button>
-              </form>
-            </>
-          ) : (
-            <Link href="/login" className="text-sm font-medium hover:text-primary-500">
-              로그인
+        <div className="flex items-center gap-2">
+          {/* 관리자 링크는 자주 쓰지 않으므로 데스크톱 헤더에만 두고, 모바일에서는 햄버거 패널에 둔다.
+              표시 여부만 세션 값으로 정한다. 관리자 화면·액션은 서버에서 DB로 다시 권한을 확인한다. */}
+          {isLoggedIn && isAdmin && (
+            <Link href="/admin/members" className="hidden md:inline text-sm font-medium mr-2 hover:text-primary-500">
+              관리자
             </Link>
           )}
+          {/* 로그인 상태를 화면 크기와 상관없이 한눈에 알 수 있도록 계정 버튼은 항상 헤더에 버튼 형태로 보인다. */}
+          <div role="group" aria-label="계정" className="flex items-center gap-2">
+            {isLoggedIn ? (
+              <>
+                <Link href="/mypage" onClick={closeMobile} className={accountButtonClass}>
+                  마이페이지
+                </Link>
+                <form action={handleLogout}>
+                  <button type="submit" className={accountButtonClass}>
+                    로그아웃
+                  </button>
+                </form>
+              </>
+            ) : (
+              <Link href="/login" onClick={closeMobile} className={`${accountButtonClass} bg-foreground text-background border-foreground hover:bg-foreground/90`}>
+                로그인
+              </Link>
+            )}
+          </div>
+          <button
+            type="button"
+            className="md:hidden p-2 -mr-2 ml-1 rounded-lg hover:bg-muted"
+            aria-label={mobileOpen ? '메뉴 닫기' : '메뉴 열기'}
+            aria-expanded={mobileOpen}
+            aria-controls="mobile-menu"
+            onClick={() => setMobileOpen((open) => !open)}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              {mobileOpen ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
+            </svg>
+          </button>
         </div>
-
-        <button
-          type="button"
-          className="md:hidden p-2 -mr-2 rounded-lg hover:bg-muted"
-          aria-label={mobileOpen ? '메뉴 닫기' : '메뉴 열기'}
-          aria-expanded={mobileOpen}
-          aria-controls="mobile-menu"
-          onClick={() => setMobileOpen((open) => !open)}
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-            {mobileOpen ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
-          </svg>
-        </button>
       </div>
 
       {mobileOpen && (
@@ -114,30 +120,14 @@ export default function GNB({ isLoggedIn, isAdmin }: { isLoggedIn: boolean; isAd
               );
             })}
           </ul>
-          {/* 데스크톱 오른쪽의 계정 링크는 모바일에서 숨겨지므로 패널 아래쪽에 함께 둔다. */}
-          <div className="mt-2 pt-3 border-t border-border flex flex-wrap items-center gap-4">
-            {isLoggedIn ? (
-              <>
-                {isAdmin && (
-                  <Link href="/admin/members" onClick={closeMobile} className="text-sm font-medium hover:text-primary-500">
-                    관리자
-                  </Link>
-                )}
-                <Link href="/mypage" onClick={closeMobile} className="text-sm font-medium hover:text-primary-500">
-                  마이페이지
-                </Link>
-                <form action={handleLogout}>
-                  <button type="submit" className="text-sm font-medium text-muted-foreground hover:text-foreground">
-                    로그아웃
-                  </button>
-                </form>
-              </>
-            ) : (
-              <Link href="/login" onClick={closeMobile} className="text-sm font-medium hover:text-primary-500">
-                로그인
+          {/* 계정 버튼은 헤더에 항상 있으므로, 패널에는 데스크톱에서만 보이는 관리자 링크만 둔다. */}
+          {isLoggedIn && isAdmin && (
+            <div className="mt-2 pt-3 border-t border-border">
+              <Link href="/admin/members" onClick={closeMobile} className="text-sm font-medium hover:text-primary-500">
+                관리자
               </Link>
-            )}
-          </div>
+            </div>
+          )}
         </nav>
       )}
     </header>

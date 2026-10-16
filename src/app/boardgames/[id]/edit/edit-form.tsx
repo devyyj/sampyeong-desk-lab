@@ -9,7 +9,7 @@ type GameType = {
   name: string;
   recommendedPlayers: string | null;
   playTime: string | null;
-  status: string;
+  inSharedCabinet: boolean;
 };
 
 export function EditBoardGameForm({ game }: { game: GameType }) {
@@ -56,19 +56,16 @@ export function EditBoardGameForm({ game }: { game: GameType }) {
           />
         </div>
 
-        <div>
-          <label htmlFor="status" className="block text-sm font-medium mb-2">상태</label>
-          <select
-            id="status"
-            name="status"
-            defaultValue={game.status}
-            className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary-500 outline-none transition-all"
-          >
-            <option value="AVAILABLE">보관 중 (AVAILABLE)</option>
-            <option value="PLAYING">플레이 중 (PLAYING)</option>
-            <option value="BORROWED">대여 중 (BORROWED)</option>
-          </select>
-        </div>
+        {/* 보관 상태(보관 중·플레이 중·대여 중) 대신 공용 보관함에 있는지만 관리한다. */}
+        <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+          <input
+            type="checkbox"
+            name="inSharedCabinet"
+            defaultChecked={game.inSharedCabinet}
+            className="h-4 w-4 rounded border-border accent-primary-600"
+          />
+          공용 보관함에 보관
+        </label>
       </div>
 
       {state?.error && (

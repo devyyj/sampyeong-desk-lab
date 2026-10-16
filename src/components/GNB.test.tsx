@@ -67,10 +67,34 @@ describe('GNB', () => {
     fireEvent.click(toggle);
     const mobile = screen.getByRole('navigation', { name: '모바일 메뉴' });
     expect(screen.getByRole('button', { name: '메뉴 닫기' })).toHaveAttribute('aria-expanded', 'true');
-    // 모바일에서는 상단 오른쪽 계정 링크도 패널 안에서 접근할 수 있어야 한다.
-    expect(within(mobile).getByRole('link', { name: '마이페이지' })).toBeInTheDocument();
+    // 계정 버튼은 헤더에 항상 있으므로 패널에 중복으로 넣지 않는다.
+    expect(within(mobile).queryByRole('link', { name: '마이페이지' })).toBeNull();
 
     fireEvent.click(within(mobile).getByRole('link', { name: '활동 기록' }));
     expect(screen.queryByRole('navigation', { name: '모바일 메뉴' })).toBeNull();
+  });
+
+  it('계정 버튼은 메뉴를 열지 않아도 헤더에 한 번씩 보인다(모바일 포함)', () => {
+    const { unmount } = render(<GNB isLoggedIn={false} isAdmin={false} />);
+    const guestAccount = screen.getByRole('group', { name: '계정' });
+    expect(within(guestAccount).getByRole('link', { name: '로그인' })).toHaveAttribute('href', '/login');
+    // 화면 크기로 숨기는 클래스(hidden md:flex 등)가 없어야 모바일에서도 보인다.
+    expect(guestAccount.className).not.toMatch(/(^|\s)hidden(\s|$)/);
+    unmount();
+
+    render(<GNB isLoggedIn isAdmin={false} />);
+    const account = screen.getByRole('group', { name: '계정' });
+    expect(account.className).not.toMatch(/(^|\s)hidden(\s|$)/);
+    expect(screen.getAllByRole('link', { name: '마이페이지' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: '로그아웃' })).toHaveLength(1);
+    expect(within(account).getByRole('link', { name: '마이페이지' })).toHaveAttribute('href', '/mypage');
+  });
+
+  it('관리자 링크는 모바일 패널 안에서도 접근할 수 있다', () => {
+    vi.mocked(usePathname).mockReturnValue('/');
+    render(<GNB isLoggedIn isAdmin />);
+    fireEvent.click(screen.getByRole('button', { name: '메뉴 열기' }));
+    const mobile = screen.getByRole('navigation', { name: '모바일 메뉴' });
+    expect(within(mobile).getByRole('link', { name: '관리자' })).toHaveAttribute('href', '/admin/members');
   });
 });

@@ -1,13 +1,20 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createClient } from '@supabase/supabase-js';
-import { createSignedPhotoUrls } from './storage-admin';
+import {
+  createSignedPhotoUrls, uploadAvatar, createPostImageUploadUrls, getPostImageInfo, removePostImages,
+} from './storage-admin';
 
 // server-only는 서버 번들 밖에서 import되면 throw하므로 테스트에서는 비운다.
 vi.mock('server-only', () => ({}));
 
 const createSignedUrls = vi.fn();
-const from = vi.fn(() => ({ createSignedUrls }));
+const upload = vi.fn();
+const getPublicUrl = vi.fn((path: string) => ({ data: { publicUrl: `https://public/${path}` } }));
+const createSignedUploadUrl = vi.fn();
+const info = vi.fn();
+const remove = vi.fn();
+const from = vi.fn(() => ({ createSignedUrls, upload, getPublicUrl, createSignedUploadUrl, info, remove }));
 vi.mock('@supabase/supabase-js', () => ({
   createClient: vi.fn(() => ({ storage: { from } })),
 }));
@@ -77,5 +84,71 @@ describe('createSignedPhotoUrls', () => {
   it('비밀키 환경 변수가 둘 다 없으면 두 이름을 모두 알려주는 오류', async () => {
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
     await expect(createSignedPhotoUrls(['a/1.jpg'])).rejects.toThrow(/SUPABASE_SERVICE_ROLE_KEY.*SUPABASE_SECRET_KEY/);
+  });
+});
+
+describe('업로드용 서비스 키 함수', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key';
+  });
+
+  it('uploadAvatar: 서비스 키로 avatars 버킷에 Buffer를 올리고 공개 URL을 돌려준다', async () => {
+    upload.mockResolvedValueOnce({ data: { path: 'u1/a.png' }, error: null });
+    const body = Buffer.from('img');
+    expect(await uploadAvatar('u1/a.png', body, 'image/png')).toBe('https://public/u1/a.png');
+    expect(createClient).toHaveBeenCalledWith('https://example.supabase.co', 'service-role-key', expect.anything());
+    expect(from).toHaveBeenCalledWith('avatars');
+    expect(upload).toHaveBeenCalledWith('u1/a.png', body, { contentType: 'image/png' });
+  });
+
+  it('uploadAvatar: 업로드 실패는 예외', async () => {
+    upload.mockResolvedValueOnce({ data: null, error: { message: 'denied' } });
+    await expect(uploadAvatar('u1/a.png', Buffer.from('x'), 'image/png')).rejects.toThrow();
+  });
+
+  it('createPostImageUploadUrls: post_images 버킷의 경로마다 서명 업로드 토큰을 발급(덮어쓰기 불가)', async () => {
+    createSignedUploadUrl
+      .mockResolvedValueOnce({ data: { path: 'u1/1.png', token: 't1', signedUrl: 's1' }, error: null })
+      .mockResolvedValueOnce({ data: { path: 'u1/2.jpg', token: 't2', signedUrl: 's2' }, error: null });
+    expect(await createPostImageUploadUrls(['u1/1.png', 'u1/2.jpg'])).toEqual([
+      { path: 'u1/1.png', token: 't1' },
+      { path: 'u1/2.jpg', token: 't2' },
+    ]);
+    expect(from).toHaveBeenCalledWith('post_images');
+    expect(createSignedUploadUrl).toHaveBeenCalledWith('u1/1.png', { upsert: false });
+  });
+
+  it('createPostImageUploadUrls: 하나라도 실패하면 예외', async () => {
+    createSignedUploadUrl.mockResolvedValueOnce({ data: null, error: { message: 'boom' } });
+    await expect(createPostImageUploadUrls(['u1/1.png'])).rejects.toThrow();
+  });
+
+  it('getPostImageInfo: 실제로 올라간 파일의 크기·형식, 없는 파일은 null', async () => {
+    info
+      .mockResolvedValueOnce({ data: { size: 1234, contentType: 'image/png' }, error: null })
+      .mockResolvedValueOnce({ data: null, error: { message: 'Object not found' } });
+    expect(await getPostImageInfo(['u1/1.png', 'u1/missing.png'])).toEqual([
+      { size: 1234, contentType: 'image/png' },
+      null,
+    ]);
+    expect(from).toHaveBeenCalledWith('post_images');
+  });
+
+  it('removePostImages: post_images에서 지우고, 실패해도 예외 없이 로그만 남긴다', async () => {
+    remove.mockResolvedValueOnce({ data: [], error: null });
+    await removePostImages(['u1/1.png']);
+    expect(remove).toHaveBeenCalledWith(['u1/1.png']);
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    remove.mockResolvedValueOnce({ data: null, error: { message: 'boom' } });
+    await expect(removePostImages(['u1/2.png'])).resolves.toBeUndefined();
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it('removePostImages: 지울 것이 없으면 Storage를 호출하지 않는다', async () => {
+    await removePostImages([]);
+    expect(remove).not.toHaveBeenCalled();
   });
 });

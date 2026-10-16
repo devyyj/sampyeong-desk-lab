@@ -1,7 +1,10 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import { getTableConfig } from 'drizzle-orm/pg-core';
-import { users, boardGames, activities, activityPhotos, seasonMembers, seasons, documents } from './schema';
+import {
+  users, boardGames, activities, activityPhotos, seasonMembers, seasons, documents,
+  postImages, comments, postLikes, activityLikes, commentLikes,
+} from './schema';
 
 const column = (table: Parameters<typeof getTableConfig>[0], name: string) =>
   getTableConfig(table).columns.find((c) => c.name === name)!;
@@ -31,5 +34,29 @@ describe('schema: Confluence import 확장', () => {
     expect(getTableConfig(activityPhotos).uniqueConstraints[0].columns.map((c) => c.name)).toEqual(['activity_id', 'position']);
     expect(column(seasons, 'id').primary).toBe(true);
     expect(column(documents, 'slug').primary).toBe(true);
+  });
+});
+
+describe('schema: 커뮤니티 기능(0005)', () => {
+  it('users.nickname은 필수 varchar(20)', () => {
+    expect(column(users, 'nickname')).toMatchObject({ notNull: true, length: 20 });
+  });
+
+  it('post_images는 게시글별 사진 순서가 겹치지 않는다', () => {
+    expect(column(postImages, 'storage_path').notNull).toBe(true);
+    expect(getTableConfig(postImages).uniqueConstraints[0].columns.map((c) => c.name)).toEqual(['post_id', 'position']);
+  });
+
+  it('comments는 게시글/활동 중 하나를 가리키고(CHECK), 작성자가 필수', () => {
+    expect(column(comments, 'post_id').notNull).toBe(false);
+    expect(column(comments, 'activity_id').notNull).toBe(false);
+    expect(column(comments, 'author_id').notNull).toBe(true);
+    expect(getTableConfig(comments).checks.map((c) => c.name)).toContain('comments_one_target');
+  });
+
+  it('좋아요 테이블은 (대상, 회원) 복합 PK로 회원당 1회만 허용', () => {
+    expect(getTableConfig(postLikes).primaryKeys[0].columns.map((c) => c.name)).toEqual(['post_id', 'user_id']);
+    expect(getTableConfig(activityLikes).primaryKeys[0].columns.map((c) => c.name)).toEqual(['activity_id', 'user_id']);
+    expect(getTableConfig(commentLikes).primaryKeys[0].columns.map((c) => c.name)).toEqual(['comment_id', 'user_id']);
   });
 });

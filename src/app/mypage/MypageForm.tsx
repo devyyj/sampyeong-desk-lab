@@ -32,7 +32,8 @@ export default function MypageForm({ user }: { user: any }) {
             {previewUrl || user.profileImageUrl ? (
               <img src={previewUrl || user.profileImageUrl} alt="Profile" className="w-full h-full object-cover" />
             ) : (
-              <span className="text-4xl font-bold text-muted-foreground">{user.username[0].toUpperCase()}</span>
+              // 아이디는 로그인에만 쓰고 화면에 드러내지 않으므로 닉네임 첫 글자를 쓴다.
+              <span className="text-4xl font-bold text-muted-foreground">{[...user.nickname][0]?.toUpperCase()}</span>
             )}
             <div className="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center transition-colors">
               <span className="text-white text-xs font-semibold">변경</span>
@@ -54,9 +55,29 @@ export default function MypageForm({ user }: { user: any }) {
 
         <div className="flex-1 w-full space-y-4">
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">아이디</label>
+            <label htmlFor="nickname" className="block text-sm font-medium text-foreground mb-1">
+              닉네임 <span className="text-red-500">*</span>
+            </label>
+            {/* 게시글·댓글에 보이는 이름. 중복 여부는 저장할 때 서버(DB 고유 인덱스)가 판정한다. */}
             <input
               type="text"
+              id="nickname"
+              name="nickname"
+              required
+              minLength={2}
+              maxLength={20}
+              defaultValue={user.nickname}
+              className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+            <p className="text-xs text-muted-foreground mt-1">게시글과 댓글에 이 이름이 보입니다. (2~20자)</p>
+          </div>
+
+          <div>
+            <label htmlFor="loginId" className="block text-sm font-medium text-foreground mb-1">로그인 아이디</label>
+            {/* name이 없어 폼으로 전송되지 않는다(아이디는 바꿀 수 없음). */}
+            <input
+              type="text"
+              id="loginId"
               value={user.username}
               disabled
               className="w-full px-4 py-2 border border-border rounded-lg bg-muted text-muted-foreground cursor-not-allowed"

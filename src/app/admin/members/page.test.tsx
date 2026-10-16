@@ -15,7 +15,7 @@ vi.mock('@/db', () => ({
       users: {
         findMany: vi.fn().mockResolvedValue([
           { id: 'a', username: 'admin.user', displayName: '관리자님', department: '운영', isAdmin: true, mustChangePin: false },
-          { id: 'b', username: 'kim.test', displayName: '김테스트', department: '개발팀', isAdmin: false, mustChangePin: true },
+          { id: 'b', username: 'kim.test', nickname: '김닉', displayName: '김테스트', department: '개발팀', isAdmin: false, mustChangePin: true },
           { id: 'c', username: 'lee.test', displayName: '이테스트', department: '인사팀', isAdmin: false, mustChangePin: false },
         ]),
       },
@@ -42,5 +42,8 @@ describe('AdminMembersPage', () => {
     expect(within(rowOf('kim.test')).getByText('초기 PIN')).toBeInTheDocument();
     expect(within(rowOf('lee.test')).getByText('정상')).toBeInTheDocument();
     expect(within(rowOf('kim.test')).getByRole('button', { name: 'PIN 초기화' })).toBeInTheDocument();
+    // 관리용이라 아이디를 유지하고 닉네임 열을 함께 보여준다.
+    expect(screen.getByRole('columnheader', { name: '닉네임' })).toBeInTheDocument();
+    expect(within(rowOf('kim.test')).getByText('김닉')).toBeInTheDocument();
   });
 });

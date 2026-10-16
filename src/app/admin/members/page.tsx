@@ -33,6 +33,7 @@ export default async function AdminMembersPage() {
           <thead className="text-left text-muted-foreground border-b border-border">
             <tr>
               <th className="p-3">아이디</th>
+              <th className="p-3">닉네임</th>
               <th className="p-3">이름</th>
               <th className="p-3">부서</th>
               <th className="p-3">상태</th>
@@ -43,6 +44,7 @@ export default async function AdminMembersPage() {
             {members.map((m) => (
               <tr key={m.id} className="border-b border-border last:border-0">
                 <td className="p-3 font-medium">{m.username}</td>
+                <td className="p-3">{m.nickname}</td>
                 <td className="p-3">{m.displayName}</td>
                 <td className="p-3">{m.department}</td>
                 <td className="p-3">{statusOf(m)}</td>

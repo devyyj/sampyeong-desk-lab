@@ -1,9 +1,12 @@
-import { pgTable, text, varchar, timestamp, uuid, integer, boolean, date, primaryKey, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, uuid, integer, boolean, date, primaryKey, unique, uniqueIndex, index, check } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
-  username: varchar('username', { length: 50 }).notNull().unique(), // 아이디 (Confluence 이관 회원은 사내 ID)
+  username: varchar('username', { length: 50 }).notNull().unique(), // 아이디 (Confluence 이관 회원은 사내 ID). 로그인에만 쓴다
+  // 화면에 보이는 이름(게시글·댓글 작성자). 최초값은 아이디이고 마이페이지에서 바꾼다.
+  // 대소문자만 다른 닉네임도 같은 사람으로 보이므로 lower(nickname) 고유 인덱스로 중복을 막는다(0005).
+  nickname: varchar('nickname', { length: 20 }).notNull(),
   // 4자리 비밀번호 (해시).
   // NULL = Confluence에서 이관된 "사전 등록(미가입)" 계정. 같은 아이디로 가입하면 이 행에 PIN을 채워 연결(claim)한다.
   pinHash: text('pin_hash'),
@@ -17,13 +20,14 @@ export const users = pgTable('users', {
   mustChangePin: boolean('must_change_pin').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+}, (t) => [uniqueIndex('users_nickname_lower_unique').on(sql`lower(${t.nickname})`)]);
 
 export const posts = pgTable('posts', {
   id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
   authorId: uuid('author_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   content: text('content').notNull(),
-  imageUrl: text('image_url'), // 게시글 이미지 URL
+  // 예전 단일 사진의 공개 URL. 0005에서 post_images로 옮겼고 코드에서는 더 이상 쓰지 않는다(되돌리기용으로 컬럼만 남김).
+  imageUrl: text('image_url'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -91,6 +95,49 @@ export const documents = pgTable('documents', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// 게시글 사진(여러 장). 공개 버킷(post_images) 안 경로만 저장하고 공개 URL은 화면에서 만든다.
+export const postImages = pgTable('post_images', {
+  id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+  postId: uuid('post_id').notNull().references(() => posts.id, { onDelete: 'cascade' }),
+  storagePath: text('storage_path').notNull(), // {userId}/{uuid}.{ext}
+  position: integer('position').notNull(), // 0부터, 표시 순서
+}, (t) => [unique().on(t.postId, t.position)]);
+
+// 게시글·활동 기록 댓글을 한 테이블에 둔다. 댓글 좋아요·수정·삭제·권한 로직을 하나로 유지하기 위함이고,
+// "게시글 또는 활동 중 정확히 하나"는 CHECK로 DB가 보장한다.
+export const comments = pgTable('comments', {
+  id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+  postId: uuid('post_id').references(() => posts.id, { onDelete: 'cascade' }),
+  activityId: uuid('activity_id').references(() => activities.id, { onDelete: 'cascade' }),
+  authorId: uuid('author_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  content: text('content').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (t) => [
+  check('comments_one_target', sql`num_nonnulls(${t.postId}, ${t.activityId}) = 1`),
+  index('comments_post_id_created_at_idx').on(t.postId, t.createdAt),
+  index('comments_activity_id_created_at_idx').on(t.activityId, t.createdAt),
+]);
+
+// 좋아요는 대상별 테이블로 둔다. 진짜 FK + cascade를 걸 수 있고, 복합 PK가 "회원당 1회"를 보장한다.
+export const postLikes = pgTable('post_likes', {
+  postId: uuid('post_id').notNull().references(() => posts.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (t) => [primaryKey({ columns: [t.postId, t.userId] })]);
+
+export const activityLikes = pgTable('activity_likes', {
+  activityId: uuid('activity_id').notNull().references(() => activities.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (t) => [primaryKey({ columns: [t.activityId, t.userId] })]);
+
+export const commentLikes = pgTable('comment_likes', {
+  commentId: uuid('comment_id').notNull().references(() => comments.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (t) => [primaryKey({ columns: [t.commentId, t.userId] })]);
+
 export const usersRelations = relations(users, ({ many }) => ({
   posts: many(posts),
   boardGames: many(boardGames, { relationName: 'addedBy' }),
@@ -98,11 +145,37 @@ export const usersRelations = relations(users, ({ many }) => ({
   seasonMemberships: many(seasonMembers),
 }));
 
-export const postsRelations = relations(posts, ({ one }) => ({
+export const postsRelations = relations(posts, ({ one, many }) => ({
   author: one(users, {
     fields: [posts.authorId],
     references: [users.id],
   }),
+  images: many(postImages),
+  comments: many(comments),
+  likes: many(postLikes),
+}));
+
+export const postImagesRelations = relations(postImages, ({ one }) => ({
+  post: one(posts, { fields: [postImages.postId], references: [posts.id] }),
+}));
+
+export const commentsRelations = relations(comments, ({ one, many }) => ({
+  post: one(posts, { fields: [comments.postId], references: [posts.id] }),
+  activity: one(activities, { fields: [comments.activityId], references: [activities.id] }),
+  author: one(users, { fields: [comments.authorId], references: [users.id] }),
+  likes: many(commentLikes),
+}));
+
+export const postLikesRelations = relations(postLikes, ({ one }) => ({
+  post: one(posts, { fields: [postLikes.postId], references: [posts.id] }),
+}));
+
+export const activityLikesRelations = relations(activityLikes, ({ one }) => ({
+  activity: one(activities, { fields: [activityLikes.activityId], references: [activities.id] }),
+}));
+
+export const commentLikesRelations = relations(commentLikes, ({ one }) => ({
+  comment: one(comments, { fields: [commentLikes.commentId], references: [comments.id] }),
 }));
 
 export const boardGamesRelations = relations(boardGames, ({ one }) => ({
@@ -131,6 +204,8 @@ export const seasonMembersRelations = relations(seasonMembers, ({ one }) => ({
 export const activitiesRelations = relations(activities, ({ one, many }) => ({
   season: one(seasons, { fields: [activities.seasonId], references: [seasons.id] }),
   photos: many(activityPhotos),
+  comments: many(comments),
+  likes: many(activityLikes),
 }));
 
 export const activityPhotosRelations = relations(activityPhotos, ({ one }) => ({

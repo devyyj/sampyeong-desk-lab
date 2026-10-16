@@ -51,8 +51,11 @@ export async function loadAll(db: Db, n: Normalized, uploaded: UploadedPaths): P
   return db.transaction(async (tx) => {
     // 사전 등록 계정. pinHash는 values/set 어디에도 넣지 않는다:
     // 이미 가입(claim)한 회원이 있는 상태에서 재실행해도 PIN이 지워지지 않게 하기 위함이다.
+    // 닉네임도 새 행에만 아이디로 채우고 충돌 시 set에 넣지 않는다(회원이 바꾼 닉네임을 재실행이 덮어쓰지 않게).
     const userRows = n.people.length === 0 ? [] : await tx.insert(users)
-      .values(n.people.map((p) => ({ username: p.username, displayName: p.displayName, department: p.department })))
+      .values(n.people.map((p) => ({
+        username: p.username, nickname: p.username.slice(0, 20), displayName: p.displayName, department: p.department,
+      })))
       .onConflictDoUpdate({
         target: users.username,
         set: {

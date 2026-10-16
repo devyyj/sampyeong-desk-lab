@@ -60,7 +60,7 @@ describe('admin actions', () => {
 
     it('중복 아이디 오류', async () => {
       asAdmin();
-      mockDb.where.mockResolvedValueOnce([{ id: 'u9' }]);
+      mockDb.where.mockResolvedValueOnce([{ id: 'u9', username: 'new.user', nickname: 'x' }]);
       expect(await createMember(null, newMember())).toEqual({ error: '이미 존재하는 아이디입니다.' });
       expect(mockDb.insert).not.toHaveBeenCalled();
     });
@@ -74,6 +74,33 @@ describe('admin actions', () => {
       expect(mockDb.values).toHaveBeenCalledWith(expect.objectContaining({
         username: 'new.user', displayName: '신규', department: '개발팀', pinHash: 'hashed', mustChangePin: true,
       }));
+    });
+
+    it('닉네임 최초값은 아이디로 함께 저장한다', async () => {
+      asAdmin();
+      mockDb.where.mockResolvedValueOnce([]);
+      await createMember(null, newMember());
+      expect(mockDb.values).toHaveBeenCalledWith(expect.objectContaining({ username: 'new.user', nickname: 'new.user' }));
+    });
+
+    it('닉네임(20자)에 담을 수 없는 20자 초과 아이디는 거부한다', async () => {
+      asAdmin();
+      expect(await createMember(null, newMember({ username: 'a'.repeat(21) }))).toEqual({ error: '아이디는 20자 이하여야 합니다.' });
+      expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+
+    it('아이디가 다른 회원의 닉네임과 (대소문자 무시) 겹치면 거부한다', async () => {
+      asAdmin();
+      mockDb.where.mockResolvedValueOnce([{ id: 'u3', username: 'someone', nickname: 'New.User' }]);
+      expect(await createMember(null, newMember())).toEqual({ error: '이미 사용 중인 닉네임과 같은 아이디입니다.' });
+      expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+
+    it('사전 조회 뒤 동시에 같은 닉네임이 생겨 고유 인덱스(23505)에 걸려도 같은 오류로 돌려준다', async () => {
+      asAdmin();
+      mockDb.where.mockResolvedValueOnce([]);
+      mockDb.values.mockRejectedValueOnce(Object.assign(new Error('Failed query'), { cause: { code: '23505' } }));
+      expect(await createMember(null, newMember())).toEqual({ error: '이미 존재하는 아이디 또는 닉네임입니다.' });
     });
   });
 

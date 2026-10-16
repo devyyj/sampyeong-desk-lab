@@ -5,7 +5,7 @@ import MypageForm from './MypageForm';
 // 서버 액션 모듈은 DB 연결을 import하므로 렌더링 테스트에서는 대체한다.
 vi.mock('@/app/actions/mypage', () => ({ updateProfile: vi.fn() }));
 
-const user = { username: 'youngyong.jo', department: '개발팀', bio: '', profileImageUrl: null };
+const user = { username: 'youngyong.jo', nickname: '보드왕', department: '개발팀', bio: '', profileImageUrl: null };
 
 describe('MypageForm', () => {
   beforeEach(() => {
@@ -27,5 +27,29 @@ describe('MypageForm', () => {
     const file = new File(['x'], 'me.png', { type: 'image/png' });
     fireEvent.change(input, { target: { files: [file] } });
     expect(screen.getByAltText('Profile')).toHaveAttribute('src', 'blob:preview');
+  });
+
+  it('닉네임은 필수 입력(2~20자)이고 현재 값이 채워져 있다', () => {
+    render(<MypageForm user={user} />);
+    const nickname = screen.getByLabelText(/닉네임/);
+    expect(nickname).toHaveAttribute('name', 'nickname');
+    expect(nickname).toHaveValue('보드왕');
+    expect(nickname).toBeRequired();
+    expect(nickname).toHaveAttribute('minLength', '2');
+    expect(nickname).toHaveAttribute('maxLength', '20');
+  });
+
+  it('아이디는 로그인 아이디로 읽기 전용 표시만 하고 폼으로 보내지 않는다', () => {
+    render(<MypageForm user={user} />);
+    const loginId = screen.getByLabelText('로그인 아이디');
+    expect(loginId).toHaveValue('youngyong.jo');
+    expect(loginId).toBeDisabled();
+    expect(loginId).not.toHaveAttribute('name');
+  });
+
+  it('사진이 없으면 아이디가 아닌 닉네임 첫 글자를 보여준다', () => {
+    render(<MypageForm user={user} />);
+    expect(screen.queryByText('Y')).toBeNull();
+    expect(screen.getByText('보')).toBeInTheDocument();
   });
 });
