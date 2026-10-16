@@ -7,11 +7,12 @@ import BottomSheet, { SheetAction } from './BottomSheet';
 import { MoreIcon } from './icons';
 
 /**
- * 게시글 카드 오른쪽 위 ··· 메뉴(본인 글에만 보인다). 수정·삭제를 바텀시트로 띄운다.
+ * 게시글 카드 오른쪽 위 ··· 메뉴(작성자 본인과 관리자에게만 보인다). 수정·삭제를 바텀시트로 띄운다.
  * 예전 카드 머리의 작은 "수정/삭제" 글자 링크는 손가락으로 누르기 어려워 시트로 옮겼다.
- * 삭제 권한은 deletePost가 서버에서 작성자 본인인지 다시 확인한다.
+ * 삭제 권한은 deletePost가 서버에서 작성자 본인·관리자인지 DB로 다시 확인한다.
+ * 무한 스크롤 목록은 클라이언트 상태라 router.refresh()로는 카드가 빠지지 않으므로, 목록·상세는 onDeleted로 뒷처리를 맡긴다.
  */
-export default function PostMenu({ postId }: { postId: string }) {
+export default function PostMenu({ postId, onDeleted }: { postId: string; onDeleted?: () => void }) {
   const [open, setOpen] = useState(false);
   const [isDeleting, startDelete] = useTransition();
   const router = useRouter();
@@ -21,7 +22,8 @@ export default function PostMenu({ postId }: { postId: string }) {
     startDelete(async () => {
       await deletePost(postId);
       setOpen(false);
-      router.refresh();
+      if (onDeleted) onDeleted();
+      else router.refresh();
     });
   };
 

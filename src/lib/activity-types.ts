@@ -11,3 +11,12 @@ const ACTIVITY_TYPES: Record<string, { label: string; badgeClass: string }> = {
 export function getActivityType(type: string) {
   return ACTIVITY_TYPES[type] ?? ACTIVITY_TYPES.OTHER;
 }
+
+/** 필터 칩·작성 화면의 종류 순서. 큰 행사(방탈출·정기 모임)를 앞에 둔다. */
+export const ACTIVITY_TYPE_CODES = ['ESCAPE_ROOM', 'REGULAR', 'LUNCH', 'EVENING', 'OTHER'] as const;
+export type ActivityTypeCode = (typeof ACTIVITY_TYPE_CODES)[number];
+
+/** 주소(?type=)·폼으로 들어온 값이 정해진 코드인지. 화면 표시용 getActivityType과 달리 모르는 값을 '기타'로 바꾸지 않고 거른다. */
+export function isActivityType(value: unknown): value is ActivityTypeCode {
+  return typeof value === 'string' && (ACTIVITY_TYPE_CODES as readonly string[]).includes(value);
+}

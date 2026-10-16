@@ -30,4 +30,14 @@ describe('PostMenu', () => {
     await waitFor(() => expect(deletePost).toHaveBeenCalledWith('p1'));
     await waitFor(() => expect(refresh).toHaveBeenCalled());
   });
+
+  it('onDeleted가 있으면 새로 그리는 대신 그것을 부른다(무한 스크롤 목록에서 카드를 빼거나 상세에서 피드로 돌아가게)', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValueOnce(true);
+    const onDeleted = vi.fn();
+    render(<PostMenu postId="p1" onDeleted={onDeleted} />);
+    fireEvent.click(screen.getByRole('button', { name: '게시글 메뉴' }));
+    fireEvent.click(screen.getByRole('button', { name: '삭제' }));
+    await waitFor(() => expect(onDeleted).toHaveBeenCalled());
+    expect(refresh).not.toHaveBeenCalled();
+  });
 });
