@@ -3,7 +3,10 @@ import { asc, eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { seasonMembers, seasons } from '../../../drizzle/schema';
 import { resolveSeason } from '@/lib/seasons';
-import SeasonSelect from '@/components/SeasonSelect';
+import TopBar from '@/components/TopBar';
+import Avatar from '@/components/Avatar';
+import EmptyState, { primaryButtonClass } from '@/components/EmptyState';
+import { chipClass } from '@/lib/chip';
 import { getSession } from '@/lib/session';
 import { getSeasonCounts } from '@/lib/member-badges';
 import LevelBadge from '@/components/LevelBadge';
@@ -32,17 +35,17 @@ export default async function MembersPage({
     // 로그인 후 보던 시즌 그대로 돌아오도록 현재 주소(?season= 포함)를 redirect로 넘긴다.
     const seasonQuery = typeof seasonParam === 'string' ? `?season=${seasonParam}` : '';
     return (
-      <div className="max-w-4xl mx-auto">
-        <PageHeader />
-        <div className="mt-6 bg-card border border-border rounded-xl p-8 text-center space-y-3">
-          <p className="text-muted-foreground">회원 명부는 로그인해야 확인할 수 있습니다.</p>
-          <Link
-            href={`/login?redirect=${encodeURIComponent(`/members${seasonQuery}`)}`}
-            className="inline-block px-4 py-2 bg-foreground text-background rounded-full text-sm font-semibold hover:bg-foreground/90"
-          >
-            로그인
-          </Link>
-        </div>
+      <div>
+        <TopBar title="회원 명부" />
+        <EmptyState
+          title="회원 명부는 로그인해야 확인할 수 있습니다."
+          description="실명·부서가 있어 회원에게만 보여드려요."
+          action={
+            <Link href={`/login?redirect=${encodeURIComponent(`/members${seasonQuery}`)}`} className={primaryButtonClass}>
+              로그인
+            </Link>
+          }
+        />
       </div>
     );
   }
@@ -52,8 +55,8 @@ export default async function MembersPage({
 
   if (!season) {
     return (
-      <div className="max-w-4xl mx-auto">
-        <PageHeader />
+      <div>
+        <TopBar title="회원 명부" />
         <p className="text-center py-20 text-muted-foreground">등록된 시즌이 없습니다.</p>
       </div>
     );
@@ -78,70 +81,81 @@ export default async function MembersPage({
 
   // 실명이 없는 회원(이관 데이터 일부)은 닉네임으로 대신한다.
   const nameOf = (u: { displayName: string | null; nickname: string }) => u.displayName || u.nickname;
+  // 정렬: 회장(직책) → 레벨(참여 시즌 수) 높은 순 → 이름 가나다순.
+  // 회장은 레벨 대신 회장으로 표시하므로 레벨과 상관없이 맨 위에 둔다.
+  const levelOf = (userId: string) => seasonCounts.get(userId) ?? 0;
   const members = [...rows].sort((a, b) => {
     const roleDiff = (ROLE_ORDER[a.role ?? ''] ?? 99) - (ROLE_ORDER[b.role ?? ''] ?? 99);
-    return roleDiff !== 0 ? roleDiff : nameOf(a.user).localeCompare(nameOf(b.user), 'ko');
+    return roleDiff || levelOf(b.user.id) - levelOf(a.user.id) || nameOf(a.user).localeCompare(nameOf(b.user), 'ko');
   });
+  // 시즌 칩은 최근 시즌부터(가장 많이 보는 시즌이 왼쪽 처음에 오게).
+  const seasonChips = [...allSeasons].sort((x, y) => y.id - x.id);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <PageHeader />
-      <SeasonSelect basePath="/members" seasons={allSeasons} selectedId={season.id} />
+    <div>
+      <TopBar title="회원 명부" />
 
-      <h2 className="text-lg font-bold">
-        {season.name} 회원 명부 ({members.length}명)
-      </h2>
+      {/* 시즌 선택은 ?season= 쿼리 링크라 공유·뒤로 가기가 그대로 된다. 넘치면 가로로 밀어 본다. */}
+      <nav aria-label="시즌 선택" className="-mx-4 px-4 pt-3 flex gap-2 overflow-x-auto no-scrollbar">
+        {seasonChips.map((s) => (
+          <Link key={s.id} href={`/members?season=${s.id}`} aria-current={s.id === season.id ? 'page' : undefined} className={chipClass(s.id === season.id)}>
+            {s.name}
+          </Link>
+        ))}
+      </nav>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="mt-4 flex items-baseline gap-2">
+        <h2 className="text-[17px] font-bold">
+          {season.name} 회원 명부 ({members.length}명)
+        </h2>
+        <span className="text-[13px] text-muted-foreground">{season.period}</span>
+      </div>
+
+      {/* 레벨 시스템 안내. 피드·댓글에도 같은 배지가 나오지만 뜻을 설명하는 곳은 명부 한 곳에 둔다. */}
+      <aside role="note" aria-label="레벨 안내" className="mt-3 rounded-2xl bg-muted/60 px-4 py-3 text-[13px] leading-relaxed text-muted-foreground">
+        <p>
+          <LevelBadge badge={{ kind: 'seasons', count: 3 }} className="mr-1" />
+          Lv.N은 참여한 시즌 수예요. 이번 시즌이 처음이면 Lv.1, 다섯 시즌 모두 참여했다면 Lv.5.
+        </p>
+        <p className="mt-1">
+          <LevelBadge badge={{ kind: 'president' }} className="mr-1" />
+          회장은 레벨 대신 회장으로 표시해요.
+        </p>
+      </aside>
+
+      <ul className="mt-2 divide-y divide-border">
         {members.map(({ role, user }) => (
-          <div key={user.id} className="bg-card border border-border p-5 rounded-2xl flex items-start gap-4 shadow-sm">
-            <div className="w-14 h-14 shrink-0 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-              {user.profileImageUrl ? (
-                <img src={user.profileImageUrl} alt="Profile" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-xl font-bold text-muted-foreground">{nameOf(user)[0].toUpperCase()}</span>
-              )}
-            </div>
+          <li key={user.id} className="py-3.5 flex items-start gap-3">
+            <Avatar src={user.profileImageUrl} name={nameOf(user)} size={48} />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-                <h3 className="font-bold text-foreground">{nameOf(user)}</h3>
+                <h3 className="text-[16px] font-bold text-foreground">{nameOf(user)}</h3>
                 {/* 실명 옆에 게시글·댓글에서 쓰는 닉네임을 함께 보여준다. 실명이 없으면 이름 자리에 이미 닉네임이 있다. */}
                 {user.displayName && <span className="text-sm text-muted-foreground">{user.nickname}</span>}
                 {/*
-                  게시글·댓글의 닉네임 배지와 같은 모양. 회장은 참여 수 대신 회장으로만 표시하는데, 명부는 시즌별이라
+                  게시글·댓글의 닉네임 배지와 같은 모양. 회장은 레벨 대신 회장으로만 표시하는데, 명부는 시즌별이라
                   최신 시즌 기준(getMemberBadges)이 아니라 고른 시즌의 직책을 따른다.
                 */}
                 {role === '회장' ? (
                   <LevelBadge badge={{ kind: 'president' }} />
                 ) : (
-                  (seasonCounts.get(user.id) ?? 0) > 0 && <LevelBadge badge={{ kind: 'seasons', count: seasonCounts.get(user.id)! }} />
+                  levelOf(user.id) > 0 && <LevelBadge badge={{ kind: 'seasons', count: levelOf(user.id) }} />
                 )}
-                {/* 회장 외 직책(이관 데이터에는 없음)이 생기면 기존처럼 칩으로 보여준다. */}
+                {/* 회장 외 직책(이관 데이터에는 없음)이 생기면 칩으로 보여준다. */}
                 {role && role !== '회장' && (
-                  <span className="px-2 py-0.5 bg-primary-100 text-primary-600 text-xs font-semibold rounded-full">{role}</span>
+                  <span className="px-1.5 py-px rounded-md text-[11px] font-bold bg-muted text-foreground">{role}</span>
                 )}
                 {/* 관리자가 발급한 초기 PIN을 아직 바꾸지 않은 회원 = 한 번도 로그인해 PIN을 설정하지 않은 회원 */}
                 {user.mustChangePin && (
-                  <span className="px-2 py-0.5 bg-muted text-muted-foreground text-xs font-medium rounded-full border border-border">
-                    미접속
-                  </span>
+                  <span className="px-1.5 py-px rounded-md text-[11px] font-medium text-muted-foreground border border-border">미접속</span>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground mt-1">{user.department}</p>
-              {user.bio && <p className="text-sm mt-2 line-clamp-2">{user.bio}</p>}
+              {user.department && <p className="text-[13px] text-muted-foreground mt-0.5">{user.department}</p>}
+              {user.bio && <p className="text-[14px] mt-1 line-clamp-2">{user.bio}</p>}
             </div>
-          </div>
+          </li>
         ))}
-      </div>
-    </div>
-  );
-}
-
-function PageHeader() {
-  return (
-    <div className="pb-4 border-b border-border">
-      <h1 className="text-2xl font-bold tracking-tight">회원 명부</h1>
-      <p className="text-sm text-muted-foreground mt-1">시즌별로 활동한 SDL 회원들입니다.</p>
+      </ul>
     </div>
   );
 }

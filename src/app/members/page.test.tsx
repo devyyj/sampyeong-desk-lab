@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { db } from '@/db';
 import { getSession } from '@/lib/session';
 import { getSeasonCounts } from '@/lib/member-badges';
@@ -34,11 +34,36 @@ describe('MembersPage', () => {
     vi.mocked(getSeasonCounts).mockResolvedValue(new Map([['b', 1], ['c', 3], ['a', 2]]));
   });
 
-  it('최근 시즌 명부를 회장 → 이름순으로 보여준다', async () => {
+  it('최근 시즌 명부를 회장 → 레벨 높은 순 → 이름순으로 보여준다', async () => {
     await page();
     expect(screen.getByRole('heading', { name: '시즌 2 회원 명부 (3명)' })).toBeInTheDocument();
     const names = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
-    expect(names).toEqual(['박씨', '김비', '안에이']);
+    // 박씨(회장) → 안에이(Lv.2) → 김비(Lv.1)
+    expect(names).toEqual(['박씨', '안에이', '김비']);
+  });
+
+  it('레벨이 같으면 이름 가나다순', async () => {
+    vi.mocked(getSeasonCounts).mockResolvedValueOnce(new Map([['b', 2], ['c', 3], ['a', 2]]));
+    await page();
+    expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['박씨', '김비', '안에이']);
+  });
+
+  it('레벨 시스템을 짧게 설명한다', async () => {
+    await page();
+    const guide = screen.getByRole('note', { name: '레벨 안내' });
+    expect(guide).toHaveTextContent('Lv.N은 참여한 시즌 수');
+    expect(guide).toHaveTextContent('회장');
+  });
+
+  it('시즌은 칩 링크로 고르고(최근 시즌부터), 고른 시즌이 현재 항목', async () => {
+    await page('1');
+    const nav = screen.getByRole('navigation', { name: '시즌 선택' });
+    const links = within(nav).getAllByRole('link');
+    expect(links.map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
+      ['시즌 2', '/members?season=2'],
+      ['시즌 1', '/members?season=1'],
+    ]);
+    expect(within(nav).getByRole('link', { name: '시즌 1' })).toHaveAttribute('aria-current', 'page');
   });
 
   it('이름 옆에 닉네임과 👑 회장(그 시즌 직책) 또는 Lv.N(참여 시즌 수)을 함께 표시한다', async () => {
