@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor, within } from '@testing-library/react';
 import type { FeedItem } from '@/lib/feed';
 import { loadFeedItem, loadMoreFeed } from '@/app/actions/feed';
 import { addComment } from '@/app/actions/comments';
@@ -32,6 +32,8 @@ const item = (id: string, o: Partial<FeedItem> = {}): FeedItem => ({
   createdAt: '2026-10-17T00:00:00.000Z',
   createdLabel: '방금',
   seasonName: null,
+  meetingDate: null,
+  meetingDateLabel: null,
   tags: [],
   images: [],
   photoCount: 0,
@@ -75,7 +77,6 @@ describe('FeedList', () => {
   });
 
   it('삭제한 글은 목록에서 바로 빠진다', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValueOnce(true);
     render(
       <FeedList
         filter={FILTER}
@@ -85,6 +86,7 @@ describe('FeedList', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: '게시글 메뉴' }));
     fireEvent.click(screen.getByRole('button', { name: '삭제' }));
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: '삭제' }));
     await waitFor(() => expect(deletePost).toHaveBeenCalledWith('a'));
     await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(1));
   });

@@ -22,7 +22,7 @@ const ID = '0b5c9a52-6f1e-4c55-9d8e-0d1f6c2a7b11';
 const item: FeedItem = {
   id: ID, authorId: 'u1', author: { id: 'u1', nickname: '반갑읍니다', profileImageUrl: null }, badge: { kind: 'president' },
   content: '• 인원 : 8명', createdAt: '2026-03-10T03:00:00.000Z', createdLabel: '3월 10일',
-  seasonName: '시즌 2', tags: ['정기 모임'],
+  seasonName: '시즌 2', meetingDate: null, meetingDateLabel: null, tags: ['정기 모임'],
   images: [], photoCount: 2, photosLocked: true, likeCount: 1, liked: false, comments: [], canEdit: false,
 };
 const page = async (id = ID) => render(await PostDetailPage({ params: Promise.resolve({ id }) }));

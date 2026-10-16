@@ -50,6 +50,21 @@ export function relativeDay(ymd: string, now: Date = new Date()): string {
   return dateLabel(new Date(`${ymd}T12:00:00+09:00`), now);
 }
 
+const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+
+/**
+ * 본문에 적는 모임 날짜(YYYY-MM-DD) 표기: "2026년 7월 31일 (금)".
+ * 머리줄 날짜는 "3일 전"처럼 상대 표기라 정확히 언제 모였는지 알기 어려워, 모임 날짜는 연도·요일까지 그대로 적는다.
+ * 시각이 없는 날짜라 시간대 변환 없이 숫자로 계산한다(UTC 정오로 요일만 뽑는다).
+ */
+export function meetingDayLabel(ymd: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd);
+  if (!m) return ymd;
+  const [year, month, day] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const weekday = WEEKDAYS[new Date(Date.UTC(year, month - 1, day, 12)).getUTCDay()];
+  return `${year}년 ${month}월 ${day}일 (${weekday})`;
+}
+
 /**
  * 한국 날짜 "YYYY-MM-DD"(활동 기록 작성 화면의 모임 날짜 기본값). 서버가 계산해 폼에 넘긴다:
  * 브라우저에서 계산하면 서버 렌더와 값이 달라질 수 있고(hydration 불일치), UTC 서버에서는 한국 오전 9시 전에 전날이 된다.

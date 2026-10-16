@@ -56,10 +56,11 @@ test('태그·날짜·시즌 글: 작성 → 카드·태그 모아 보기 → �
   expect(photo.storagePath).toMatch(new RegExp(`^${author.id}/[0-9a-f-]{36}\\.png$`));
   expect(await storageFileExists('activity_photos', photo.storagePath)).toBe(true);
 
-  // 카드: 날짜는 모임 날짜 하나, 시즌 칩, 태그, 사진은 signed URL로 실제 로드.
+  // 카드: 머리줄 날짜는 모임 날짜, 본문에 모임 날짜를 연도·요일까지 적고, 시즌·태그, 사진은 signed URL로 실제 로드.
   const card = page.locator('article').filter({ hasText: `E2E 정기모임 ${stamp}` });
-  await expect(card.locator('time')).toHaveCount(1);
-  await expect(card.locator('time')).toHaveAttribute('dateTime', '2026-10-16');
+  await expect(card.locator('header time')).toHaveAttribute('dateTime', '2026-10-16');
+  await expect(card.getByText('모임 날짜')).toBeVisible();
+  await expect(card.locator('time', { hasText: '2026년 10월 16일 (금)' })).toHaveAttribute('dateTime', '2026-10-16');
   await expect(card.getByText(latestSeason.name, { exact: true })).toBeVisible();
   const img = card.getByRole('region', { name: '사진 1장' }).locator('img');
   await expect(img).toHaveAttribute('src', /\/storage\/v1\/object\/sign\/activity_photos\//);
@@ -97,7 +98,9 @@ test('태그·날짜·시즌 글: 작성 → 카드·태그 모아 보기 → �
   const edited = page.locator('article').filter({ hasText: `E2E 정기모임 ${stamp}` });
   await expect(edited.getByText(latestSeason.name, { exact: true })).toHaveCount(0);
   await expect(edited.getByRole('link', { name: '#정기 모임' })).toHaveCount(0);
+  await expect(edited.locator('time')).toHaveCount(1);
   await expect(edited.locator('time')).not.toHaveAttribute('dateTime', '2026-10-16');
+  await expect(edited.getByText('모임 날짜')).toHaveCount(0);
 
   // 다른 회원: 메뉴가 없고, 수정 주소로 직접 가도 피드로 돌려보낸다.
   const otherPage = await loggedInPage(browser, other, `/posts/${row.id}`);
@@ -108,9 +111,9 @@ test('태그·날짜·시즌 글: 작성 → 카드·태그 모아 보기 → �
 
   // 관리자: 남의 글을 상세에서 삭제 → 피드로 돌아가고, DB 행과 Storage 사진이 지워진다.
   const adminPage = await loggedInPage(browser, admin, `/posts/${row.id}`);
-  adminPage.once('dialog', (dialog) => dialog.accept());
   await adminPage.getByRole('button', { name: '게시글 메뉴' }).click();
   await adminPage.getByRole('dialog', { name: '게시글' }).getByRole('button', { name: '삭제' }).click();
+  await adminPage.getByRole('alertdialog').getByRole('button', { name: '삭제' }).click();
   await adminPage.waitForURL((url) => url.pathname === '/');
   await expect.poll(async () => (await db.select().from(posts).where(eq(posts.id, row.id))).length).toBe(0);
   await expect.poll(() => storageFileExists('activity_photos', photo.storagePath)).toBe(false);

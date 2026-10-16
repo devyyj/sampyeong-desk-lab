@@ -37,14 +37,8 @@ describe('PostReactions', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('댓글이 있으면 "댓글 N개 모두 보기"로도 연다', () => {
+  it('"댓글 N개 모두 보기" 글자 줄은 없다(💬 아이콘으로만 연다)', () => {
     renderIt();
-    fireEvent.click(screen.getByRole('button', { name: '댓글 1개 모두 보기' }));
-    expect(screen.getByRole('dialog', { name: '댓글' })).toBeInTheDocument();
-  });
-
-  it('댓글이 없으면 "모두 보기" 줄을 그리지 않는다', () => {
-    renderIt([]);
-    expect(screen.queryByRole('button', { name: /모두 보기/ })).toBeNull();
+    expect(screen.queryByText(/모두 보기/)).toBeNull();
   });
 });

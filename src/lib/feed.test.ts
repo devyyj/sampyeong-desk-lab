@@ -88,6 +88,8 @@ describe('getFeedPage', () => {
     const [item] = (await getFeedPage({ tag: null }, 0, null, NOW)).items;
     expect(item.createdLabel).toBe('30분 전');
     expect(item.seasonName).toBeNull();
+    expect(item.meetingDate).toBeNull();
+    expect(item.meetingDateLabel).toBeNull();
     expect(item.tags).toEqual([]);
   });
 
@@ -97,6 +99,9 @@ describe('getFeedPage', () => {
     expect(item.createdAt).toBe('2026-07-31');
     expect(item.createdLabel).toBe('7월 31일');
     expect(item.seasonName).toBe('시즌 4');
+    // 모임 날짜는 머리줄 날짜와 별도로 본문에 분명하게 적는다.
+    expect(item.meetingDate).toBe('2026-07-31');
+    expect(item.meetingDateLabel).toBe('2026년 7월 31일 (금)');
     expect(item.tags).toEqual(['방탈출']);
   });
 

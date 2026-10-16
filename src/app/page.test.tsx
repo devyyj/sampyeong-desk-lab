@@ -15,7 +15,7 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: 
 
 const item: FeedItem = {
   id: 'p1', authorId: 'u1', author: { id: 'u1', nickname: '보드왕', profileImageUrl: null }, badge: null,
-  content: '오늘 재밌었어요', createdAt: '2026-10-17T00:00:00.000Z', createdLabel: '방금', seasonName: null, tags: [],
+  content: '오늘 재밌었어요', createdAt: '2026-10-17T00:00:00.000Z', createdLabel: '방금', seasonName: null, meetingDate: null, meetingDateLabel: null, tags: [],
   images: [], photoCount: 0, photosLocked: false, likeCount: 0, liked: false, comments: [], canEdit: false,
 };
 const render$ = async (params: Record<string, string> = {}) => render(await Page({ searchParams: Promise.resolve(params) }));

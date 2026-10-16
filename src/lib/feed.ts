@@ -6,7 +6,7 @@ import { getComments, getLikeSummaries, type CommentView } from './community';
 import { getMemberBadges } from './member-badges';
 import { createSignedPhotoUrls } from './storage-admin';
 import type { FeedFilter } from './feed-filter';
-import { relativeDay, relativeTime } from './time';
+import { meetingDayLabel, relativeDay, relativeTime } from './time';
 
 /*
  * 피드 데이터. 설계: docs/superpowers/specs/2026-10-17-unified-post-form-design.md §4
@@ -37,6 +37,9 @@ export type FeedItem = {
   createdLabel: string;
   /** 입력한 경우에만 카드에 보이는 선택 정보 */
   seasonName: string | null;
+  /** 모임 날짜(YYYY-MM-DD, <time dateTime>용)와 본문에 적는 표기("2026년 7월 31일 (금)"). 고르지 않았으면 null. */
+  meetingDate: string | null;
+  meetingDateLabel: string | null;
   tags: string[];
   images: { src: string; alt: string }[];
   photoCount: number;
@@ -107,6 +110,8 @@ async function toItems(rows: Row[], viewer: Viewer, now: Date): Promise<FeedItem
       createdAt: r.activityDate ?? r.createdAt.toISOString(),
       createdLabel: r.activityDate ? relativeDay(r.activityDate, now) : relativeTime(r.createdAt, now),
       seasonName: r.season?.name ?? null,
+      meetingDate: r.activityDate,
+      meetingDateLabel: r.activityDate ? meetingDayLabel(r.activityDate) : null,
       tags: r.tags,
       images,
       photoCount: r.images.length,

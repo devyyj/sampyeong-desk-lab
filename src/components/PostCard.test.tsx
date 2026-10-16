@@ -18,6 +18,8 @@ const base: FeedItem = {
   createdAt: '2026-10-17T02:30:00.000Z',
   createdLabel: '30분 전',
   seasonName: null,
+  meetingDate: null,
+  meetingDateLabel: null,
   tags: [],
   images: [],
   photoCount: 0,
@@ -35,6 +37,8 @@ const meeting: FeedItem = {
   createdAt: '2026-07-31',
   createdLabel: '7월 31일',
   seasonName: '시즌 4',
+  meetingDate: '2026-07-31',
+  meetingDateLabel: '2026년 7월 31일 (금)',
   tags: ['방탈출', '정기 모임'],
   images: [{ src: 'https://signed/0', alt: '게시글 사진 1' }],
   photoCount: 1,
@@ -52,16 +56,21 @@ describe('PostCard', () => {
     // 입력하지 않은 시즌·태그는 그리지 않는다.
     expect(within(card).queryByRole('list', { name: '태그' })).toBeNull();
     expect(within(card).queryByText(/^시즌/)).toBeNull();
+    expect(within(card).queryByText(/모임 날짜/)).toBeNull();
   });
 
-  it('선택 정보를 입력한 글: 날짜는 모임 날짜 하나, 시즌 칩, #태그 링크(누르면 그 태그 모아 보기)', () => {
+  it('선택 정보를 입력한 글: 머리줄 날짜, 본문의 모임 날짜, 시즌(회색 바탕 없음), #태그 링크(누르면 그 태그 모아 보기)', () => {
     render(<PostCard item={meeting} />);
     const card = screen.getByRole('article');
     const times = card.querySelectorAll('time');
-    expect(times).toHaveLength(1);
     expect(times[0]).toHaveAttribute('dateTime', '2026-07-31');
     expect(times[0]).toHaveTextContent('7월 31일');
-    expect(within(card).getByText('시즌 4')).toBeInTheDocument();
+    // 모임 날짜를 고른 글은 본문에 모임 날짜를 분명하게 적는다(연도·요일까지).
+    const meetingLine = within(card).getByText('2026년 7월 31일 (금)');
+    expect(meetingLine.closest('time')).toHaveAttribute('dateTime', '2026-07-31');
+    expect(within(card).getByText(/모임 날짜/)).toBeInTheDocument();
+    const season = within(card).getByText('시즌 4');
+    expect(season.className).not.toMatch(/bg-/);
     const tags = within(within(card).getByRole('list', { name: '태그' })).getAllByRole('link');
     expect(tags.map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
       ['#방탈출', '/?tag=%EB%B0%A9%ED%83%88%EC%B6%9C'],

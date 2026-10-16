@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import { relativeTime, relativeDay, todayKst } from './time';
+import { relativeTime, relativeDay, todayKst, meetingDayLabel } from './time';
 
 // 기준 시각: 2026-10-16 21:00 KST (= 12:00 UTC)
 const now = new Date('2026-10-16T12:00:00Z');
@@ -54,6 +54,16 @@ describe('relativeDay (시각 없는 날짜 — 활동 기록의 모임 날짜)'
 
   it('형식이 다른 값은 그대로 돌려준다', () => {
     expect(relativeDay('미정', now)).toBe('미정');
+  });
+});
+
+describe('meetingDayLabel (본문에 적는 모임 날짜)', () => {
+  it('상대 표기 없이 연도·요일까지 분명하게', () => {
+    expect(meetingDayLabel('2026-07-31')).toBe('2026년 7월 31일 (금)');
+    expect(meetingDayLabel('2025-12-01')).toBe('2025년 12월 1일 (월)');
+  });
+  it('형식이 다른 값은 그대로 돌려준다', () => {
+    expect(meetingDayLabel('언젠가')).toBe('언젠가');
   });
 });
 

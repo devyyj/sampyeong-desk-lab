@@ -13,7 +13,7 @@ import PostMenu from './PostMenu';
 import PostReactions from './PostReactions';
 import LikeButton from './LikeButton';
 import CommentSection from './CommentSection';
-import { CameraIcon } from './icons';
+import { CalendarIcon, CameraIcon } from './icons';
 
 type Props = {
   item: FeedItem;
@@ -64,8 +64,10 @@ export default function PostCard({ item, variant = 'feed', loginHref = '/login?r
       </header>
 
       {item.seasonName && (
-        <span className="inline-block mt-0.5 px-1.5 py-px rounded-md text-[11px] font-bold bg-muted text-muted-foreground">{item.seasonName}</span>
+        // 바탕색 없이 글자만 둔다(회색 칩은 눌리는 버튼처럼 보이고 본문 위에서 무거워 보였다).
+        <span className="inline-block mt-0.5 text-[12px] font-bold text-muted-foreground">{item.seasonName}</span>
       )}
+      {item.meetingDate && <MeetingDate date={item.meetingDate} label={item.meetingDateLabel ?? item.meetingDate} />}
 
       {detail ? (
         <>
@@ -129,6 +131,20 @@ function LockedPhotos({ count, loginHref }: { count: number; loginHref: string }
         로그인
       </Link>
     </div>
+  );
+}
+
+/**
+ * 모임 날짜를 고른 글은 본문 위에 모임 날짜를 분명하게 적는다.
+ * 머리줄 날짜는 "3일 전" 같은 상대 표기라, 정확히 언제 모였는지는 여기서 연도·요일까지 보여준다.
+ */
+function MeetingDate({ date, label }: { date: string; label: string }) {
+  return (
+    <p className="mt-1 flex items-center gap-1.5 text-[14px]">
+      <CalendarIcon size={16} className="shrink-0 text-muted-foreground" />
+      <span className="text-muted-foreground">모임 날짜</span>
+      <time dateTime={date} className="font-semibold">{label}</time>
+    </p>
   );
 }
 
