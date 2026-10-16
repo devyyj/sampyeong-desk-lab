@@ -36,7 +36,33 @@ export function activeTabOf(pathname: string): Tab | null {
   return null;
 }
 
-/** 작성·수정 화면은 본문 입력과 키보드에 화면을 다 쓰도록 앱 공통 바(로고 헤더·탭바)를 숨긴다. */
+/**
+ * 데이터 생성·수정 화면(게시글·보드게임·회원)은 모두 같은 전체 화면 폼(FormHeader: 취소 | 제목 | 등록)을 쓰고,
+ * 입력과 키보드에 화면을 다 쓰도록 앱 공통 바(로고 헤더·탭바·＋ 버튼)를 숨긴다.
+ */
 export function hidesAppChrome(pathname: string): boolean {
-  return pathname === '/posts/write' || /^\/posts\/[^/]+\/edit\/?$/.test(pathname);
+  return (
+    pathname === '/posts/write' ||
+    pathname === '/boardgames/add' ||
+    pathname === '/members/new' ||
+    /^\/(posts|boardgames)\/[^/]+\/edit\/?$/.test(pathname)
+  );
+}
+
+export type CreateAction = { label: string; href: string };
+
+/**
+ * 탭 첫 화면의 ＋ 버튼(Fab)이 무엇을 만드는지. 피드·보드게임·회원 생성은 같은 버튼·같은 폼 화면으로 통일한다.
+ * - 피드·보드게임: 비회원에게도 보여 주고, 누르면 로그인한 뒤 작성 화면으로 돌아오게 redirect를 붙인다.
+ * - 회원 추가: 관리자에게만 보인다(실제 권한은 /members/new 페이지와 createMember가 DB로 다시 확인).
+ */
+export function createActionFor(pathname: string, viewer: { isLoggedIn: boolean; isAdmin: boolean }): CreateAction | null {
+  const withLogin = (label: string, href: string) => ({
+    label,
+    href: viewer.isLoggedIn ? href : `/login?redirect=${encodeURIComponent(href)}`,
+  });
+  if (pathname === '/') return withLogin('글쓰기', '/posts/write');
+  if (pathname === '/boardgames') return withLogin('보드게임 등록', '/boardgames/add');
+  if (pathname === '/members') return viewer.isAdmin ? { label: '회원 추가', href: '/members/new' } : null;
+  return null;
 }

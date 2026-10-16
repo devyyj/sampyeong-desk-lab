@@ -3,7 +3,7 @@ import type { SessionPayload } from './session';
 // 로그인해야 들어갈 수 있는 경로(접두사 일치)
 // /members(시즌 회원 명부)는 실명·부서가 나오지만 로그인 화면으로 보내지 않는다. 페이지가 비회원에게
 // 명부 대신 '로그인해야 확인할 수 있다'는 안내를 보여준다(활동 사진을 페이지에서 가리는 것과 같은 방식).
-const PROTECTED_PREFIXES = ['/mypage', '/posts/write', '/boardgames/add', '/admin', '/change-pin'];
+const PROTECTED_PREFIXES = ['/mypage', '/posts/write', '/boardgames/add', '/members/new', '/admin', '/change-pin'];
 // 게시글·보드게임 수정 페이지는 /posts/<id>/edit 형태라 접두사로는 잡히지 않는다(기존 '/posts/edit' 검사가 놓치던 경로).
 const PROTECTED_PATTERNS = [/^\/(posts|boardgames)\/[^/]+\/edit(\/|$)/];
 

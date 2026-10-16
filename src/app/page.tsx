@@ -71,7 +71,7 @@ export default async function Page() {
             };
 
             return (
-              <article key={post.id} className="py-3">
+              <article key={post.id} className="py-3 first:pt-0">
                 <header className="flex items-center gap-2.5 h-11">
                   <Avatar src={post.author.profileImageUrl} name={post.author.nickname} size={34} />
                   <div className="min-w-0 flex-1 flex items-baseline gap-1.5">

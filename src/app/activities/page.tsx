@@ -32,7 +32,7 @@ export default async function ActivitiesPage() {
     <div>
       <TopBar title="활동 기록" />
       {/* 전체·종류별 활동 수. 한 줄을 넘치면 가로로 밀어 본다(첫 화면 높이를 아끼려고 줄바꿈하지 않음). */}
-      <div className="-mx-4 px-4 pt-3 flex gap-1.5 overflow-x-auto no-scrollbar text-[13px] whitespace-nowrap">
+      <div className="-mx-4 px-4 flex gap-1.5 overflow-x-auto no-scrollbar text-[13px] whitespace-nowrap">
         <span className="px-2.5 py-1 rounded-full bg-foreground text-background font-semibold">활동 {stats.total}건</span>
         {stats.byType.map(([label, count]) => (
           <span key={label} className="px-2.5 py-1 rounded-full bg-muted text-muted-foreground">{`${label} ${count}`}</span>

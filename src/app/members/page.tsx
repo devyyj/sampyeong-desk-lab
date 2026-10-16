@@ -96,7 +96,7 @@ export default async function MembersPage({
       <TopBar title="회원 명부" />
 
       {/* 시즌 선택은 ?season= 쿼리 링크라 공유·뒤로 가기가 그대로 된다. 넘치면 가로로 밀어 본다. */}
-      <nav aria-label="시즌 선택" className="-mx-4 px-4 pt-3 flex gap-2 overflow-x-auto no-scrollbar">
+      <nav aria-label="시즌 선택" className="-mx-4 px-4 flex gap-2 overflow-x-auto no-scrollbar">
         {seasonChips.map((s) => (
           <Link key={s.id} href={`/members?season=${s.id}`} aria-current={s.id === season.id ? 'page' : undefined} className={chipClass(s.id === season.id)}>
             {s.name}

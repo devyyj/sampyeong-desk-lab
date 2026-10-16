@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import { TABS, activeTabOf, hidesAppChrome } from './nav';
+import { TABS, activeTabOf, hidesAppChrome, createActionFor } from './nav';
 
 describe('TABS', () => {
   it('하단 탭 5개를 순서대로 둔다', () => {
@@ -45,10 +45,39 @@ describe('hidesAppChrome', () => {
     // 작성 화면은 키보드·본문 입력에 집중하도록 탭바를 숨긴다.
     ['/posts/write', true],
     ['/posts/abc/edit', true],
+    // 데이터 생성·수정 화면은 모두 같은 전체 화면 폼(취소 | 제목 | 등록)을 쓴다.
+    ['/boardgames/add', true],
+    ['/boardgames/abc/edit', true],
+    ['/members/new', true],
     ['/', false],
     ['/activities/abc', false],
     ['/mypage', false],
   ])('%s → %s', (pathname, expected) => {
     expect(hidesAppChrome(pathname)).toBe(expected);
+  });
+});
+
+describe('createActionFor (탭별 ＋ 버튼)', () => {
+  const guest = { isLoggedIn: false, isAdmin: false };
+  const member = { isLoggedIn: true, isAdmin: false };
+  const admin = { isLoggedIn: true, isAdmin: true };
+
+  it('피드·보드게임은 회원에게 작성 화면, 비회원에게는 로그인 후 돌아오는 주소', () => {
+    expect(createActionFor('/', member)).toEqual({ label: '글쓰기', href: '/posts/write' });
+    expect(createActionFor('/boardgames', member)).toEqual({ label: '보드게임 등록', href: '/boardgames/add' });
+    expect(createActionFor('/', guest)).toEqual({ label: '글쓰기', href: '/login?redirect=%2Fposts%2Fwrite' });
+    expect(createActionFor('/boardgames', guest)).toEqual({ label: '보드게임 등록', href: '/login?redirect=%2Fboardgames%2Fadd' });
+  });
+
+  it('회원 추가는 관리자에게만', () => {
+    expect(createActionFor('/members', admin)).toEqual({ label: '회원 추가', href: '/members/new' });
+    expect(createActionFor('/members', member)).toBeNull();
+    expect(createActionFor('/members', guest)).toBeNull();
+  });
+
+  it('탭 첫 화면이 아니면 없다', () => {
+    for (const path of ['/my', '/activities', '/boardgames/add', '/posts/write', '/members/new', '/about/rules']) {
+      expect(createActionFor(path, admin)).toBeNull();
+    }
   });
 });

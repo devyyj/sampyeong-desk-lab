@@ -32,11 +32,12 @@ describe('AdminMembersPage', () => {
     expect(notFound).toHaveBeenCalled();
   });
 
-  it('관리자면 회원 생성 폼과 회원별 상태(관리자/초기 PIN/정상)를 표시', async () => {
+  it('관리자면 회원 추가 화면 링크와 회원별 상태(관리자/초기 PIN/정상)를 표시', async () => {
     vi.mocked(getAdminUser).mockResolvedValueOnce({ id: 'a', isAdmin: true } as never);
     render(await AdminMembersPage());
 
-    expect(screen.getByRole('button', { name: '회원 생성' })).toBeInTheDocument();
+    // 회원 생성은 게시글·보드게임과 같은 폼 화면(/members/new)으로 통일했다.
+    expect(screen.getByRole('link', { name: '회원 추가' })).toHaveAttribute('href', '/members/new');
     const rowOf = (username: string) => screen.getByText(username).closest('tr')!;
     expect(within(rowOf('admin.user')).getByText('관리자')).toBeInTheDocument();
     expect(within(rowOf('kim.test')).getByText('초기 PIN')).toBeInTheDocument();

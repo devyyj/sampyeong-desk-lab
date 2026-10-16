@@ -176,12 +176,10 @@ describe('BoardGamesPage', () => {
     expect(within(sheet).queryByRole('link', { name: '수정' })).toBeNull();
   });
 
-  it('회원에게만 상단 바에 등록(＋) 버튼', async () => {
-    await page();
-    expect(screen.queryByRole('link', { name: '보드게임 등록' })).toBeNull();
+  it('등록 버튼은 페이지에 두지 않는다(피드·회원과 같은 ＋ 버튼(Fab)으로 통일)', async () => {
     vi.mocked(getSession).mockResolvedValue({ userId: 'u1' } as never);
     await page();
-    expect(screen.getByRole('link', { name: '보드게임 등록' })).toHaveAttribute('href', '/boardgames/add');
+    expect(screen.queryByRole('link', { name: /등록/ })).toBeNull();
   });
 
   it('필터 결과가 없으면 안내', async () => {

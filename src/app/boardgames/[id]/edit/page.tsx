@@ -15,13 +15,6 @@ export default async function EditBoardGamePage({ params }: { params: Promise<{ 
     redirect('/boardgames');
   }
 
-  return (
-    <div className="max-w-xl mx-auto space-y-6">
-      <div className="pb-4 border-b border-border">
-        <h1 className="text-2xl font-bold tracking-tight">보드게임 수정</h1>
-      </div>
-
-      <EditBoardGameForm game={game} />
-    </div>
-  );
+  // 상단 바(취소 | 보드게임 수정 | 수정완료)는 폼이 그린다.
+  return <EditBoardGameForm game={game} />;
 }

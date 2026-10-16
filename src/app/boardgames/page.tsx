@@ -4,12 +4,12 @@ import { asc, desc } from "drizzle-orm";
 import { getSession } from "@/lib/session";
 import Link from "next/link";
 import Form from "next/form";
-import TopBar, { TopBarAction } from "@/components/TopBar";
+import TopBar from "@/components/TopBar";
 import EmptyState from "@/components/EmptyState";
 import CategorySheet from "@/components/CategorySheet";
 import { chipClass } from "@/lib/chip";
 import BoardGameList, { type BoardGameItem } from "@/components/BoardGameList";
-import { CloseIcon, PlusIcon, SearchIcon } from "@/components/icons";
+import { CloseIcon, SearchIcon } from "@/components/icons";
 
 export const dynamic = 'force-dynamic';
 
@@ -86,19 +86,12 @@ export default async function BoardGamesPage({
 
   return (
     <div>
-      <TopBar
-        title="보드게임"
-        actions={
-          session && (
-            <TopBarAction href="/boardgames/add" label="보드게임 등록">
-              <PlusIcon size={24} />
-            </TopBarAction>
-          )
-        }
-      />
+      {/* 등록은 피드·회원과 같은 방식으로 화면 오른쪽 아래 ＋(Fab)로 통일했다. */}
+      <TopBar title="보드게임" />
 
       {allGames.length > 0 && (
-        <div className="sticky top-12 lg:top-0 z-10 -mx-4 px-4 pt-3 pb-2 bg-background/95 backdrop-blur space-y-2.5">
+        // 붙었을 때 위 헤더와 붙지 않도록 pt-2를 두되, 처음 위치는 -mt-2로 상쇄해 제목 줄 아래 간격 규칙(8px)을 지킨다.
+        <div className="sticky top-12 lg:top-0 z-10 -mx-4 -mt-2 px-4 pt-2 pb-2 bg-background/95 backdrop-blur space-y-2.5">
           {/* GET 폼이라 검색 결과도 ?q= 주소로 남아 공유·뒤로 가기가 된다. next/form이라 전체 새로고침 없이 이동한다. */}
           <Form action="/boardgames" role="search" className="relative flex items-center">
             {cabinetOnly && <input type="hidden" name="cabinet" value="1" />}

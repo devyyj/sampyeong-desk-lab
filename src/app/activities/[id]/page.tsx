@@ -61,7 +61,7 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
 
       {/* 사진이 상세의 주인공이라 맨 위에 둔다. 회원: 화면 폭 캐러셀 / 비회원: 같은 자리에 로그인 안내. */}
       {photoCount > 0 && (
-        <section aria-label={`사진 ${photoCount}장`} className="-mx-4 sm:mx-0 sm:mt-3">
+        <section aria-label={`사진 ${photoCount}장`} className="-mx-4 sm:mx-0">
           {session ? (
             <>
               {photos.length > 0 && (

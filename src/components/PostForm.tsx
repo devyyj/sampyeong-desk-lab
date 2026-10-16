@@ -1,11 +1,11 @@
 'use client';
 
 import { startTransition, useActionState, useEffect, useRef, useState, type FormEvent } from 'react';
-import Link from 'next/link';
 import { createPost, updatePost, requestPostImageUploads } from '@/app/actions/post';
 import { createClient } from '@/utils/supabase/client';
 import { checkImageFiles, MAX_POST_IMAGES } from '@/lib/post-images';
 import { CameraIcon } from './icons';
+import FormHeader from './FormHeader';
 
 type ExistingImage = { id: string; url: string };
 type NewImage = { file: File; preview: string };
@@ -119,22 +119,17 @@ export default function PostForm({ mode, post }: { mode: 'create' | 'edit'; post
     <form onSubmit={onSubmit}>
       {post && <input type="hidden" name="id" value={post.id} />}
 
-      {/*
-        전체 화면 작성 모드의 상단 바: 취소 | 제목 | 게시. 탭바는 이 화면에서 숨겨진다(nav.hidesAppChrome).
-        제출 버튼을 폼 안(이 바)에 두어 form 속성 없이도 Enter·버튼 모두 같은 onSubmit을 탄다.
-      */}
-      <header className="sticky top-0 z-30 -mx-4 px-2 h-12 flex items-center gap-1 bg-background/95 backdrop-blur border-b border-border/60">
-        <Link href="/" className="h-11 px-3 flex items-center text-[16px]">
-          취소
-        </Link>
-        <h1 className="flex-1 text-center text-[17px] font-bold tracking-tight">{mode === 'create' ? '새 게시글' : '게시글 수정'}</h1>
-        <button type="submit" disabled={busy} className="h-11 px-3 text-[16px] font-bold disabled:opacity-40">
-          {uploading ? '사진 올리는 중…' : mode === 'create' ? '게시하기' : '수정완료'}
-        </button>
-      </header>
+      {/* 게시글·보드게임·회원 생성 공통 상단 바. 탭바는 이 화면에서 숨겨진다(nav.hidesAppChrome). */}
+      <FormHeader
+        title={mode === 'create' ? '새 게시글' : '게시글 수정'}
+        cancelHref="/"
+        submitLabel={mode === 'create' ? '게시하기' : '수정완료'}
+        busy={busy}
+        busyLabel={uploading ? '사진 올리는 중…' : undefined}
+      />
 
       {/* 사진을 먼저 고르는 흐름(모임 직후 사진부터 올리는 사용 장면). 한 줄 가로 스크롤에 추가 칸 + 미리보기를 둔다. */}
-      <div className="-mx-4 px-4 py-4 flex gap-2 overflow-x-auto no-scrollbar">
+      <div className="-mx-4 px-4 pb-4 flex gap-2 overflow-x-auto no-scrollbar">
         <label
           htmlFor="images"
           className="shrink-0 w-24 h-24 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 text-muted-foreground cursor-pointer active:bg-muted"

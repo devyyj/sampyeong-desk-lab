@@ -31,7 +31,7 @@ export default async function MyPage() {
       <TopBar title="MY" />
 
       {user ? (
-        <section className="flex items-center gap-4 py-6">
+        <section className="flex items-center gap-4 pb-6">
           <Avatar src={user.profileImageUrl} name={user.nickname} size={64} />
           <div className="min-w-0">
             <h2 className="text-xl font-bold tracking-tight truncate">{user.nickname}</h2>
@@ -40,7 +40,7 @@ export default async function MyPage() {
           </div>
         </section>
       ) : (
-        <section className="py-8 text-center space-y-4">
+        <section className="pb-8 text-center space-y-4">
           <p className="text-muted-foreground text-[15px]">로그인하면 글쓰기·댓글·회원 명부를 이용할 수 있어요.</p>
           <Link
             href={`/login?redirect=${encodeURIComponent('/my')}`}

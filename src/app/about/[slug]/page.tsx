@@ -4,6 +4,8 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { documents } from '../../../../drizzle/schema';
 import Markdown from '@/components/Markdown';
+import TopBar from '@/components/TopBar';
+import { chipClass } from '@/lib/chip';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,8 +24,10 @@ export default async function AboutPage({ params }: { params: Promise<{ slug: st
   if (!doc) notFound();
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <nav aria-label="동호회 안내 문서" className="flex gap-2 border-b border-border">
+    <div>
+      {/* 문서 제목을 화면 제목(h1)으로 쓴다. MY 탭의 동호회 안내 메뉴에서 들어온다. */}
+      <TopBar title={doc.title} backHref="/my" backLabel="MY로 돌아가기" />
+      <nav aria-label="동호회 안내 문서" className="flex gap-2">
         {DOCUMENT_TABS.map((tab) => {
           const selected = tab.slug === slug;
           return (
@@ -31,9 +35,7 @@ export default async function AboutPage({ params }: { params: Promise<{ slug: st
               key={tab.slug}
               href={`/about/${tab.slug}`}
               aria-current={selected ? 'page' : undefined}
-              className={`px-3 py-2 -mb-px text-sm font-medium border-b-2 transition-colors ${
-                selected ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
+              className={chipClass(selected)}
             >
               {tab.label}
             </Link>
@@ -41,8 +43,7 @@ export default async function AboutPage({ params }: { params: Promise<{ slug: st
         })}
       </nav>
 
-      <article className="space-y-4">
-        <h1 className="text-2xl font-bold tracking-tight">{doc.title}</h1>
+      <article className="mt-4">
         <Markdown>{doc.bodyMd}</Markdown>
       </article>
     </div>

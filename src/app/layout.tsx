@@ -51,7 +51,7 @@ export default async function RootLayout({
         <main className="w-full max-w-[640px] mx-auto px-4 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-12">
           {children}
         </main>
-        <Fab isLoggedIn={!!session} />
+        <Fab isLoggedIn={!!session} isAdmin={!!session?.isAdmin} />
       </body>
     </html>
   );

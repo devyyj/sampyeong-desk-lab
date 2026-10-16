@@ -2,7 +2,8 @@
 
 import { useActionState } from 'react';
 import { updateBoardGame } from '@/app/actions/boardgame';
-import Link from 'next/link';
+import FormHeader from '@/components/FormHeader';
+import { checkboxRow, fieldError, fieldInput, fieldLabel } from '@/lib/form-styles';
 
 type GameType = {
   id: string;
@@ -12,76 +13,40 @@ type GameType = {
   inSharedCabinet: boolean;
 };
 
+/** 보드게임 수정. 등록 화면과 같은 전체 화면 폼(취소 | 보드게임 수정 | 수정완료)이다. */
 export function EditBoardGameForm({ game }: { game: GameType }) {
-  const [state, formAction] = useActionState(updateBoardGame, null as any);
+  const [state, formAction, isPending] = useActionState(updateBoardGame, null as any);
 
   return (
-    <form action={formAction} className="bg-card border border-border p-6 rounded-2xl shadow-sm space-y-6">
+    <form action={formAction}>
       <input type="hidden" name="id" value={game.id} />
-      
+      <FormHeader title="보드게임 수정" cancelHref="/boardgames" submitLabel="수정완료" busy={isPending} />
       <div className="space-y-4">
         <div>
-          <label htmlFor="name" className="block text-sm font-medium mb-2">보드게임 이름 *</label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            defaultValue={game.name}
-            required
-            className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary-500 outline-none transition-all"
-          />
+          <label htmlFor="name" className={fieldLabel}>
+            보드게임 이름 <span className="text-red-500">*</span>
+          </label>
+          <input type="text" id="name" name="name" defaultValue={game.name} required className={fieldInput} />
         </div>
 
-        <div>
-          <label htmlFor="recommendedPlayers" className="block text-sm font-medium mb-2">추천 인원 (선택)</label>
-          <input
-            type="text"
-            id="recommendedPlayers"
-            name="recommendedPlayers"
-            defaultValue={game.recommendedPlayers || ''}
-            placeholder="예: 2~4명"
-            className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary-500 outline-none transition-all"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="playTime" className="block text-sm font-medium mb-2">플레이 시간 (선택)</label>
-          <input
-            type="text"
-            id="playTime"
-            name="playTime"
-            defaultValue={game.playTime || ''}
-            placeholder="예: 30~60분"
-            className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary-500 outline-none transition-all"
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="recommendedPlayers" className={fieldLabel}>추천 인원</label>
+            <input type="text" id="recommendedPlayers" name="recommendedPlayers" defaultValue={game.recommendedPlayers || ''} placeholder="예: 2~4명" className={fieldInput} />
+          </div>
+          <div>
+            <label htmlFor="playTime" className={fieldLabel}>플레이 시간</label>
+            <input type="text" id="playTime" name="playTime" defaultValue={game.playTime || ''} placeholder="예: 30~60분" className={fieldInput} />
+          </div>
         </div>
 
         {/* 보관 상태(보관 중·플레이 중·대여 중) 대신 공용 보관함에 있는지만 관리한다. */}
-        <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
-          <input
-            type="checkbox"
-            name="inSharedCabinet"
-            defaultChecked={game.inSharedCabinet}
-            className="h-4 w-4 rounded border-border accent-primary-600"
-          />
+        <label className={checkboxRow}>
+          <input type="checkbox" name="inSharedCabinet" defaultChecked={game.inSharedCabinet} className="h-5 w-5 rounded accent-foreground" />
           공용 보관함에 보관
         </label>
-      </div>
 
-      {state?.error && (
-        <p className="text-sm text-red-500 font-medium">{state.error}</p>
-      )}
-
-      <div className="flex justify-end gap-3 pt-4 border-t border-border mt-6">
-        <Link href="/boardgames" className="px-5 py-2.5 rounded-full font-medium hover:bg-muted transition-colors">
-          취소
-        </Link>
-        <button
-          type="submit"
-          className="px-5 py-2.5 bg-foreground text-background rounded-full font-medium hover:bg-foreground/90 transition-colors"
-        >
-          수정완료
-        </button>
+        {state?.error && <p role="alert" className={fieldError}>{state.error}</p>}
       </div>
     </form>
   );

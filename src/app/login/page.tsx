@@ -2,6 +2,9 @@
 
 import { use, useActionState } from 'react';
 import { login } from '@/app/actions/auth';
+import TopBar from '@/components/TopBar';
+import { LogoMark } from '@/components/Logo';
+import { fieldError, fieldHint, fieldInput, fieldLabel, submitButton } from '@/lib/form-styles';
 
 export default function LoginPage({
   searchParams,
@@ -14,35 +17,39 @@ export default function LoginPage({
   const [state, formAction] = useActionState(login, null as any);
 
   return (
-    <div className="max-w-md mx-auto mt-20">
-      <div className="bg-card border border-border p-8 rounded-2xl shadow-sm">
-        <h1 className="text-2xl font-bold mb-2 text-center text-primary-600">SDL 로그인</h1>
-        <p className="text-center text-muted-foreground mb-6 text-sm">SDL에 오신 것을 환영합니다! 아이디와 PIN을 입력해주세요.</p>
-        
+    <div>
+      <TopBar title="로그인" />
+      <div className="pt-4 pb-6 flex flex-col items-center gap-3 text-center">
+        <LogoMark size={56} />
+        <p className="text-[15px] text-muted-foreground">SDL에 오신 것을 환영합니다!<br />아이디와 PIN을 입력해주세요.</p>
+      </div>
+      <div>
         <form action={formAction} className="space-y-4">
           <input type="hidden" name="redirect" value={redirect || '/'} />
           
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-foreground mb-1">
+            <label htmlFor="username" className={fieldLabel}>
               아이디
             </label>
             <input
               type="text"
               id="username"
               name="username"
+              autoCapitalize="none"
+              autoComplete="username"
               required
               aria-describedby="username-hint"
-              className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className={fieldInput}
               placeholder="아이디를 입력하세요"
             />
             {/* 계정은 사내 Ahnlab ACE 아이디로 발급되므로, 어떤 아이디를 넣어야 하는지 예시와 함께 안내한다. */}
-            <p id="username-hint" className="text-xs text-muted-foreground mt-1">
+            <p id="username-hint" className={fieldHint}>
               Ahnlab ACE 아이디를 입력해주세요. ex) youngyong.jo
             </p>
           </div>
           
           <div>
-            <label htmlFor="pin" className="block text-sm font-medium text-foreground mb-1">
+            <label htmlFor="pin" className={fieldLabel}>
               비밀번호 (4자리 PIN)
             </label>
             <input
@@ -52,24 +59,24 @@ export default function LoginPage({
               required
               maxLength={4}
               pattern="\d{4}"
-              className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500"
+              inputMode="numeric"
+              className={fieldInput}
               placeholder="****"
             />
           </div>
 
           {state?.error && (
-            <p className="text-sm text-red-500 font-medium">{state.error}</p>
+            <p role="alert" className={fieldError}>{state.error}</p>
           )}
 
-          <button
-            type="submit"
-            className="w-full py-2.5 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors"
-          >
-            로그인
-          </button>
+          <div className="pt-2">
+            <button type="submit" className={submitButton}>
+              로그인
+            </button>
+          </div>
         </form>
 
-        <p className="mt-6 text-center text-sm text-muted-foreground">계정은 관리자에게 문의하세요.</p>
+        <p className="mt-6 text-center text-[13px] text-muted-foreground">계정은 관리자에게 문의하세요.</p>
       </div>
     </div>
   );
