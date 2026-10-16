@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { db } from '@/db';
 import { getMemberBadges } from './member-badges';
-import { getComments, getLikeSummaries, formatKst } from './community';
+import { getComments, getLikeSummaries } from './community';
 
 const groupBy = vi.fn();
 vi.mock('@/db', () => ({
@@ -55,11 +55,12 @@ describe('getComments', () => {
     ] as never);
     groupBy.mockResolvedValueOnce([{ targetId: 'c2', count: 1, liked: true }]);
 
-    const map = await getComments('post', [P1, 'p2'], 'me');
+    // 작성일은 게시글과 같은 상대 표기(기준 시각을 넘겨 고정).
+    const map = await getComments('post', [P1, 'p2'], 'me', new Date(created.getTime() + 5 * 60_000));
     expect(map.get('p2')).toEqual([]);
     expect(map.get(P1)).toEqual([
-      { id: 'c1', authorId: A, nickname: '보드왕', badge: { kind: 'seasons', count: 2 }, content: '첫 댓글', createdLabel: '2026. 10. 16. 12:04', edited: false, likeCount: 0, liked: false },
-      { id: 'c2', authorId: 'b', nickname: '둘째', badge: null, content: '고침', createdLabel: '2026. 10. 16. 12:04', edited: true, likeCount: 1, liked: true },
+      { id: 'c1', authorId: A, nickname: '보드왕', badge: { kind: 'seasons', count: 2 }, content: '첫 댓글', createdLabel: '5분 전', edited: false, likeCount: 0, liked: false },
+      { id: 'c2', authorId: 'b', nickname: '둘째', badge: null, content: '고침', createdLabel: '5분 전', edited: true, likeCount: 1, liked: true },
     ]);
     // 배지는 작성자 전체를 한 번에 계산한다.
     expect(getMemberBadges).toHaveBeenCalledWith([A, 'b']);
@@ -68,11 +69,5 @@ describe('getComments', () => {
   it('대상이 없으면 조회하지 않는다', async () => {
     expect((await getComments('post', [], null)).size).toBe(0);
     expect(db.query.comments.findMany).not.toHaveBeenCalled();
-  });
-});
-
-describe('formatKst', () => {
-  it('서버 시간대와 관계없이 한국 시간으로 표시한다(서버·브라우저 렌더 결과가 같도록)', () => {
-    expect(formatKst(new Date('2026-12-31T15:30:00Z'))).toBe('2027. 01. 01. 00:30');
   });
 });

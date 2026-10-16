@@ -7,7 +7,7 @@ import { getMemberBadges } from './member-badges';
 import { postImagePublicUrl } from './post-images';
 import { createSignedPhotoUrls } from './storage-admin';
 import type { FeedFilter } from './feed-filter';
-import { relativeTime } from './time';
+import { relativeDay, relativeTime } from './time';
 
 /*
  * 통합 피드(자유글 + 활동 기록) 데이터. 설계: docs/superpowers/specs/2026-10-16-feed-activity-merge-design.md §5.2
@@ -29,10 +29,14 @@ export type FeedItem = {
   author: { id: string; nickname: string; profileImageUrl: string | null };
   badge: MemberBadge | null;
   content: string;
-  createdAt: string; // ISO
-  createdLabel: string; // "30분 전"
-  /** 활동 기록이면 머리 정보, 자유글이면 null */
-  activity: { title: string; type: string; seasonName: string; date: string } | null;
+  /**
+   * 카드에 보이는 날짜는 하나뿐이다: 자유글은 작성 시각, 활동 기록은 모임 날짜(그 글에서 의미 있는 날짜).
+   * createdAt은 <time dateTime>용 기계 값(ISO 시각 또는 YYYY-MM-DD), createdLabel은 앱 공통 표기("30분 전", "10월 8일").
+   */
+  createdAt: string;
+  createdLabel: string;
+  /** 활동 기록이면 머리 정보, 자유글이면 null. 모임 날짜는 위 createdAt·createdLabel로 보여준다. */
+  activity: { title: string; type: string; seasonName: string } | null;
   images: { src: string; alt: string }[];
   photoCount: number;
   /** 비회원이라 활동 사진을 숨겼는지(사진 자리에 로그인 안내를 그린다) */
@@ -86,7 +90,8 @@ async function toItems(rows: Row[], viewer: Viewer, now: Date): Promise<FeedItem
   const [badges, likes, comments, signed] = await Promise.all([
     getMemberBadges(rows.map((r) => r.authorId)),
     getLikeSummaries('post', ids, viewerId),
-    getComments('post', ids, viewerId),
+    // 카드와 댓글이 같은 기준 시각으로 "N분 전"을 계산하게 now를 넘긴다.
+    getComments('post', ids, viewerId, now),
     activityPaths.length > 0 ? createSignedPhotoUrls(activityPaths) : Promise.resolve([] as (string | null)[]),
   ]);
   const signedByPath = new Map(activityPaths.map((p, i) => [p, signed[i] ?? null]));
@@ -108,11 +113,10 @@ async function toItems(rows: Row[], viewer: Viewer, now: Date): Promise<FeedItem
       author: r.author,
       badge: badges.get(r.authorId) ?? null,
       content: r.content,
-      createdAt: r.createdAt.toISOString(),
-      createdLabel: relativeTime(r.createdAt, now),
-      activity: isActivity
-        ? { title: r.title ?? '', type: r.activityType ?? 'OTHER', seasonName: r.season?.name ?? '', date: r.activityDate ?? '' }
-        : null,
+      // 활동 기록은 작성 시각 대신 모임 날짜를 보여준다(두 날짜를 나란히 두면 헷갈려 하나만 남김).
+      createdAt: isActivity && r.activityDate ? r.activityDate : r.createdAt.toISOString(),
+      createdLabel: isActivity && r.activityDate ? relativeDay(r.activityDate, now) : relativeTime(r.createdAt, now),
+      activity: isActivity ? { title: r.title ?? '', type: r.activityType ?? 'OTHER', seasonName: r.season?.name ?? '' } : null,
       images,
       photoCount: r.images.length,
       photosLocked: locked,

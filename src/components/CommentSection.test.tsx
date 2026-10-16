@@ -15,7 +15,7 @@ vi.mock('@/app/actions/profile', () => ({ getProfile: vi.fn() }));
 const ME = 'me-id';
 const POST = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const view = (o: Partial<CommentView>): CommentView => ({
-  id: 'c', authorId: 'someone', nickname: '누군가', badge: null, content: '내용', createdLabel: '2026. 10. 16. 12:04',
+  id: 'c', authorId: 'someone', nickname: '누군가', badge: null, content: '내용', createdLabel: '5분 전',
   edited: false, likeCount: 0, liked: false, ...o,
 });
 const mine = view({ id: 'c1', authorId: ME, nickname: '나', content: '내 댓글', edited: true, likeCount: 2, liked: true });
@@ -32,7 +32,7 @@ describe('CommentSection', () => {
     render(<CommentSection target="post" targetId={POST} comments={[mine, theirs]} viewer={null} loginHref="/login" />);
     const first = itemOf('내 댓글');
     expect(within(first).getByRole('button', { name: '나' })).toBeInTheDocument();
-    expect(first).toHaveTextContent('2026. 10. 16. 12:04');
+    expect(first).toHaveTextContent('5분 전');
     expect(first).toHaveTextContent('(수정됨)');
     expect(within(first).getByRole('button', { name: '좋아요 2' })).toHaveAttribute('aria-pressed', 'true');
     expect(within(itemOf('남의 댓글')).getByRole('button', { name: '남 Lv.3' })).toBeInTheDocument();

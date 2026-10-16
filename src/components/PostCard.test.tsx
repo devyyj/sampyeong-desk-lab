@@ -30,7 +30,10 @@ const activity: FeedItem = {
   ...base,
   id: 'a1',
   content: '• 테마',
-  activity: { title: '제 7회 방탈출 정기모임', type: 'ESCAPE_ROOM', seasonName: '시즌 4', date: '2026-07-31' },
+  activity: { title: '제 7회 방탈출 정기모임', type: 'ESCAPE_ROOM', seasonName: '시즌 4' },
+  // 활동 기록의 카드 날짜는 모임 날짜(feed.ts가 createdAt·createdLabel에 넣는다).
+  createdAt: '2026-07-31',
+  createdLabel: '7월 31일',
   images: [{ src: 'https://signed/0', alt: '제 7회 방탈출 정기모임 사진 1' }],
   photoCount: 1,
 };
@@ -53,7 +56,11 @@ describe('PostCard', () => {
     const card = screen.getByRole('article');
     expect(within(card).getByText('방탈출')).toBeInTheDocument();
     expect(within(card).getByText('시즌 4')).toBeInTheDocument();
-    expect(within(card).getByText(/7월 31일 \(금\)|2026년 7월 31일 \(금\)/)).toBeInTheDocument();
+    // 날짜는 작성자 줄에 하나만(모임 날짜), 앱 공통 표기로.
+    const times = card.querySelectorAll('time');
+    expect(times).toHaveLength(1);
+    expect(times[0]).toHaveAttribute('dateTime', '2026-07-31');
+    expect(times[0]).toHaveTextContent('7월 31일');
     const title = within(card).getByRole('heading', { name: '제 7회 방탈출 정기모임' });
     expect(within(title).getByRole('link')).toHaveAttribute('href', '/posts/a1');
     // 피드에서는 사진을 작은 썸네일 줄로 보여준다(화면 폭 캐러셀이 아님).

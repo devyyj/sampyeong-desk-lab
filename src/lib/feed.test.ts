@@ -75,6 +75,8 @@ describe('getFeedPage', () => {
     expect(page.hasMore).toBe(true);
     expect(page.items).toHaveLength(FEED_PAGE_SIZE);
     expect(getLikeSummaries).toHaveBeenCalledWith('post', rows.slice(0, FEED_PAGE_SIZE).map((r) => r.id), null);
+    // 댓글 작성일도 카드와 같은 기준 시각으로 계산한다.
+    expect(getComments).toHaveBeenCalledWith('post', rows.slice(0, FEED_PAGE_SIZE).map((r) => r.id), null, NOW);
   });
 
   it('자유글 사진은 공개 URL, 작성 시각은 서버에서 상대 시간 문구로 만든다', async () => {
@@ -93,7 +95,10 @@ describe('getFeedPage', () => {
     expect(item.images).toEqual([]);
     expect(item.photoCount).toBe(2);
     expect(item.photosLocked).toBe(true);
-    expect(item.activity).toEqual({ title: '제 7회 방탈출', type: 'ESCAPE_ROOM', seasonName: '시즌 4', date: '2026-07-31' });
+    expect(item.activity).toEqual({ title: '제 7회 방탈출', type: 'ESCAPE_ROOM', seasonName: '시즌 4' });
+    // 활동 기록의 날짜는 작성 시각이 아니라 모임 날짜 하나만, 같은 표기 규칙으로.
+    expect(item.createdAt).toBe('2026-07-31');
+    expect(item.createdLabel).toBe('7월 31일');
   });
 
   it('회원에게는 페이지의 활동 사진을 한 번에 서명하고, 실패한 사진은 뺀다', async () => {

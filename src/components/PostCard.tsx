@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { FeedItem } from '@/lib/feed';
 import { getActivityType } from '@/lib/activity-types';
-import { shortDate } from '@/lib/time';
 import Avatar from './Avatar';
 import UserName from './UserName';
 import PhotoCarousel from './PhotoCarousel';
@@ -38,8 +37,9 @@ type Props = {
  *   그래서 사진이 카드의 주인공이 아니고, 본문을 사진보다 먼저 둔다(사진 없는 자유글은 본문을 크게).
  * 상세: 작성자 줄 → (활동) 머리 → 화면 폭 캐러셀 → 본문 전체 → 좋아요·댓글 펼침.
  *
- * 무한 스크롤 목록(클라이언트)에서도 그려야 해서 클라이언트 컴포넌트다. 날짜·시간 문구는 서버가 만들어 넘긴다
- * (createdLabel). 모임 날짜(shortDate)는 시각이 없는 날짜라 서버·브라우저 시간대와 무관하게 같은 결과가 나온다.
+ * 날짜는 작성자 줄에 하나만 둔다(자유글은 작성 시각, 활동 기록은 모임 날짜 — feed.ts가 정한다).
+ * 무한 스크롤 목록(클라이언트)에서도 그려야 해서 클라이언트 컴포넌트이고, 날짜 문구는 서버가 만들어 넘긴다
+ * (브라우저에서 계산하면 서버 렌더와 어긋나 hydration 불일치가 난다).
  */
 export default function PostCard({ item, variant = 'feed', loginHref = '/login?redirect=%2F', viewer = null, onChanged, onDeleted }: Props) {
   const detail = variant === 'detail';
@@ -129,7 +129,7 @@ function LockedPhotos({ count, loginHref }: { count: number; loginHref: string }
 }
 
 /**
- * 활동 기록 머리: 종류 배지 · 시즌 · 모임 날짜, 그 아래 굵은 제목(피드에서는 상세 링크, 상세에서는 크게).
+ * 활동 기록 머리: 종류 배지 · 시즌, 그 아래 굵은 제목(피드에서는 상세 링크, 상세에서는 크게). 모임 날짜는 작성자 줄에 있다.
  * 페이지 h1은 TopBar가 가지므로 제목은 h2로 둔다.
  */
 function ActivityHead({ activity, href }: { activity: NonNullable<FeedItem['activity']>; href: string | null }) {
@@ -139,9 +139,6 @@ function ActivityHead({ activity, href }: { activity: NonNullable<FeedItem['acti
       <div className="flex flex-wrap items-center gap-1.5 text-[13px] text-muted-foreground">
         <span className={`px-1.5 py-px rounded-md text-[11px] font-bold ${type.badgeClass}`}>{type.label}</span>
         <span className="px-1.5 py-px rounded-md text-[11px] font-bold bg-muted text-muted-foreground">{activity.seasonName}</span>
-        <time dateTime={activity.date} className="tabular-nums">
-          {shortDate(activity.date)}
-        </time>
       </div>
       {href ? (
         <h2 className="text-[17px] font-bold leading-snug tracking-tight">

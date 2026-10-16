@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import { relativeTime, shortDate, todayKst } from './time';
+import { relativeTime, relativeDay, todayKst } from './time';
 
 // 기준 시각: 2026-10-16 21:00 KST (= 12:00 UTC)
 const now = new Date('2026-10-16T12:00:00Z');
@@ -33,14 +33,27 @@ describe('relativeTime', () => {
   });
 });
 
-describe('shortDate', () => {
-  it('요일을 붙인 짧은 날짜(한국 시간)', () => {
-    expect(shortDate('2026-09-18', now)).toBe('9월 18일 (금)');
-    expect(shortDate('2025-12-31', now)).toBe('2025년 12월 31일 (수)');
+describe('relativeDay (시각 없는 날짜 — 활동 기록의 모임 날짜)', () => {
+  // relativeTime과 같은 표기 규칙: 일 단위 상대 표기, 일주일이 넘으면 날짜(같은 해는 연도 생략).
+  it.each([
+    ['2026-10-16', '오늘'],
+    ['2026-10-15', '1일 전'],
+    ['2026-10-10', '6일 전'],
+    ['2026-10-09', '10월 9일'],
+    ['2025-12-31', '2025년 12월 31일'],
+    // 앞으로 있을 모임은 날짜로 보여준다.
+    ['2026-10-20', '10월 20일'],
+  ])('%s → %s', (ymd, expected) => {
+    expect(relativeDay(ymd, now)).toBe(expected);
+  });
+
+  it('한국 날짜 기준으로 센다(UTC로는 아직 전날이어도)', () => {
+    // 2026-10-16 15:30 UTC = 2026-10-17 00:30 KST
+    expect(relativeDay('2026-10-17', new Date('2026-10-16T15:30:00Z'))).toBe('오늘');
   });
 
   it('형식이 다른 값은 그대로 돌려준다', () => {
-    expect(shortDate('미정', now)).toBe('미정');
+    expect(relativeDay('미정', now)).toBe('미정');
   });
 });
 

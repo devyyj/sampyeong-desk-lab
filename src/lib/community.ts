@@ -3,13 +3,17 @@ import { db } from '@/db';
 import { commentLikes, comments, postLikes } from '../../drizzle/schema';
 import { getMemberBadges } from './member-badges';
 import type { MemberBadge } from './badge';
+import { relativeTime } from './time';
 
 /*
  * 좋아요·댓글 화면 데이터 조회. 피드처럼 대상이 여러 개인 화면에서도
  * 종류별로 쿼리 한 번씩만 돌도록 대상 id 목록을 받아 묶어서 가져온다(N+1 방지).
  */
 
-/** 클라이언트 컴포넌트로 넘기는 댓글 한 개. 시간은 서버에서 문자열로 만들어 넘긴다(아래 formatKst). */
+/**
+ * 클라이언트 컴포넌트로 넘기는 댓글 한 개. 작성일은 게시글과 같은 표기(relativeTime)로 서버에서 문자열로 만들어 넘긴다
+ * (클라이언트 컴포넌트가 직접 Date를 포맷하면 서버·브라우저 시간대·시각 차이로 hydration 불일치가 난다).
+ */
 export type CommentView = {
   id: string;
   authorId: string;
@@ -31,19 +35,6 @@ const LIKE_COLUMNS = {
 
 // 활동 기록은 게시글로 합쳐져(설계 §5.5) 댓글 대상은 게시글 하나다.
 const COMMENT_COLUMNS = { post: comments.postId } as const;
-
-/**
- * 한국 시간 "YYYY. MM. DD. HH:mm". 서버(Vercel은 UTC)와 브라우저의 시간대가 달라도 같은 문자열이 나오도록
- * 시간대를 고정한다. 클라이언트 컴포넌트가 직접 Date를 포맷하면 hydration 불일치가 난다.
- */
-export function formatKst(date: Date): string {
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
-    }).formatToParts(date).map((p) => [p.type, p.value]),
-  );
-  return `${parts.year}. ${parts.month}. ${parts.day}. ${parts.hour}:${parts.minute}`;
-}
 
 /** 대상별 좋아요 수와 보는 회원이 눌렀는지. 좋아요가 없는 대상도 { 0, false }로 채운다. */
 export async function getLikeSummaries(
@@ -74,6 +65,7 @@ export async function getComments(
   target: keyof typeof COMMENT_COLUMNS,
   ids: string[],
   viewerId: string | null,
+  now: Date = new Date(),
 ): Promise<Map<string, CommentView[]>> {
   const result = new Map<string, CommentView[]>(ids.map((id) => [id, []]));
   if (ids.length === 0) return result;
@@ -98,7 +90,7 @@ export async function getComments(
       nickname: c.author.nickname,
       badge: badges.get(c.authorId) ?? null,
       content: c.content,
-      createdLabel: formatKst(c.createdAt),
+      createdLabel: relativeTime(c.createdAt, now),
       // 작성 시 두 컬럼은 같은 문장의 DB now()라 값이 같고, 수정할 때만 updated_at이 바뀐다(updateComment도 DB now()).
       edited: c.updatedAt.getTime() !== c.createdAt.getTime(),
       likeCount: like.count,
