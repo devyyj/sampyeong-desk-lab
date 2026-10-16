@@ -7,7 +7,10 @@ import { getSession } from '@/lib/session';
 import { logout } from '@/app/actions/auth';
 import TopBar from '@/components/TopBar';
 import Avatar from '@/components/Avatar';
-import { BookIcon, BoxIcon, ChevronRightIcon, LogoutIcon, PencilIcon, ShieldIcon } from '@/components/icons';
+import { BookIcon, BoxIcon, ChevronRightIcon, CodeIcon, LogoutIcon, PencilIcon, ShieldIcon } from '@/components/icons';
+
+/** 이 앱의 소스 저장소. 동호회 회원이 기능을 제안하거나 코드를 살펴볼 수 있게 MY에서 소개한다. */
+const REPO_URL = 'https://github.com/devyyj/sampyeong-desk-lab';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,6 +51,8 @@ export default async function MyPage() {
           >
             로그인
           </Link>
+          {/* 계정은 관리자가 발급한다(자가 가입 없음). 처음 온 사람이 어디에 물어야 할지 알 수 있게 안내한다. */}
+          <p className="text-[13px] text-muted-foreground">회원 가입은 관리자(youngyong.jo)에게 Teams로 문의해주세요.</p>
         </section>
       )}
 
@@ -62,6 +67,20 @@ export default async function MyPage() {
       <MenuGroup title="동호회 안내">
         <MenuLink href="/about/rules" icon={BookIcon}>회칙</MenuLink>
         <MenuLink href="/about/shared-cabinet" icon={BoxIcon}>공용 보관함 안내</MenuLink>
+      </MenuGroup>
+
+      <MenuGroup title="앱 정보">
+        <li>
+          {/* 외부 사이트라 새 창으로 연다(앱 화면을 떠나지 않게). */}
+          <a href={REPO_URL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-4 py-3 text-[15px] active:bg-muted">
+            <CodeIcon size={20} />
+            <span className="flex-1 min-w-0">
+              <span className="block">GitHub 저장소</span>
+              <span className="block text-[13px] text-muted-foreground">이 앱의 소스 코드예요. 기능 제안·버그 제보도 환영해요.</span>
+            </span>
+            <ChevronRightIcon size={18} className="text-muted-foreground" />
+          </a>
+        </li>
       </MenuGroup>
 
       {user && (

@@ -161,3 +161,9 @@ export const LogoutIcon = (p: IconProps) => (
     <path d="M10 16 6 12l4-4M6 12h10" />
   </Icon>
 );
+
+export const CodeIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="m8 7-5 5 5 5M16 7l5 5-5 5M13.5 4l-3 16" />
+  </Icon>
+);

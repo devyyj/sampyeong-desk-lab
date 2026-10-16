@@ -48,4 +48,25 @@ describe('MyPage (/my)', () => {
     await page();
     expect(screen.getByRole('link', { name: /회원 관리/ })).toHaveAttribute('href', '/admin/members');
   });
+
+  it('비회원: 회원 가입은 관리자에게 Teams로 문의하라는 안내', async () => {
+    vi.mocked(getSession).mockResolvedValue(null);
+    await page();
+    expect(screen.getByText('회원 가입은 관리자(youngyong.jo)에게 Teams로 문의해주세요.')).toBeInTheDocument();
+  });
+
+  it('회원에게는 가입 안내를 보여주지 않는다', async () => {
+    vi.mocked(getSession).mockResolvedValue({ userId: 'u1', isAdmin: false } as never);
+    await page();
+    expect(screen.queryByText(/회원 가입은 관리자/)).toBeNull();
+  });
+
+  it('누구에게나 GitHub 저장소 소개 링크(새 창)', async () => {
+    vi.mocked(getSession).mockResolvedValue(null);
+    await page();
+    const link = screen.getByRole('link', { name: /GitHub 저장소/ });
+    expect(link).toHaveAttribute('href', 'https://github.com/devyyj/sampyeong-desk-lab');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
+  });
 });
