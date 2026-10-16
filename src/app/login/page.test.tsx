@@ -35,4 +35,10 @@ describe('LoginPage', () => {
     expect(screen.queryByText('회원가입')).not.toBeInTheDocument();
     expect(screen.getByText('계정은 관리자에게 문의하세요.')).toBeInTheDocument();
   });
+
+  it('아이디 입력란에 Ahnlab ACE 아이디 안내를 연결', async () => {
+    await renderWithSearchParams({});
+    const username = screen.getByLabelText('아이디');
+    expect(username).toHaveAccessibleDescription('Ahnlab ACE 아이디를 입력해주세요. ex) youngyong.jo');
+  });
 });

@@ -31,9 +31,14 @@ export default function LoginPage({
               id="username"
               name="username"
               required
+              aria-describedby="username-hint"
               className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500"
               placeholder="아이디를 입력하세요"
             />
+            {/* 계정은 사내 Ahnlab ACE 아이디로 발급되므로, 어떤 아이디를 넣어야 하는지 예시와 함께 안내한다. */}
+            <p id="username-hint" className="text-xs text-muted-foreground mt-1">
+              Ahnlab ACE 아이디를 입력해주세요. ex) youngyong.jo
+            </p>
           </div>
           
           <div>

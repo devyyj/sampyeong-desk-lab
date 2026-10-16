@@ -1,12 +1,21 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { updateProfile } from '@/app/actions/mypage';
 
 export default function MypageForm({ user }: { user: any }) {
   const [state, formAction] = useActionState(updateProfile, null as any);
   const [newPin, setNewPin] = useState('');
   const [confirmNewPin, setConfirmNewPin] = useState('');
+  // 새로 고른 사진의 미리보기 URL. 사진을 눌러 파일을 골랐을 때 바로 바뀐 모습을 보여주기 위함이다.
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  // 이전 미리보기 blob URL은 더 이상 쓰지 않으므로 메모리 누수를 막기 위해 해제한다.
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   const isPinMatched = !newPin || newPin === confirmNewPin;
   const isPinValid = !newPin || newPin.length === 4;
@@ -15,20 +24,30 @@ export default function MypageForm({ user }: { user: any }) {
     <form action={formAction} className="space-y-6">
       <div className="flex flex-col md:flex-row gap-8 items-start">
         <div className="flex flex-col items-center gap-4 w-full md:w-1/3">
-          <div className="w-32 h-32 rounded-full bg-muted border-4 border-background shadow-sm overflow-hidden flex items-center justify-center relative group">
-            {user.profileImageUrl ? (
-              <img src={user.profileImageUrl} alt="Profile" className="w-full h-full object-cover" />
+          {/* 사진 영역을 파일 입력의 label로 만들어, 사진을 눌러도 브라우저의 파일 선택 창이 열리게 한다. */}
+          <label
+            htmlFor="profileImage"
+            className="w-32 h-32 rounded-full bg-muted border-4 border-background shadow-sm overflow-hidden flex items-center justify-center relative group cursor-pointer"
+          >
+            {previewUrl || user.profileImageUrl ? (
+              <img src={previewUrl || user.profileImageUrl} alt="Profile" className="w-full h-full object-cover" />
             ) : (
               <span className="text-4xl font-bold text-muted-foreground">{user.username[0].toUpperCase()}</span>
             )}
             <div className="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center transition-colors">
               <span className="text-white text-xs font-semibold">변경</span>
             </div>
-          </div>
+          </label>
           <input
             type="file"
+            id="profileImage"
             name="profileImage"
             accept="image/*"
+            aria-label="프로필 사진 변경"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              setPreviewUrl(file ? URL.createObjectURL(file) : null);
+            }}
             className="w-full text-xs text-muted-foreground file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
           />
         </div>
