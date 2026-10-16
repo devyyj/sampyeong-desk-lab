@@ -70,8 +70,7 @@ test('회원: 활동 사진이 signed URL로 실제 로드되고, 시즌 명부�
 
   await page.goto('/members');
   await expect(page.getByRole('heading', { name: /회원 명부 \(\d+명\)/ })).toBeVisible();
-  // 레벨 안내가 있고, 이름 옆에 👑 회장(그 시즌 직책) 또는 Lv.N(참여 시즌 수)이 붙는다. 회장에게는 레벨을 붙이지 않는다.
-  await expect(page.getByRole('note', { name: '레벨 안내' })).toBeVisible();
+  // 이름 옆에 👑 회장(그 시즌 직책) 또는 Lv.N(참여 시즌 수)이 붙는다. 회장에게는 레벨을 붙이지 않는다.
   const rows = page.locator('main ul > li');
   await expect(rows.filter({ hasText: '회장' })).toHaveCount(1);
   await expect(rows.filter({ hasText: '회장' })).not.toContainText('Lv.');

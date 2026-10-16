@@ -111,17 +111,6 @@ export default async function MembersPage({
         <span className="text-[13px] text-muted-foreground">{season.period}</span>
       </div>
 
-      {/* 레벨 시스템 안내. 피드·댓글에도 같은 배지가 나오지만 뜻을 설명하는 곳은 명부 한 곳에 둔다. */}
-      <aside role="note" aria-label="레벨 안내" className="mt-3 rounded-2xl bg-muted/60 px-4 py-3 text-[13px] leading-relaxed text-muted-foreground">
-        <p>
-          <LevelBadge badge={{ kind: 'seasons', count: 3 }} className="mr-1" />
-          Lv.N은 참여한 시즌 수예요. 이번 시즌이 처음이면 Lv.1, 다섯 시즌 모두 참여했다면 Lv.5.
-        </p>
-        <p className="mt-1">
-          <LevelBadge badge={{ kind: 'president' }} className="mr-1" />
-          회장은 레벨 대신 회장으로 표시해요.
-        </p>
-      </aside>
 
       <ul className="mt-2 divide-y divide-border">
         {members.map(({ role, user }) => (

@@ -48,11 +48,9 @@ describe('MembersPage', () => {
     expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['박씨', '김비', '안에이']);
   });
 
-  it('레벨 시스템을 짧게 설명한다', async () => {
+  it('레벨 설명 상자는 두지 않는다(레벨은 배지 모양으로 강조)', async () => {
     await page();
-    const guide = screen.getByRole('note', { name: '레벨 안내' });
-    expect(guide).toHaveTextContent('Lv.N은 참여한 시즌 수');
-    expect(guide).toHaveTextContent('회장');
+    expect(screen.queryByRole('note', { name: '레벨 안내' })).toBeNull();
   });
 
   it('시즌은 칩 링크로 고르고(최근 시즌부터), 고른 시즌이 현재 항목', async () => {
