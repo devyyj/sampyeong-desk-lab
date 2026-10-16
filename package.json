@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "import:confluence": "tsx --env-file=.env.local scripts/import-confluence/index.ts",
-    "bootstrap:pins": "tsx --env-file=.env.local scripts/bootstrap-pins.main.ts"
+    "bootstrap:pins": "tsx --env-file=.env.local scripts/bootstrap-pins.main.ts",
+    "merge:activities": "tsx --env-file=.env.local scripts/merge-activities/index.ts"
   },
   "dependencies": {
     "@supabase/server": "^1.3.0",
