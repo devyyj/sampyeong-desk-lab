@@ -1,13 +1,16 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { CommentView } from '@/lib/community';
 import LikeButton from './LikeButton';
 import CommentSection from './CommentSection';
+import BottomSheet from './BottomSheet';
+import { CommentIcon } from './icons';
 
 /**
- * 피드 게시글 아래의 ❤·💬 줄. 댓글은 피드를 길게 만들지 않도록 접어 두고 💬를 누르면 그 자리에서 펼친다.
- * 댓글 데이터는 피드를 그릴 때 함께 받아 둔다(동호회 규모라 충분히 작고, 펼칠 때 기다리지 않아도 된다).
+ * 피드 게시글의 반응 영역(인스타그램 배치): ♡ 💬 버튼 줄 → 본문(children) → "댓글 N개 모두 보기".
+ * 댓글은 피드를 길게 만들지 않도록 카드 안에 펼치지 않고 바텀시트로 연다.
+ * 댓글 데이터는 피드를 그릴 때 함께 받아 둔다(동호회 규모라 충분히 작고, 열 때 기다리지 않아도 된다).
  */
 export default function PostReactions({
   postId,
@@ -16,6 +19,7 @@ export default function PostReactions({
   comments,
   viewer,
   loginHref,
+  children,
 }: {
   postId: string;
   liked: boolean;
@@ -23,31 +27,38 @@ export default function PostReactions({
   comments: CommentView[];
   viewer: { id: string; isAdmin: boolean } | null;
   loginHref: string;
+  children?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  const panelId = useId();
+  const count = comments.length;
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
+    <div>
+      <div className="flex items-center gap-1 -ml-2">
         <LikeButton target="post" id={postId} liked={liked} count={likeCount} canLike={viewer !== null} />
         <button
           type="button"
-          aria-label={`댓글 ${comments.length}`}
-          aria-expanded={open}
-          aria-controls={panelId}
-          onClick={() => setOpen(!open)}
-          className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-sm text-muted-foreground hover:bg-muted"
+          aria-label={`댓글 ${count}`}
+          aria-haspopup="dialog"
+          onClick={() => setOpen(true)}
+          className="inline-flex items-center gap-1.5 h-10 px-2 rounded-full text-[15px] hover:bg-muted"
         >
-          <span aria-hidden="true">💬</span>
-          <span className="tabular-nums">{comments.length}</span>
+          <CommentIcon size={24} />
+          <span className="tabular-nums font-medium">{count}</span>
         </button>
       </div>
-      {open && (
-        <div id={panelId}>
-          <CommentSection target="post" targetId={postId} comments={comments} viewer={viewer} loginHref={loginHref} />
-        </div>
+
+      {children && <div className="mt-1">{children}</div>}
+
+      {count > 0 && (
+        <button type="button" onClick={() => setOpen(true)} className="mt-1.5 text-sm text-muted-foreground">
+          {`댓글 ${count}개 모두 보기`}
+        </button>
       )}
+
+      <BottomSheet open={open} title="댓글" onClose={() => setOpen(false)}>
+        <CommentSection target="post" targetId={postId} comments={comments} viewer={viewer} loginHref={loginHref} />
+      </BottomSheet>
     </div>
   );
 }

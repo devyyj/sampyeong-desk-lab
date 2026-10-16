@@ -9,8 +9,9 @@ import LikeButton from './LikeButton';
 
 type Viewer = { id: string; isAdmin: boolean } | null;
 
+// 모바일 키보드에서 확대(zoom)되지 않도록 입력 글자는 16px 이상으로 둔다(iOS Safari는 16px 미만 입력란에 초점이 가면 화면을 확대한다).
 const inputClass =
-  'w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none';
+  'w-full px-4 py-2.5 rounded-2xl bg-muted text-foreground text-[16px] placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 resize-none';
 
 /**
  * 게시글·활동 기록 공용 댓글 영역: 목록(오래된 순) + 작성 폼.
@@ -32,11 +33,11 @@ export default function CommentSection({
   loginHref: string;
 }) {
   return (
-    <section aria-label="댓글" className="space-y-3">
+    <section aria-label="댓글" className="space-y-4">
       {comments.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{viewer ? '첫 댓글을 남겨보세요.' : '아직 댓글이 없습니다.'}</p>
+        <p className="py-6 text-center text-sm text-muted-foreground">{viewer ? '첫 댓글을 남겨보세요.' : '아직 댓글이 없습니다.'}</p>
       ) : (
-        <ul className="space-y-3">
+        <ul className="divide-y divide-border">
           {comments.map((comment) => (
             <CommentItem key={comment.id} comment={comment} viewer={viewer} />
           ))}
@@ -46,8 +47,8 @@ export default function CommentSection({
       {viewer ? (
         <NewCommentForm target={target} targetId={targetId} />
       ) : (
-        <p className="text-sm text-muted-foreground">
-          <Link href={loginHref} className="font-semibold text-foreground hover:underline">
+        <p className="py-2 text-sm text-muted-foreground text-center">
+          <Link href={loginHref} className="font-semibold text-foreground underline underline-offset-2">
             로그인
           </Link>
           하면 댓글을 쓸 수 있습니다.
@@ -74,21 +75,22 @@ function NewCommentForm({ target, targetId }: { target: 'post' | 'activity'; tar
         const formData = new FormData(e.currentTarget);
         startTransition(() => formAction(formData));
       }}
-      className="space-y-2"
+      className="space-y-1.5"
     >
       <input type="hidden" name="target" value={target} />
       <input type="hidden" name="targetId" value={targetId} />
-      <textarea name="content" aria-label="댓글 쓰기" required maxLength={1000} rows={2} placeholder="댓글을 입력하세요" className={inputClass} />
-      {state && 'error' in state && <p className="text-sm text-red-500">{state.error}</p>}
-      <div className="flex justify-end">
+      {/* 메신저처럼 입력란과 보내기 버튼을 한 줄에 둔다. */}
+      <div className="flex items-end gap-2">
+        <textarea name="content" aria-label="댓글 쓰기" required maxLength={1000} rows={1} placeholder="댓글 달기…" className={`${inputClass} flex-1 max-h-32`} />
         <button
           type="submit"
           disabled={isPending}
-          className="px-4 py-1.5 bg-foreground text-background rounded-full text-sm font-semibold hover:bg-foreground/90 disabled:opacity-60"
+          className="shrink-0 h-11 px-4 bg-foreground text-background rounded-full text-sm font-semibold disabled:opacity-60"
         >
           댓글 달기
         </button>
       </div>
+      {state && 'error' in state && <p className="text-sm text-red-500">{state.error}</p>}
     </form>
   );
 }
@@ -109,7 +111,7 @@ function CommentItem({ comment, viewer }: { comment: CommentView; viewer: Viewer
   };
 
   return (
-    <li className="rounded-xl bg-muted/50 px-3 py-2 space-y-1">
+    <li className="py-3 space-y-1">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <UserName userId={comment.authorId} nickname={comment.nickname} badge={comment.badge} />
         <span className="text-xs text-muted-foreground tabular-nums">
@@ -118,12 +120,12 @@ function CommentItem({ comment, viewer }: { comment: CommentView; viewer: Viewer
         </span>
         <span className="ml-auto flex items-center gap-2">
           {isMine && !editing && (
-            <button type="button" onClick={() => setEditing(true)} className="text-xs text-blue-500 hover:underline">
+            <button type="button" onClick={() => setEditing(true)} className="px-1.5 py-1 text-xs text-muted-foreground hover:text-foreground">
               수정
             </button>
           )}
           {canDelete && (
-            <button type="button" onClick={onDelete} disabled={isDeleting} className="text-xs text-red-500 hover:underline">
+            <button type="button" onClick={onDelete} disabled={isDeleting} className="px-1.5 py-1 text-xs text-muted-foreground hover:text-red-600">
               삭제
             </button>
           )}
@@ -134,11 +136,13 @@ function CommentItem({ comment, viewer }: { comment: CommentView; viewer: Viewer
         <EditCommentForm comment={comment} onDone={() => setEditing(false)} />
       ) : (
         // 일반 텍스트로 보여준다(마크다운·HTML 아님). 줄바꿈은 살린다.
-        <p className="text-sm whitespace-pre-wrap break-words">{comment.content}</p>
+        <p className="text-[15px] whitespace-pre-wrap break-words">{comment.content}</p>
       )}
       {deleteError && <p role="alert" className="text-xs text-red-500">{deleteError}</p>}
 
-      <LikeButton target="comment" id={comment.id} liked={comment.liked} count={comment.likeCount} canLike={viewer !== null} />
+      <div className="-ml-1.5">
+        <LikeButton target="comment" id={comment.id} liked={comment.liked} count={comment.likeCount} canLike={viewer !== null} size="sm" />
+      </div>
     </li>
   );
 }
@@ -162,13 +166,13 @@ function EditCommentForm({ comment, onDone }: { comment: CommentView; onDone: ()
       <textarea name="content" aria-label="댓글 수정" required maxLength={1000} rows={2} defaultValue={comment.content} className={inputClass} />
       {state && 'error' in state && <p className="text-sm text-red-500">{state.error}</p>}
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onDone} className="px-3 py-1 rounded-full text-sm hover:bg-muted">
+        <button type="button" onClick={onDone} className="h-9 px-3 rounded-full text-sm hover:bg-muted">
           취소
         </button>
         <button
           type="submit"
           disabled={isPending}
-          className="px-3 py-1 bg-foreground text-background rounded-full text-sm font-semibold disabled:opacity-60"
+          className="h-9 px-4 bg-foreground text-background rounded-full text-sm font-semibold disabled:opacity-60"
         >
           저장
         </button>

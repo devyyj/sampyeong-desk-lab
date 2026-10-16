@@ -22,19 +22,15 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
     redirect('/');
   }
 
+  // 상단 바(취소 | 게시글 수정 | 수정완료)는 PostForm이 그린다.
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">게시글 수정</h1>
-      <div className="bg-card border border-border p-6 rounded-2xl shadow-sm">
-        <PostForm
-          mode="edit"
-          post={{
-            id: post.id,
-            content: post.content,
-            images: post.images.map((img) => ({ id: img.id, url: postImagePublicUrl(img.storagePath) })),
-          }}
-        />
-      </div>
-    </div>
+    <PostForm
+      mode="edit"
+      post={{
+        id: post.id,
+        content: post.content,
+        images: post.images.map((img) => ({ id: img.id, url: postImagePublicUrl(img.storagePath) })),
+      }}
+    />
   );
 }

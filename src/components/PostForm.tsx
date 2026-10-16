@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { createPost, updatePost, requestPostImageUploads } from '@/app/actions/post';
 import { createClient } from '@/utils/supabase/client';
 import { checkImageFiles, MAX_POST_IMAGES } from '@/lib/post-images';
+import { CameraIcon } from './icons';
 
 type ExistingImage = { id: string; url: string };
 type NewImage = { file: File; preview: string };
@@ -110,58 +111,42 @@ export default function PostForm({ mode, post }: { mode: 'create' | 'edit'; post
   const busy = uploading || isSaving;
   const shownError = error ?? state?.error;
 
+  const thumbClass = 'relative shrink-0 w-24 h-24 rounded-xl overflow-hidden bg-muted';
+  const thumbButtonClass =
+    'absolute top-1 right-1 w-7 h-7 rounded-full bg-black/70 text-white text-sm font-bold flex items-center justify-center';
+
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form onSubmit={onSubmit}>
       {post && <input type="hidden" name="id" value={post.id} />}
 
-      <div>
-        <label htmlFor="content" className="block text-sm font-medium text-foreground mb-1">
-          내용 <span className="text-red-500">*</span>
-        </label>
-        <textarea
-          id="content"
-          name="content"
-          required
-          rows={5}
-          defaultValue={post?.content}
-          className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
-          placeholder="무슨 생각을 하고 계신가요?"
-        />
-      </div>
+      {/*
+        전체 화면 작성 모드의 상단 바: 취소 | 제목 | 게시. 탭바는 이 화면에서 숨겨진다(nav.hidesTabBar).
+        제출 버튼을 폼 안(이 바)에 두어 form 속성 없이도 Enter·버튼 모두 같은 onSubmit을 탄다.
+      */}
+      <header className="sticky top-0 z-30 -mx-4 px-2 h-12 flex items-center gap-1 bg-background/95 backdrop-blur border-b border-border/60">
+        <Link href="/" className="h-11 px-3 flex items-center text-[16px]">
+          취소
+        </Link>
+        <h1 className="flex-1 text-center text-[17px] font-bold tracking-tight">{mode === 'create' ? '새 게시글' : '게시글 수정'}</h1>
+        <button type="submit" disabled={busy} className="h-11 px-3 text-[16px] font-bold disabled:opacity-40">
+          {uploading ? '사진 올리는 중…' : mode === 'create' ? '게시하기' : '수정완료'}
+        </button>
+      </header>
 
-      {existing.length > 0 && (
-        <div role="group" aria-label="기존 사진" className="flex flex-wrap gap-2">
-          {existing.map((img, i) => {
-            const removed = removedIds.has(img.id);
-            return (
-              <div key={img.id} className="relative w-24 h-24">
-                <img
-                  src={img.url}
-                  alt={`기존 사진 ${i + 1}`}
-                  className={`w-full h-full object-cover rounded-lg bg-muted ${removed ? 'opacity-30 grayscale' : ''}`}
-                />
-                <button
-                  type="button"
-                  aria-label={`기존 사진 ${i + 1} 삭제`}
-                  aria-pressed={removed}
-                  onClick={() => toggleRemoved(img.id)}
-                  className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/70 text-white text-xs font-bold hover:bg-black"
-                >
-                  {removed ? '↺' : '×'}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      <div>
-        <label htmlFor="images" className="block text-sm font-medium text-foreground mb-1">
-          사진 첨부 (선택)
+      {/* 사진을 먼저 고르는 흐름(모임 직후 사진부터 올리는 사용 장면). 한 줄 가로 스크롤에 추가 칸 + 미리보기를 둔다. */}
+      <div className="-mx-4 px-4 py-4 flex gap-2 overflow-x-auto no-scrollbar">
+        <label
+          htmlFor="images"
+          className="shrink-0 w-24 h-24 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 text-muted-foreground cursor-pointer active:bg-muted"
+        >
+          <CameraIcon size={26} />
+          <span className="text-xs tabular-nums">{`사진 ${total} / ${MAX_POST_IMAGES}장`}</span>
         </label>
         <input
           type="file"
           id="images"
+          // 칸(label)에는 아이콘·개수만 보이므로 입력의 이름은 aria-label로 따로 준다.
+          aria-label="사진 첨부 (선택)"
           multiple
           accept="image/*"
           onChange={(e) => {
@@ -169,50 +154,75 @@ export default function PostForm({ mode, post }: { mode: 'create' | 'edit'; post
             // 같은 파일을 다시 고를 수 있게 비운다(고른 파일은 state에 있다).
             e.target.value = '';
           }}
-          className="w-full file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 text-sm text-muted-foreground"
+          className="sr-only"
         />
-        <p className="text-xs text-muted-foreground mt-1">
-          <span>{`사진 ${total} / ${MAX_POST_IMAGES}장`}</span> · 한 장에 10MB 이하
-        </p>
-      </div>
 
-      {newImages.length > 0 && (
-        <div role="group" aria-label="새 사진" className="flex flex-wrap gap-2">
-          {newImages.map((img, i) => (
-            <div key={img.preview} className="relative w-24 h-24">
-              <img src={img.preview} alt={`새 사진 ${i + 1}`} className="w-full h-full object-cover rounded-lg bg-muted" />
-              <button
-                type="button"
-                aria-label={`새 사진 ${i + 1} 빼기`}
-                onClick={() => {
-                  URL.revokeObjectURL(img.preview);
-                  setNewImages(newImages.filter((_, j) => j !== i));
-                }}
-                className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/70 text-white text-xs font-bold hover:bg-black"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {shownError && <p className="text-sm text-red-500 font-medium">{shownError}</p>}
-
-      <div className="flex justify-end gap-3 pt-2">
-        {mode === 'edit' && (
-          <Link href="/" className="px-5 py-2.5 rounded-full font-medium hover:bg-muted transition-colors">
-            취소
-          </Link>
+        {existing.length > 0 && (
+          <div role="group" aria-label="기존 사진" className="flex gap-2">
+            {existing.map((img, i) => {
+              const removed = removedIds.has(img.id);
+              return (
+                <div key={img.id} className={thumbClass}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={img.url}
+                    alt={`기존 사진 ${i + 1}`}
+                    className={`w-full h-full object-cover ${removed ? 'opacity-30 grayscale' : ''}`}
+                  />
+                  <button
+                    type="button"
+                    aria-label={`기존 사진 ${i + 1} 삭제`}
+                    aria-pressed={removed}
+                    onClick={() => toggleRemoved(img.id)}
+                    className={thumbButtonClass}
+                  >
+                    {removed ? '↺' : '×'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         )}
-        <button
-          type="submit"
-          disabled={busy}
-          className="px-6 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors disabled:opacity-60"
-        >
-          {uploading ? '사진 올리는 중…' : mode === 'create' ? '게시하기' : '수정완료'}
-        </button>
+
+        {newImages.length > 0 && (
+          <div role="group" aria-label="새 사진" className="flex gap-2">
+            {newImages.map((img, i) => (
+              <div key={img.preview} className={thumbClass}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={img.preview} alt={`새 사진 ${i + 1}`} className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  aria-label={`새 사진 ${i + 1} 빼기`}
+                  onClick={() => {
+                    URL.revokeObjectURL(img.preview);
+                    setNewImages(newImages.filter((_, j) => j !== i));
+                  }}
+                  className={thumbButtonClass}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      {shownError && <p role="alert" className="mb-3 text-sm text-red-500 font-medium">{shownError}</p>}
+
+      <label htmlFor="content" className="sr-only">
+        내용
+      </label>
+      {/* 입력 글자 16px 이상: iOS Safari가 초점 시 화면을 확대하지 않게 한다. */}
+      <textarea
+        id="content"
+        name="content"
+        required
+        rows={8}
+        defaultValue={post?.content}
+        className="w-full py-1 bg-transparent text-[17px] leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none resize-none"
+        placeholder="오늘 어떤 게임을 하셨나요?"
+      />
+      <p className="mt-2 text-xs text-muted-foreground">사진은 한 장에 10MB 이하, 최대 {MAX_POST_IMAGES}장까지 올릴 수 있어요.</p>
     </form>
   );
 }

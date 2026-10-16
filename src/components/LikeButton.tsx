@@ -2,6 +2,7 @@
 
 import { useOptimistic, useState, useTransition } from 'react';
 import { toggleLike, type LikeTarget } from '@/app/actions/reactions';
+import { HeartIcon } from './icons';
 
 type LikeState = { liked: boolean; count: number };
 
@@ -18,7 +19,8 @@ export default function LikeButton({
   liked,
   count,
   canLike,
-}: LikeState & { target: LikeTarget; id: string; canLike: boolean }) {
+  size = 'md',
+}: LikeState & { target: LikeTarget; id: string; canLike: boolean; /** sm: 댓글 안의 작은 좋아요 */ size?: 'md' | 'sm' }) {
   const [confirmed, setConfirmed] = useState<LikeState>({ liked, count });
   // 서버가 화면을 다시 그려 새 값을 주면(revalidatePath) 그 값을 따른다. effect에서 setState하면 한 번 더 렌더링되므로
   // React 문서의 "props가 바뀌면 렌더 중에 state 조정" 방식으로 처리한다.
@@ -55,6 +57,7 @@ export default function LikeButton({
     });
   };
 
+  const small = size === 'sm';
   return (
     <span className="inline-flex items-center gap-2">
       <button
@@ -62,12 +65,12 @@ export default function LikeButton({
         aria-label={`좋아요 ${shown.count}`}
         aria-pressed={shown.liked}
         onClick={onClick}
-        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-sm transition-colors ${
-          shown.liked ? 'text-red-500' : 'text-muted-foreground'
-        } ${canLike ? 'hover:bg-muted' : 'cursor-default'}`}
+        className={`inline-flex items-center gap-1.5 rounded-full transition-colors active:scale-95 ${
+          small ? 'h-8 px-1.5 text-xs' : 'h-10 px-2 text-[15px]'
+        } ${shown.liked ? 'text-like' : small ? 'text-muted-foreground' : 'text-foreground'} ${canLike ? 'hover:bg-muted' : 'cursor-default'}`}
       >
-        <span aria-hidden="true">{shown.liked ? '❤️' : '🤍'}</span>
-        <span className="tabular-nums">{shown.count}</span>
+        <HeartIcon size={small ? 16 : 24} filled={shown.liked} />
+        <span className={`tabular-nums font-medium ${shown.liked ? 'text-foreground' : ''}`}>{shown.count}</span>
       </button>
       {message && (
         <span role="alert" className="text-xs text-red-500">
