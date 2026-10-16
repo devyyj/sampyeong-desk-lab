@@ -65,6 +65,11 @@ describe('addComment', () => {
     expect(db.insert).not.toHaveBeenCalled();
   });
 
+  it('CRLF 줄바꿈은 LF로 맞춰 저장한다', async () => {
+    await addComment(null, form({ target: 'post', targetId: POST, content: '한 줄\r\n두 줄' }));
+    expect(values).toHaveBeenLastCalledWith({ postId: POST, authorId: ME, content: '한 줄\n두 줄' });
+  });
+
   it('대상이 그 사이 삭제됐으면(FK 위반) 찾을 수 없음', async () => {
     values.mockRejectedValueOnce(Object.assign(new Error('x'), { cause: { code: '23503' } }));
     expect(await addComment(null, form({ target: 'post', targetId: POST, content: 'hi' }))).toEqual({ error: '찾을 수 없습니다.' });

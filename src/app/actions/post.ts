@@ -79,6 +79,12 @@ async function checkNewImagePaths(userId: string, paths: string[]): Promise<{ er
 
 const imagePathsOf = (formData: FormData) => formData.getAll('imagePaths').map(String);
 
+/**
+ * 본문을 저장할 모양으로: 앞뒤 공백을 지우고 줄바꿈을 LF로 맞춘다.
+ * 브라우저는 textarea 줄바꿈을 CRLF로 보낼 수 있어, 그대로 두면 같은 글이 이관 글(LF)과 다른 줄바꿈으로 저장된다.
+ */
+const contentOf = (formData: FormData) => String(formData.get('content') ?? '').replace(/\r\n?/g, '\n').trim();
+
 /** 선택 정보(태그·모임 날짜·시즌) 검사 + 고른 시즌이 실제로 있는지(DB). 시즌을 고르지 않았으면 DB를 보지 않는다. */
 async function postMetaOf(formData: FormData): Promise<PostMeta | { error: string }> {
   const meta = parsePostMeta(formData);
@@ -96,7 +102,7 @@ export async function createPost(prevState: unknown, formData: FormData) {
   const session = await getSession();
   if (!session) return LOGIN_REQUIRED;
 
-  const content = String(formData.get('content') ?? '').trim();
+  const content = contentOf(formData);
   if (!content) return { error: '내용을 입력해주세요.' };
 
   const paths = imagePathsOf(formData);
@@ -137,7 +143,7 @@ export async function updatePost(prevState: unknown, formData: FormData) {
   if (!session) return LOGIN_REQUIRED;
 
   const id = formData.get('id');
-  const content = String(formData.get('content') ?? '').trim();
+  const content = contentOf(formData);
   if (!isUuid(id) || !content) return { error: '잘못된 요청입니다.' };
 
   const newPaths = imagePathsOf(formData);

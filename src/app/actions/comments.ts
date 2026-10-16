@@ -16,9 +16,12 @@ const BAD_REQUEST = { error: '잘못된 요청입니다.' };
 const LOGIN_REQUIRED = { error: '로그인이 필요합니다.' };
 const NOT_FOUND = { error: '찾을 수 없습니다.' };
 
-/** 공백을 지운 뒤 1~1000자(글자 수 기준)면 그 내용을, 아니면 null. 마크다운이 아닌 일반 텍스트로 저장한다. */
+/**
+ * 공백을 지운 뒤 1~1000자(글자 수 기준)면 그 내용을, 아니면 null. 마크다운이 아닌 일반 텍스트로 저장한다.
+ * 브라우저가 textarea 줄바꿈을 CRLF로 보낼 수 있어 LF로 맞춘다(게시글 본문과 같은 규칙).
+ */
 function cleanContent(raw: FormDataEntryValue | null): string | null {
-  const content = String(raw ?? '').trim();
+  const content = String(raw ?? '').replace(/\r\n?/g, '\n').trim();
   const length = [...content].length;
   return length >= 1 && length <= MAX_COMMENT_LENGTH ? content : null;
 }

@@ -132,6 +132,11 @@ describe('createPost', () => {
     expect(redirect).toHaveBeenCalledWith('/');
   });
 
+  it('브라우저가 보낸 CRLF 줄바꿈은 LF로 맞춰 저장한다(검색·표시가 어긋나지 않게)', async () => {
+    await createPost(null, form({ content: '첫 줄\r\n둘째 줄\r셋째 줄' }));
+    expect(writes[0].values).toMatchObject({ content: '첫 줄\n둘째 줄\n셋째 줄' });
+  });
+
   it('사진이 없으면 post_images에 쓰지 않는다', async () => {
     await createPost(null, form({ content: '글만' }));
     expect(writes.map((w) => w.op)).toEqual(['insert:posts']);
