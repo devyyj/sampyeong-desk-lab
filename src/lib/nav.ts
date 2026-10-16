@@ -63,6 +63,7 @@ export function createActionFor(pathname: string, viewer: { isLoggedIn: boolean;
   });
   if (pathname === '/') return withLogin('글쓰기', '/posts/write');
   if (pathname === '/boardgames') return withLogin('보드게임 등록', '/boardgames/add');
-  if (pathname === '/members') return viewer.isAdmin ? { label: '회원 추가', href: '/members/new' } : null;
+  // 회원 추가는 회원 탭과 회원 관리 화면 모두 같은 ＋ 버튼으로 연다(관리자에게만).
+  if (pathname === '/members' || pathname === '/admin/members') return viewer.isAdmin ? { label: '회원 추가', href: '/members/new' } : null;
   return null;
 }

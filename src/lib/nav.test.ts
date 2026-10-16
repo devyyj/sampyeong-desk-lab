@@ -69,8 +69,10 @@ describe('createActionFor (탭별 ＋ 버튼)', () => {
     expect(createActionFor('/boardgames', guest)).toEqual({ label: '보드게임 등록', href: '/login?redirect=%2Fboardgames%2Fadd' });
   });
 
-  it('회원 추가는 관리자에게만', () => {
+  it('회원 추가는 관리자에게만(회원 탭과 회원 관리 화면 모두 같은 ＋ 버튼)', () => {
     expect(createActionFor('/members', admin)).toEqual({ label: '회원 추가', href: '/members/new' });
+    expect(createActionFor('/admin/members', admin)).toEqual({ label: '회원 추가', href: '/members/new' });
+    expect(createActionFor('/admin/members', member)).toBeNull();
     expect(createActionFor('/members', member)).toBeNull();
     expect(createActionFor('/members', guest)).toBeNull();
   });

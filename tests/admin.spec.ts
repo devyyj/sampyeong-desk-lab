@@ -57,7 +57,7 @@ test('관리자: 회원을 생성하면(PIN 비움=1234) 새 회원은 첫 로�
   await page.goto('/my');
   await page.getByRole('link', { name: /회원 관리/ }).click();
   await page.waitForURL('**/admin/members');
-  const row = page.getByRole('row').filter({ hasText: newUsername });
+  const row = page.getByRole('listitem').filter({ hasText: newUsername });
   await expect(row).toContainText('E2E 신규');
   await expect(row).toContainText('신규팀');
   await expect(row).toContainText('초기 PIN');
@@ -76,13 +76,13 @@ test('관리자: 회원을 생성하면(PIN 비움=1234) 새 회원은 첫 로�
 test('관리자: PIN 초기화 후 회원은 예전 PIN으로 못 들어오고 새 PIN으로 들어오면 PIN 변경을 강요받는다', async ({ page, browser }) => {
   await login(page, admin, '/admin/members');
 
-  const row = page.getByRole('row').filter({ hasText: member.username });
+  const row = page.getByRole('listitem').filter({ hasText: member.username });
   await row.getByPlaceholder('1234').fill('9753');
   await row.getByRole('button', { name: 'PIN 초기화' }).click();
   await expect(row.getByText(`${member.username} 회원의 비밀번호를 초기화했습니다.`)).toBeVisible();
   // revalidate된 목록에서 상태가 '초기 PIN'으로 바뀐다.
   await page.reload();
-  await expect(page.getByRole('row').filter({ hasText: member.username })).toContainText('초기 PIN');
+  await expect(page.getByRole('listitem').filter({ hasText: member.username })).toContainText('초기 PIN');
 
   const context = await browser.newContext();
   const memberPage = await context.newPage();

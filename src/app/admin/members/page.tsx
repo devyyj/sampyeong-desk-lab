@@ -4,8 +4,7 @@ import { db } from '@/db';
 import { users } from '../../../../drizzle/schema';
 import { getAdminUser } from '@/lib/admin';
 import { ResetPinForm } from './AdminMemberForms';
-import TopBar, { TopBarAction } from '@/components/TopBar';
-import { PlusIcon } from '@/components/icons';
+import TopBar from '@/components/TopBar';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,48 +19,35 @@ export default async function AdminMembersPage() {
 
   return (
     <div>
-      <TopBar
-        title="회원 관리"
-        backHref="/my"
-        backLabel="MY로 돌아가기"
-        actions={
-          // 회원 생성은 회원 탭 ＋와 같은 폼 화면(/members/new)으로 통일했다.
-          <TopBarAction href="/members/new" label="회원 추가">
-            <PlusIcon size={24} />
-          </TopBarAction>
-        }
-      />
+      {/* 회원 추가는 회원 탭과 같은 오른쪽 아래 ＋ 버튼(Fab, 관리자에게만)으로 통일했다. */}
+      <TopBar title="회원 관리" backHref="/my" backLabel="MY로 돌아가기" />
       <p className="text-[13px] text-muted-foreground">
-        계정 발급과 비밀번호 초기화는 관리자만 할 수 있습니다. 새 회원은 오른쪽 위 ＋(회원 탭의 ＋와 같은 화면)로 만듭니다.
+        계정 발급과 비밀번호 초기화는 관리자만 할 수 있습니다. 새 회원은 오른쪽 아래 ＋로 만듭니다.
       </p>
 
-      {/* 관리용 표는 열이 많아 모바일에서는 가로로 밀어 본다. */}
-      <section className="mt-4 -mx-4 overflow-x-auto">
-        <table className="w-full min-w-[640px] text-sm whitespace-nowrap">
-          <thead className="text-left text-muted-foreground border-b border-border">
-            <tr>
-              <th className="px-4 py-3">아이디</th>
-              <th className="px-4 py-3">닉네임</th>
-              <th className="px-4 py-3">이름</th>
-              <th className="px-4 py-3">부서</th>
-              <th className="px-4 py-3">상태</th>
-              <th className="px-4 py-3">비밀번호</th>
-            </tr>
-          </thead>
-          <tbody>
-            {members.map((m) => (
-              <tr key={m.id} className="border-b border-border last:border-0">
-                <td className="px-4 py-3 font-medium">{m.username}</td>
-                <td className="px-4 py-3">{m.nickname}</td>
-                <td className="px-4 py-3">{m.displayName}</td>
-                <td className="px-4 py-3">{m.department}</td>
-                <td className="px-4 py-3">{statusOf(m)}</td>
-                <td className="px-4 py-3"><ResetPinForm userId={m.id} /></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+      {/* 표는 열이 많아 모바일에서 가로 스크롤이 생기므로, 회원 명부처럼 한 사람씩 세로로 쌓는다. */}
+      <ul className="mt-2 divide-y divide-border">
+        {members.map((m) => {
+          const status = statusOf(m);
+          const details = [m.nickname && m.nickname !== m.username && `닉네임 ${m.nickname}`, m.displayName, m.department].filter(Boolean).join(' · ');
+          return (
+            <li key={m.id} className="py-3.5 space-y-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="font-semibold text-[15px] truncate">{m.username}</span>
+                <span
+                  className={`shrink-0 px-1.5 py-px rounded-md text-[11px] font-bold ${
+                    status === '관리자' ? 'bg-foreground text-background' : status === '초기 PIN' ? 'bg-muted text-foreground border border-border' : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {status}
+                </span>
+              </div>
+              {details && <p className="text-[13px] text-muted-foreground break-words">{details}</p>}
+              <ResetPinForm userId={m.id} />
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

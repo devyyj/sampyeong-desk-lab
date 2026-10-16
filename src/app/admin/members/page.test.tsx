@@ -32,19 +32,26 @@ describe('AdminMembersPage', () => {
     expect(notFound).toHaveBeenCalled();
   });
 
-  it('관리자면 회원 추가 화면 링크와 회원별 상태(관리자/초기 PIN/정상)를 표시', async () => {
+  it('관리자면 회원마다 아이디·상태(관리자/초기 PIN/정상)·닉네임·이름·부서·PIN 초기화를 목록으로 보여준다(표 없음)', async () => {
     vi.mocked(getAdminUser).mockResolvedValueOnce({ id: 'a', isAdmin: true } as never);
     render(await AdminMembersPage());
 
-    // 회원 생성은 게시글·보드게임과 같은 폼 화면(/members/new)으로 통일했다.
-    expect(screen.getByRole('link', { name: '회원 추가' })).toHaveAttribute('href', '/members/new');
-    const rowOf = (username: string) => screen.getByText(username).closest('tr')!;
+    // 모바일에서 가로 스크롤이 생기지 않도록 표 대신 목록으로 쌓는다.
+    expect(screen.queryByRole('table')).toBeNull();
+    const rowOf = (username: string) => screen.getByText(username).closest('li')!;
     expect(within(rowOf('admin.user')).getByText('관리자')).toBeInTheDocument();
     expect(within(rowOf('kim.test')).getByText('초기 PIN')).toBeInTheDocument();
     expect(within(rowOf('lee.test')).getByText('정상')).toBeInTheDocument();
     expect(within(rowOf('kim.test')).getByRole('button', { name: 'PIN 초기화' })).toBeInTheDocument();
-    // 관리용이라 아이디를 유지하고 닉네임 열을 함께 보여준다.
-    expect(screen.getByRole('columnheader', { name: '닉네임' })).toBeInTheDocument();
-    expect(within(rowOf('kim.test')).getByText('김닉')).toBeInTheDocument();
+    // 관리용이라 아이디를 유지하고 닉네임·이름·부서를 함께 보여준다.
+    expect(rowOf('kim.test')).toHaveTextContent('김닉');
+    expect(rowOf('kim.test')).toHaveTextContent('김테스트');
+    expect(rowOf('kim.test')).toHaveTextContent('개발팀');
+  });
+
+  it('회원 추가는 다른 화면과 같은 ＋ 버튼(Fab)으로 하고, 페이지에는 따로 두지 않는다', async () => {
+    vi.mocked(getAdminUser).mockResolvedValueOnce({ id: 'a', isAdmin: true } as never);
+    render(await AdminMembersPage());
+    expect(screen.queryByRole('link', { name: '회원 추가' })).toBeNull();
   });
 });
