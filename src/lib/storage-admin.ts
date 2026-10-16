@@ -10,12 +10,12 @@ const SIGNED_URL_TTL_SECONDS = 60 * 60;
 
 function createAdminStorage() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  // Vercel에는 Supabase 연동이 만든 SUPABASE_SECRET_KEY(sb_secret_ 형식)가 있고, 로컬 .env.local과 scripts/는
-  // SUPABASE_SERVICE_ROLE_KEY 이름을 쓴다. 둘 다 RLS를 우회하는 같은 종류의 키라 연동 키를 우선 쓰고 없으면 기존 이름을 쓴다.
-  // (같은 비밀값을 Vercel에 다른 이름으로 중복 등록하지 않기 위함)
-  const serviceRoleKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  // SUPABASE_SERVICE_ROLE_KEY(.env.local과 scripts/에서 쓰고, 이 Supabase 프로젝트에서 동작을 확인한 키)를 우선 쓴다.
+  // Vercel의 Supabase 연동이 넣은 SUPABASE_SECRET_KEY는 Preview 배포에서 Storage가 'Invalid Compact JWS'(403)로
+  // 거부했다(2026-10-16). 그래서 연동 키는 명시적인 키가 없을 때만 대체용으로 쓴다.
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
   if (!url || !serviceRoleKey) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_URL과 SUPABASE_SECRET_KEY(또는 SUPABASE_SERVICE_ROLE_KEY) 환경 변수가 필요합니다.');
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL과 SUPABASE_SERVICE_ROLE_KEY(또는 SUPABASE_SECRET_KEY) 환경 변수가 필요합니다.');
   }
   // 서버에서 한 번 쓰고 버리는 클라이언트라 세션 저장/갱신이 필요 없다.
   return createClient(url, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } }).storage;

@@ -47,7 +47,7 @@
 
 ## 6. 운영
 
-- 사진 signed URL 키: Vercel에는 Supabase 연동이 만든 `SUPABASE_SECRET_KEY`가 이미 있어 그것을 우선 사용하고, 없으면 `SUPABASE_SERVICE_ROLE_KEY`(로컬 `.env.local`, `scripts/`)를 쓴다. 같은 비밀값을 다른 이름으로 중복 등록하지 않는다.
+- 사진 signed URL 키: `SUPABASE_SERVICE_ROLE_KEY`를 우선 쓰고, 없으면 Vercel 연동이 만든 `SUPABASE_SECRET_KEY`를 쓴다. 처음엔 연동 키를 우선했지만 Preview에서 Storage가 `Invalid Compact JWS`(403)로 거부해, `.env.local`에서 동작을 확인한 키를 Vercel(Production·Preview)에 `SUPABASE_SERVICE_ROLE_KEY`로 등록하고 우선순위를 바꿨다.
 - 배포 점검 중 발견(2026-10-16): Vercel에 `SESSION_SECRET`이 없어 운영 세션 JWT가 저장소에 공개된 개발용 기본 키로 서명되고 있었다(세션 위조 가능). `src/lib/session.ts`의 `resolveSessionSecret`이 production에서 키가 없거나 32자 미만이면 오류를 내도록 바꿨다. **`SESSION_SECRET`을 Vercel에 먼저 등록한 뒤 이 코드를 배포해야 한다.** 순서가 바뀌면 로그인·세션 확인이 전부 실패한다.
 
 ## 7. 범위 밖

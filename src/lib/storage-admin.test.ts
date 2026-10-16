@@ -20,11 +20,20 @@ describe('createSignedPhotoUrls', () => {
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key';
   });
 
-  it('Vercel Supabase 연동이 만든 SUPABASE_SECRET_KEY가 있으면 그것을 우선 사용', async () => {
-    process.env.SUPABASE_SECRET_KEY = 'sb_secret_from_vercel';
+  it('SUPABASE_SERVICE_ROLE_KEY가 있으면 연동 키(SUPABASE_SECRET_KEY)보다 우선 사용', async () => {
+    // Vercel 연동이 넣은 SUPABASE_SECRET_KEY로는 Storage가 'Invalid Compact JWS'(403)를 반환한 적이 있다.
+    process.env.SUPABASE_SECRET_KEY = 'sb_secret_from_integration';
     createSignedUrls.mockResolvedValueOnce({ data: [{ path: 'a/1.jpg', signedUrl: 'https://signed/1', error: null }], error: null });
     await createSignedPhotoUrls(['a/1.jpg']);
-    expect(createClient).toHaveBeenCalledWith('https://example.supabase.co', 'sb_secret_from_vercel', expect.anything());
+    expect(createClient).toHaveBeenCalledWith('https://example.supabase.co', 'service-role-key', expect.anything());
+  });
+
+  it('SUPABASE_SERVICE_ROLE_KEY가 없으면 SUPABASE_SECRET_KEY로 대체', async () => {
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    process.env.SUPABASE_SECRET_KEY = 'sb_secret_from_integration';
+    createSignedUrls.mockResolvedValueOnce({ data: [{ path: 'a/1.jpg', signedUrl: 'https://signed/1', error: null }], error: null });
+    await createSignedPhotoUrls(['a/1.jpg']);
+    expect(createClient).toHaveBeenCalledWith('https://example.supabase.co', 'sb_secret_from_integration', expect.anything());
   });
 
   it('Service Role Key로 activity_photos 버킷에 1시간짜리 signed URL을 요청하고, 입력 순서대로 돌려준다', async () => {
@@ -67,6 +76,6 @@ describe('createSignedPhotoUrls', () => {
 
   it('비밀키 환경 변수가 둘 다 없으면 두 이름을 모두 알려주는 오류', async () => {
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
-    await expect(createSignedPhotoUrls(['a/1.jpg'])).rejects.toThrow(/SUPABASE_SECRET_KEY.*SUPABASE_SERVICE_ROLE_KEY/);
+    await expect(createSignedPhotoUrls(['a/1.jpg'])).rejects.toThrow(/SUPABASE_SERVICE_ROLE_KEY.*SUPABASE_SECRET_KEY/);
   });
 });
