@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -15,6 +16,10 @@ const FOCUSABLE =
  * - 열릴 때: 안쪽 첫 포커스 요소(없으면 대화상자 자신)로 옮긴다.
  * - Tab/Shift+Tab: 안쪽 처음↔끝에서 돌게 한다(포커스 트랩).
  * - 닫힐 때: 열기 직전에 포커스가 있던 요소(보통 연 버튼)로 돌려준다.
+ *
+ * document.body로 포털한다. 조상 중에 backdrop-filter·transform이 있는 요소(예: 상단 바·sticky 필터 줄의 backdrop-blur)가
+ * 있으면 position: fixed가 화면이 아니라 그 요소 기준이 되어, 시트가 그 줄 안에 갇혀 보이기 때문이다.
+ * 팝업은 항상 사용자 동작(클릭) 뒤에만 그려지므로 서버 렌더에서는 이 컴포넌트가 실행되지 않는다.
  */
 export default function Overlay({
   label,
@@ -84,7 +89,7 @@ export default function Overlay({
   const placement =
     align === 'bottom' ? 'items-end justify-center lg:items-center lg:p-4' : 'items-center justify-center p-4';
 
-  return (
+  return createPortal(
     <div
       ref={ref}
       role="dialog"
@@ -98,6 +103,7 @@ export default function Overlay({
       className={`fixed inset-0 z-[100] flex outline-none ${placement} ${className}`}
     >
       {children}
-    </div>
+    </div>,
+    document.body,
   );
 }

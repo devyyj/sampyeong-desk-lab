@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { db } from '@/db';
 import { getSession } from '@/lib/session';
 import BoardGamesPage from './page';
 
 vi.mock('@/db', () => ({ db: { query: { boardGames: { findMany: vi.fn() } } } }));
 vi.mock('@/lib/session', () => ({ getSession: vi.fn() }));
-vi.mock('@/components/DeleteBoardGameButton', () => ({ default: () => null }));
 // next/form은 라우터 컨텍스트가 필요하다. 여기서는 GET 폼으로 렌더되는 모양(action·입력 이름)만 본다.
 vi.mock('next/form', () => ({ default: (props: React.ComponentProps<'form'>) => <form {...props} /> }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 const game = (o: Record<string, unknown>) => ({
   id: o.name, status: 'AVAILABLE', thumbnailUrl: null, recommendedPlayers: null, playTime: null,
@@ -85,6 +85,11 @@ describe('BoardGamesPage', () => {
       expect(container.querySelector('input[type="hidden"][name="cabinet"]')).toHaveValue('1');
       const filters = screen.getByRole('navigation', { name: '보드게임 필터' });
       expect(filters.querySelector('a')).toHaveAttribute('href', '/boardgames?q=%EA%B2%8C%EC%9E%84');
+      // 카테고리 시트의 링크도 검색어를 유지한다.
+      fireEvent.click(within(filters).getByRole('button', { name: /카테고리/ }));
+      expect(within(screen.getByRole('dialog', { name: '카테고리' })).getByRole('link', { name: '전략 1' }))
+        .toHaveAttribute('href', '/boardgames?category=%EC%A0%84%EB%9E%B5&q=%EA%B2%8C%EC%9E%84');
+      fireEvent.click(screen.getByRole('button', { name: '닫기' }));
       expect(screen.getByRole('link', { name: /공용 보관함/ })).toHaveAttribute('href', '/boardgames?cabinet=1&q=%EA%B2%8C%EC%9E%84');
       // 검색어 지우기는 필터를 그대로 둔다.
       expect(screen.getByRole('link', { name: '검색 지우기' })).toHaveAttribute('href', '/boardgames?cabinet=1');
@@ -112,18 +117,71 @@ describe('BoardGamesPage', () => {
     expect(titles()).toEqual(['이름없는게임']);
   });
 
-  it('필터 링크: 전체 + 보관함 + 카테고리(가나다순, 미분류는 맨 뒤)와 개수', async () => {
-    await page({ category: '전략' });
+  it('필터 줄은 전체·공용 보관함·카테고리 버튼 세 개만(카테고리 30여 개가 첫 화면을 덮지 않게)', async () => {
+    await page();
     const filters = screen.getByRole('navigation', { name: '보드게임 필터' });
-    const links = Array.from(filters.querySelectorAll('a')).map((a) => [a.textContent, a.getAttribute('href')]);
-    expect(links).toEqual([
+    expect(Array.from(filters.querySelectorAll('a')).map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
       ['전체 3', '/boardgames'],
       ['공용 보관함 1', '/boardgames?cabinet=1'],
+    ]);
+    expect(within(filters).getByRole('button', { name: '카테고리' })).toHaveAttribute('aria-haspopup', 'dialog');
+    expect(screen.getByRole('link', { name: '전체 3' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('카테고리 시트: 게임 수가 많은 순(같으면 가나다순), 미분류는 맨 뒤', async () => {
+    vi.mocked(db.query.boardGames.findMany).mockResolvedValueOnce([
+      game({ name: 'a', category: '트릭테이킹' }),
+      game({ name: 'b', category: '전략' }),
+      game({ name: 'c', category: '추리' }),
+      game({ name: 'd', category: '추리' }),
+      game({ name: 'e' }),
+      game({ name: 'f' }),
+      game({ name: 'g' }),
+    ] as never);
+    await page();
+    fireEvent.click(screen.getByRole('button', { name: '카테고리' }));
+    const sheet = screen.getByRole('dialog', { name: '카테고리' });
+    expect(within(sheet).getAllByRole('link').map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
+      ['추리 2', '/boardgames?category=%EC%B6%94%EB%A6%AC'],
       ['전략 1', '/boardgames?category=%EC%A0%84%EB%9E%B5'],
       ['트릭테이킹 1', '/boardgames?category=%ED%8A%B8%EB%A6%AD%ED%85%8C%EC%9D%B4%ED%82%B9'],
-      ['미분류 1', '/boardgames?category=%EB%AF%B8%EB%B6%84%EB%A5%98'],
+      ['미분류 3', '/boardgames?category=%EB%AF%B8%EB%B6%84%EB%A5%98'],
     ]);
-    expect(screen.getByRole('link', { name: '전략 1' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('카테고리를 고르면 버튼에 그 이름이 보이고 시트에서 현재 항목으로 표시', async () => {
+    await page({ category: '전략' });
+    const trigger = screen.getByRole('button', { name: '카테고리: 전략' });
+    fireEvent.click(trigger);
+    expect(within(screen.getByRole('dialog', { name: '카테고리' })).getByRole('link', { name: '전략 1' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('게임을 누르면 상세 시트: 회원에게는 보유자·수정 버튼', async () => {
+    vi.mocked(getSession).mockResolvedValue({ userId: 'u1' } as never);
+    await page();
+    fireEvent.click(screen.getByRole('button', { name: '스컬킹 상세 보기' }));
+    const sheet = screen.getByRole('dialog', { name: '스컬킹' });
+    expect(sheet).toHaveTextContent('트릭테이킹');
+    expect(sheet).toHaveTextContent('박씨');
+    expect(sheet).toHaveTextContent('공용 보관함');
+    expect(within(sheet).getByRole('link', { name: '수정' })).toHaveAttribute('href', '/boardgames/스컬킹/edit');
+  });
+
+  it('비회원 상세 시트에는 보유자·수정이 없다', async () => {
+    await page();
+    fireEvent.click(screen.getByRole('button', { name: '스컬킹 상세 보기' }));
+    const sheet = screen.getByRole('dialog', { name: '스컬킹' });
+    expect(sheet).not.toHaveTextContent('보유자');
+    expect(sheet).not.toHaveTextContent('박씨');
+    expect(within(sheet).queryByRole('link', { name: '수정' })).toBeNull();
+  });
+
+  it('회원에게만 상단 바에 등록(＋) 버튼', async () => {
+    await page();
+    expect(screen.queryByRole('link', { name: '보드게임 등록' })).toBeNull();
+    vi.mocked(getSession).mockResolvedValue({ userId: 'u1' } as never);
+    await page();
+    expect(screen.getByRole('link', { name: '보드게임 등록' })).toHaveAttribute('href', '/boardgames/add');
   });
 
   it('필터 결과가 없으면 안내', async () => {
