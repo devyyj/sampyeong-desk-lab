@@ -6,6 +6,7 @@ import { addComment, updateComment, deleteComment, type CommentActionState } fro
 import type { CommentView } from '@/lib/community';
 import UserName from './UserName';
 import LikeButton from './LikeButton';
+import { useConfirm } from '@/components/ConfirmDialog';
 
 type Viewer = { id: string; isAdmin: boolean } | null;
 
@@ -111,8 +112,10 @@ function CommentItem({ comment, viewer, onChanged }: { comment: CommentView; vie
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeleting, startDelete] = useTransition();
 
-  const onDelete = () => {
-    if (!confirm('댓글을 삭제하시겠습니까?')) return;
+  const [confirm, confirmDialog] = useConfirm();
+
+  const onDelete = async () => {
+    if (!(await confirm({ title: '댓글을 삭제할까요?', confirmLabel: '삭제', danger: true }))) return;
     startDelete(async () => {
       const result = await deleteComment(comment.id);
       if (result && 'error' in result) setDeleteError(result.error);
@@ -122,6 +125,7 @@ function CommentItem({ comment, viewer, onChanged }: { comment: CommentView; vie
 
   return (
     <li className="py-3 space-y-1">
+      {confirmDialog}
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <UserName userId={comment.authorId} nickname={comment.nickname} badge={comment.badge} />
         <span className="text-xs text-muted-foreground tabular-nums">

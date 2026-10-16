@@ -3,6 +3,13 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
+/**
+ * 지금 떠 있는 팝업들(먼저 연 것부터). 시트 위에 확인 팝업이 겹치는 경우처럼 여러 개가 함께 떠 있으면
+ * 키(ESC·Tab)는 맨 위 팝업만 처리한다. 모두 document에 리스너를 달기 때문에, 이렇게 거르지 않으면
+ * ESC 한 번에 확인 팝업과 그 아래 시트가 함께 닫힌다.
+ */
+const openStack: object[] = [];
+
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -27,6 +34,7 @@ export default function Overlay({
   onKeyDown,
   className = 'bg-black/80',
   align = 'center',
+  role = 'dialog',
   children,
 }: {
   label: string;
@@ -36,6 +44,8 @@ export default function Overlay({
   className?: string;
   /** bottom: 모바일에서 아래에 붙는 바텀시트(넓은 화면에서는 가운데) */
   align?: 'center' | 'bottom';
+  /** alertdialog: 사용자의 답을 받아야 하는 확인 팝업(ConfirmDialog) */
+  role?: 'dialog' | 'alertdialog';
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -47,11 +57,14 @@ export default function Overlay({
 
   useEffect(() => {
     const root = ref.current;
+    const token = {};
+    openStack.push(token);
     const previous = document.activeElement as HTMLElement | null;
     const focusables = () => (root ? [...root.querySelectorAll<HTMLElement>(FOCUSABLE)] : []);
     (focusables()[0] ?? root)?.focus();
 
     const onKey = (e: KeyboardEvent) => {
+      if (openStack[openStack.length - 1] !== token) return;
       if (e.key === 'Escape') {
         handlers.current.onClose();
         return;
@@ -80,6 +93,7 @@ export default function Overlay({
     document.body.style.overflow = 'hidden';
     return () => {
       document.removeEventListener('keydown', onKey);
+      openStack.splice(openStack.indexOf(token), 1);
       document.body.style.overflow = prevOverflow;
       // 연 요소가 그사이 사라졌을 수도 있으므로(목록 갱신 등) 문서에 남아 있을 때만 돌려준다.
       if (previous?.isConnected) previous.focus();
@@ -92,7 +106,7 @@ export default function Overlay({
   return createPortal(
     <div
       ref={ref}
-      role="dialog"
+      role={role}
       aria-modal="true"
       aria-label={label}
       tabIndex={-1}

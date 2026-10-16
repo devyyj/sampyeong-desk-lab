@@ -25,7 +25,6 @@ const itemOf = (text: string) => screen.getByText(text).closest('li')!;
 describe('CommentSection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
   it('댓글을 닉네임·배지·시간·수정됨·내용·좋아요와 함께 보여준다', () => {
@@ -97,14 +96,16 @@ describe('CommentSection', () => {
     await waitFor(() => expect(screen.queryByRole('textbox', { name: '댓글 수정' })).toBeNull());
   });
 
-  it('삭제: 확인 창을 거쳐 deleteComment, 취소하면 지우지 않는다', async () => {
+  it('삭제: 앱 확인 팝업을 거쳐 deleteComment, 취소하면 지우지 않는다', async () => {
     render(<CommentSection target="post" targetId={POST} comments={[mine]} viewer={{ id: ME, isAdmin: false }} loginHref="/login" />);
-    vi.mocked(window.confirm).mockReturnValueOnce(false);
-    fireEvent.click(screen.getByRole('button', { name: '삭제' }));
+    const deleteButton = within(itemOf('내 댓글')).getByRole('button', { name: '삭제' });
+    fireEvent.click(deleteButton);
+    fireEvent.click(within(await screen.findByRole('alertdialog', { name: '댓글을 삭제할까요?' })).getByRole('button', { name: '취소' }));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
     expect(deleteComment).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole('button', { name: '삭제' }));
-    expect(window.confirm).toHaveBeenLastCalledWith('댓글을 삭제하시겠습니까?');
+    fireEvent.click(deleteButton);
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: '삭제' }));
     await waitFor(() => expect(deleteComment).toHaveBeenCalledWith('c1'));
   });
 });

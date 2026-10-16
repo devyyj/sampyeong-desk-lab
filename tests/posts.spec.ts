@@ -133,13 +133,10 @@ test('게시글: 사진 3장 작성 → 수정(1장 삭제·1장 추가) → 다
   await expect(seenByGuest.getByRole('button', { name: '게시글 메뉴' })).toHaveCount(0);
   await expect(seenByGuest.getByRole('link', { name: '수정' })).toHaveCount(0);
 
-  // 작성자 삭제(확인 창 수락) → 남은 사진 파일도 Storage에서 지워진다.
-  page.once('dialog', (dialog) => {
-    expect(dialog.message()).toBe('게시글을 삭제할까요?');
-    dialog.accept();
-  });
+  // 작성자 삭제(앱 확인 팝업에서 삭제) → 남은 사진 파일도 Storage에서 지워진다.
   await editedPost.getByRole('button', { name: '게시글 메뉴' }).click();
   await page.getByRole('dialog', { name: '게시글' }).getByRole('button', { name: '삭제' }).click();
+  await page.getByRole('alertdialog', { name: '게시글을 삭제할까요?' }).getByRole('button', { name: '삭제' }).click();
   await expect(page.locator('article').filter({ hasText: updated })).toHaveCount(0);
   expect(await db.select().from(posts).where(eq(posts.id, row.id))).toHaveLength(0);
   expect(await imagesOf(row.id)).toHaveLength(0);
@@ -181,9 +178,10 @@ test('게시글 삭제 확인 창에서 취소하면 지워지지 않는다', as
   const post = page.locator('article').filter({ hasText: content });
   // 사진 없이 쓴 글에는 이미지 영역이 없다.
   await expect(post.getByRole('button', { name: /크게 보기$/ })).toHaveCount(0);
-  page.once('dialog', (dialog) => dialog.dismiss());
   await post.getByRole('button', { name: '게시글 메뉴' }).click();
   await page.getByRole('dialog', { name: '게시글' }).getByRole('button', { name: '삭제' }).click();
+  await page.getByRole('alertdialog', { name: '게시글을 삭제할까요?' }).getByRole('button', { name: '취소' }).click();
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);
   await page.reload();
   await expect(page.locator('article').filter({ hasText: content })).toHaveCount(1);
   await page.context().close();

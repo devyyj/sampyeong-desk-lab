@@ -86,8 +86,8 @@ test('게시글: 좋아요 토글·유지, 댓글 작성·수정·좋아요·삭
   await adminCard.getByRole('button', { name: '댓글 2', exact: true }).click();
   const target = commentsSheet(adminPage).getByRole('listitem').filter({ hasText: 'E2E 작성자 댓글' });
   await expect(target.getByRole('button', { name: '수정' })).toHaveCount(0);
-  adminPage.once('dialog', (d) => d.accept());
   await target.getByRole('button', { name: '삭제' }).click();
+  await adminPage.getByRole('alertdialog', { name: '댓글을 삭제할까요?' }).getByRole('button', { name: '삭제' }).click();
   await expect(commentsSheet(adminPage).getByRole('listitem').filter({ hasText: 'E2E 작성자 댓글' })).toHaveCount(0);
   await expect.poll(async () => (await db.select().from(comments).where(eq(comments.authorId, writer.id))).length).toBe(0);
 
@@ -105,8 +105,8 @@ test('게시글: 좋아요 토글·유지, 댓글 작성·수정·좋아요·삭
   // 본인 댓글 삭제 → 댓글 좋아요도 cascade로 사라진다.
   await page.reload();
   await card.getByRole('button', { name: '댓글 1', exact: true }).click();
-  page.once('dialog', (d) => d.accept());
   await commentsSheet(page).getByRole('listitem').filter({ hasText: 'E2E 고친 댓글' }).getByRole('button', { name: '삭제' }).click();
+  await page.getByRole('alertdialog').getByRole('button', { name: '삭제' }).click();
   await expect(card.getByRole('button', { name: '댓글 0', exact: true })).toBeVisible();
   expect(await db.select().from(commentLikes).where(eq(commentLikes.commentId, saved.id))).toHaveLength(0);
 

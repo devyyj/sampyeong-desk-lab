@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { deletePost } from '@/app/actions/post';
 import BottomSheet, { SheetAction } from './BottomSheet';
+import { useConfirm } from './ConfirmDialog';
 import { MoreIcon } from './icons';
 
 /**
@@ -16,9 +17,10 @@ export default function PostMenu({ postId, onDeleted }: { postId: string; onDele
   const [open, setOpen] = useState(false);
   const [isDeleting, startDelete] = useTransition();
   const router = useRouter();
+  const [confirm, confirmDialog] = useConfirm();
 
-  const onDelete = () => {
-    if (!confirm('게시글을 삭제할까요?')) return;
+  const onDelete = async () => {
+    if (!(await confirm({ title: '게시글을 삭제할까요?', message: '사진과 댓글도 함께 지워져요.', confirmLabel: '삭제', danger: true }))) return;
     startDelete(async () => {
       await deletePost(postId);
       setOpen(false);
@@ -43,6 +45,7 @@ export default function PostMenu({ postId, onDeleted }: { postId: string; onDele
         <SheetAction danger onClick={onDelete} disabled={isDeleting}>
           {isDeleting ? '삭제하는 중…' : '삭제'}
         </SheetAction>
+        {confirmDialog}
       </BottomSheet>
     </>
   );
