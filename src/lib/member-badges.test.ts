@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { db } from '@/db';
 import { getMemberBadges, getSeasonCounts } from './member-badges';
-import { badgeLabel } from './badge';
+import { badgeLabel, levelTone } from './badge';
 
 const groupBy = vi.fn();
 vi.mock('@/db', () => ({ db: { select: vi.fn() } }));
@@ -58,5 +58,17 @@ describe('badgeLabel', () => {
     expect(badgeLabel({ kind: 'president' })).toBe('회장');
     expect(badgeLabel({ kind: 'seasons', count: 1 })).toBe('Lv.1');
     expect(badgeLabel({ kind: 'seasons', count: 5 })).toBe('Lv.5');
+  });
+});
+
+describe('levelTone', () => {
+  it('레벨을 명도 1~5단계로: Lv.1이 가장 연하고 Lv.5 이상은 가장 진한 단계로 이어진다', () => {
+    expect([1, 2, 3, 4, 5, 6, 9].map(levelTone)).toEqual([1, 2, 3, 4, 5, 5, 5]);
+  });
+
+  it('0 이하·소수 같은 비정상 값은 가장 연한 단계로', () => {
+    expect(levelTone(0)).toBe(1);
+    expect(levelTone(-3)).toBe(1);
+    expect(levelTone(2.7)).toBe(2);
   });
 });

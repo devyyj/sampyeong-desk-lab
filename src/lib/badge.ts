@@ -11,3 +11,14 @@ export type MemberBadge = { kind: 'president' } | { kind: 'seasons'; count: numb
 export function badgeLabel(badge: MemberBadge): string {
   return badge.kind === 'president' ? '회장' : `Lv.${badge.count}`;
 }
+
+/** 레벨 배지 명도 단계(1~5). */
+export type LevelTone = 1 | 2 | 3 | 4 | 5;
+
+/**
+ * 레벨을 배지 명도 단계로 바꾼다. 레벨이 오를수록 진해지고(모노크롬 강조), 시즌이 계속 늘어도
+ * Lv.5 이상은 가장 진한 단계로 이어진다. 0 이하·소수 같은 비정상 값은 가장 연한 단계로 본다.
+ */
+export function levelTone(count: number): LevelTone {
+  return Math.min(5, Math.max(1, Math.floor(count))) as LevelTone;
+}
