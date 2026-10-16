@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SignJWT } from 'jose';
-import { encrypt, decrypt, createSession, deleteSession, getSession } from './session';
+import { encrypt, decrypt, createSession, deleteSession, getSession, resolveSessionSecret } from './session';
 
 // SESSION_SECRET 미설정 시 session.ts가 쓰는 개발용 기본 키
 const KEY = new TextEncoder().encode('super-secret-key-for-development');
@@ -86,5 +86,27 @@ describe('session utils', () => {
 
     const session = await getSession();
     expect(session).toBeNull();
+  });
+});
+
+describe('resolveSessionSecret', () => {
+  const STRONG = 'x'.repeat(32);
+
+  it('SESSION_SECRET이 있으면 그 값을 쓴다', () => {
+    expect(resolveSessionSecret({ SESSION_SECRET: STRONG, NODE_ENV: 'production' })).toBe(STRONG);
+  });
+
+  it('개발/테스트 환경에서는 없으면 개발용 기본 키', () => {
+    expect(resolveSessionSecret({ NODE_ENV: 'development' })).toBe('super-secret-key-for-development');
+    expect(resolveSessionSecret({ NODE_ENV: 'test' })).toBe('super-secret-key-for-development');
+  });
+
+  it('production에서 없으면 공개된 기본 키로 서명하지 않고 오류', () => {
+    expect(() => resolveSessionSecret({ NODE_ENV: 'production' })).toThrow('SESSION_SECRET');
+    expect(() => resolveSessionSecret({ NODE_ENV: 'production', SESSION_SECRET: '' })).toThrow('SESSION_SECRET');
+  });
+
+  it('production에서 32자 미만이면 오류(추측 가능한 약한 키 방지)', () => {
+    expect(() => resolveSessionSecret({ NODE_ENV: 'production', SESSION_SECRET: 'short' })).toThrow('32');
   });
 });
