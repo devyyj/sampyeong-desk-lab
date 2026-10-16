@@ -1,10 +1,14 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary-50: #eff6ff;
-  --color-primary-100: #dbeafe;
-  --color-primary-500: #3b82f6;
-  --color-primary-600: #2563eb;
+  /*
+   * 모노크롬 디자인: 포인트 컬러는 글자색(검정, 다크 모드에서는 흰색) 하나다.
+   * 기존 코드의 primary-* 클래스(text-primary-600 등)를 한꺼번에 모노크롬으로 바꾸려고 이름은 두고 값만 변수로 연결한다.
+   */
+  --color-primary-50: var(--accent-subtle);
+  --color-primary-100: var(--accent-soft);
+  --color-primary-500: var(--accent);
+  --color-primary-600: var(--accent);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
@@ -12,28 +16,38 @@
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-border: var(--border);
-  --font-sans: var(--font-inter);
+  --color-like: var(--like);
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
 }
 
 :root {
-  --background: #fafafa;
-  --foreground: #171717;
+  --background: #ffffff;
+  --foreground: #0a0a0a;
   --muted: #f4f4f5;
-  --muted-foreground: #71717a;
+  --muted-foreground: #737373;
   --card: #ffffff;
-  --card-foreground: #18181b;
-  --border: #e4e4e7;
+  --card-foreground: #0a0a0a;
+  --border: #ececec;
+  --accent: #0a0a0a;
+  --accent-soft: #ededed;
+  --accent-subtle: #f6f6f6;
+  /* 좋아요 하트만 예외적으로 색을 쓴다(눌렀는지 한눈에 보이도록). */
+  --like: #ef4444;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #09090b;
+    --background: #0a0a0a;
     --foreground: #fafafa;
-    --muted: #27272a;
+    --muted: #1c1c1e;
     --muted-foreground: #a1a1aa;
-    --card: #18181b;
+    --card: #141414;
     --card-foreground: #fafafa;
-    --border: #27272a;
+    --border: #262626;
+    --accent: #fafafa;
+    --accent-soft: #2a2a2a;
+    --accent-subtle: #1a1a1a;
+    --like: #f87171;
   }
 }
 
@@ -63,21 +77,23 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* 모바일 사파리에서 탭할 때 회색 상자가 번쩍이는 것을 끈다(눌림 표시는 각 요소의 active: 스타일로 한다). */
+  -webkit-tap-highlight-color: transparent;
 }
 
-.glass {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-}
+/* 가로 캐러셀·칩 줄 등에서 스크롤바를 숨긴다(스와이프로 넘기는 영역). */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
 
-@media (prefers-color-scheme: dark) {
-  .glass {
-    background: rgba(0, 0, 0, 0.7);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

@@ -1,0 +1,42 @@
+/**
+ * 하단 탭바(데스크톱에서는 사이드 레일) 정의와 "지금 어느 탭인가" 규칙.
+ * 탭바(TabBar)·글쓰기 버튼(Fab)·테스트가 같은 규칙을 쓰도록 순수 함수로 분리했다.
+ */
+export type TabKey = 'feed' | 'activities' | 'boardgames' | 'members' | 'my';
+
+export type Tab = {
+  key: TabKey;
+  label: string;
+  href: string;
+  /** 이 접두사로 시작하는 경로도 이 탭으로 본다(href 자신은 항상 포함). */
+  also?: string[];
+};
+
+export const TABS: readonly Tab[] = [
+  // 게시글 작성·수정은 피드에서 들어가는 화면이라 피드 탭에 둔다.
+  { key: 'feed', label: '피드', href: '/', also: ['/posts'] },
+  { key: 'activities', label: '활동', href: '/activities' },
+  { key: 'boardgames', label: '보드게임', href: '/boardgames' },
+  { key: 'members', label: '회원', href: '/members' },
+  // GNB가 없어지면서 프로필 편집·동호회 안내·관리자·PIN 변경은 모두 MY에서 들어간다.
+  { key: 'my', label: 'MY', href: '/my', also: ['/mypage', '/about', '/admin', '/change-pin'] },
+];
+
+/** base 자신이거나 base/로 시작하면 참. '/activitiesX' 같은 경로가 '/activities'로 오인되지 않게 한다. */
+function underPath(pathname: string, base: string): boolean {
+  return pathname === base || pathname.startsWith(`${base}/`);
+}
+
+export function activeTabOf(pathname: string): Tab | null {
+  for (const tab of TABS) {
+    // '/'는 모든 경로의 접두사라 정확히 일치할 때만 피드로 본다.
+    const own = tab.href === '/' ? pathname === '/' : underPath(pathname, tab.href);
+    if (own || tab.also?.some((base) => underPath(pathname, base))) return tab;
+  }
+  return null;
+}
+
+/** 작성·수정 화면은 본문 입력과 키보드에 화면을 다 쓰도록 탭바를 숨긴다. */
+export function hidesTabBar(pathname: string): boolean {
+  return pathname === '/posts/write' || /^\/posts\/[^/]+\/edit\/?$/.test(pathname);
+}

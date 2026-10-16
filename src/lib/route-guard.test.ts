@@ -22,6 +22,8 @@ describe('guardRoute', () => {
     ['/activities', null, null],
     ['/activities/abc', null, null],
     ['/about/rules', null, null],
+    // MY 탭 허브는 비회원에게도 로그인 버튼·동호회 안내를 보여주는 공개 화면이다(/mypage 편집 화면만 보호).
+    ['/my', null, null],
     // PIN 변경 필요 → 어떤 페이지든 /change-pin
     ['/', { mustChangePin: true }, '/change-pin'],
     ['/boardgames', { mustChangePin: true }, '/change-pin'],
