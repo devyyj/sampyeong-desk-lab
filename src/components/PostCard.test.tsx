@@ -56,7 +56,15 @@ describe('PostCard', () => {
     expect(within(card).getByText(/7월 31일 \(금\)|2026년 7월 31일 \(금\)/)).toBeInTheDocument();
     const title = within(card).getByRole('heading', { name: '제 7회 방탈출 정기모임' });
     expect(within(title).getByRole('link')).toHaveAttribute('href', '/posts/a1');
-    expect(within(card).getByRole('region', { name: '사진 1장' })).toBeInTheDocument();
+    // 피드에서는 사진을 작은 썸네일 줄로 보여준다(화면 폭 캐러셀이 아님).
+    const photos = within(card).getByRole('region', { name: '사진 1장' });
+    expect(photos).not.toHaveAttribute('aria-roledescription', 'carousel');
+    expect(within(photos).getByRole('button', { name: '제 7회 방탈출 정기모임 사진 1 크게 보기' })).toBeInTheDocument();
+  });
+
+  it('상세에서는 사진을 화면 폭 캐러셀로 크게 보여준다', () => {
+    render(<PostCard item={activity} variant="detail" />);
+    expect(screen.getByRole('region', { name: '사진 1장' })).toHaveAttribute('aria-roledescription', 'carousel');
   });
 
   it('비회원에게 잠긴 활동 사진은 장수와 로그인 안내만 보여준다', () => {

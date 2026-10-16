@@ -9,11 +9,11 @@ import Avatar from './Avatar';
 import UserName from './UserName';
 import PhotoCarousel from './PhotoCarousel';
 import PostCaption from './PostCaption';
+import PhotoThumbs from './PhotoThumbs';
 import PostMenu from './PostMenu';
 import PostReactions from './PostReactions';
 import LikeButton from './LikeButton';
 import CommentSection from './CommentSection';
-import { primaryButtonClass } from './EmptyState';
 import { CameraIcon } from './icons';
 
 type Props = {
@@ -32,8 +32,11 @@ type Props = {
 
 /**
  * 게시글 카드(자유글·활동 기록 공용). 설계 §5.2·§5.4.
- * 구성: 작성자 줄 → (활동) 종류·시즌·모임 날짜와 굵은 제목 → 사진(또는 잠긴 사진 안내) → 반응 → 본문 → 댓글.
- * 사진 없는 자유글은 본문이 주인공이라 본문을 반응 줄 위에 크게 둔다(예전 피드와 같은 배치).
+ *
+ * 피드: 작성자 줄 → (활동) 종류·시즌·모임 날짜와 굵은 제목 → 본문(3줄 접기) → 작은 사진 줄 → 반응(댓글은 시트).
+ *   사진은 피드를 훑기 쉽도록 작게(3칸 썸네일) 보여주고, 크게 보기는 Lightbox·상세에 맡긴다.
+ *   그래서 사진이 카드의 주인공이 아니고, 본문을 사진보다 먼저 둔다(사진 없는 자유글은 본문을 크게).
+ * 상세: 작성자 줄 → (활동) 머리 → 화면 폭 캐러셀 → 본문 전체 → 좋아요·댓글 펼침.
  *
  * 무한 스크롤 목록(클라이언트)에서도 그려야 해서 클라이언트 컴포넌트다. 날짜·시간 문구는 서버가 만들어 넘긴다
  * (createdLabel). 모임 날짜(shortDate)는 시각이 없는 날짜라 서버·브라우저 시간대와 무관하게 같은 결과가 나온다.
@@ -45,21 +48,6 @@ export default function PostCard({ item, variant = 'feed', loginHref = '/login?r
   const afterDelete = onDeleted ?? (detail ? () => router.push('/') : undefined);
   const href = `/posts/${item.id}`;
   const hasImages = item.images.length > 0;
-  const reactions = {
-    postId: item.id,
-    liked: item.liked,
-    likeCount: item.likeCount,
-    comments: item.comments,
-    viewer,
-    loginHref,
-    onChanged,
-  };
-
-  const caption = detail ? (
-    <p className="whitespace-pre-wrap break-words text-[16px] leading-relaxed">{item.content}</p>
-  ) : (
-    <PostCaption content={item.content} large={!hasImages && !item.activity && !item.photosLocked} />
-  );
 
   return (
     <article className={detail ? '' : 'py-3 first:pt-0'}>
@@ -77,28 +65,17 @@ export default function PostCard({ item, variant = 'feed', loginHref = '/login?r
 
       {item.activity && <ActivityHead activity={item.activity} href={detail ? null : href} />}
 
-      {(hasImages || item.photosLocked) && (
-        // 모바일에서는 좌우 여백(main의 px-4)을 상쇄해 사진을 화면 끝까지 채운다.
-        <div className="-mx-4 mt-1.5 sm:mx-0 sm:rounded-xl sm:overflow-hidden">
-          {hasImages ? (
-            <PhotoCarousel images={item.images} />
-          ) : (
-            // 활동 사진은 회원 전용이다. 비회원에게는 주소를 발급하지 않고 장수만 알린다(설계 §6).
-            <div className="py-10 bg-muted flex flex-col items-center justify-center gap-3 px-6 text-center">
-              <CameraIcon size={30} className="text-muted-foreground" />
-              <p className="text-[15px] text-muted-foreground">{`로그인하면 사진 ${item.photoCount}장을 볼 수 있어요`}</p>
-              <Link href={loginHref} className={primaryButtonClass}>
-                로그인
-              </Link>
+      {detail ? (
+        <>
+          {hasImages && (
+            // 모바일에서는 좌우 여백(main의 px-4)을 상쇄해 사진을 화면 끝까지 채운다.
+            <div className="-mx-4 mt-1.5 sm:mx-0 sm:rounded-xl sm:overflow-hidden">
+              <PhotoCarousel images={item.images} />
             </div>
           )}
-        </div>
-      )}
-
-      {detail ? (
-        // 상세는 본문이 먼저, 반응·댓글은 아래에 펼쳐 둔다(피드처럼 시트로 접지 않음).
-        <>
-          <div className="mt-3">{caption}</div>
+          {item.photosLocked && <LockedPhotos count={item.photoCount} loginHref={loginHref} />}
+          <p className="mt-3 whitespace-pre-wrap break-words text-[16px] leading-relaxed">{item.content}</p>
+          {/* 상세는 반응·댓글을 아래에 펼쳐 둔다(피드처럼 시트로 접지 않음). */}
           <section className="mt-6 pt-3 border-t border-border space-y-2">
             <div className="flex items-center gap-2 -ml-2">
               <LikeButton target="post" id={item.id} liked={item.liked} count={item.likeCount} canLike={viewer !== null} />
@@ -107,17 +84,47 @@ export default function PostCard({ item, variant = 'feed', loginHref = '/login?r
             <CommentSection target="post" targetId={item.id} comments={item.comments} viewer={viewer} loginHref={loginHref} />
           </section>
         </>
-      ) : hasImages || item.activity || item.photosLocked ? (
-        <div className="mt-1">
-          <PostReactions {...reactions}>{caption}</PostReactions>
-        </div>
       ) : (
         <>
-          <div className="mt-1 mb-1">{caption}</div>
-          <PostReactions {...reactions} />
+          <div className="mt-1">
+            <PostCaption content={item.content} large={!hasImages && !item.activity && !item.photosLocked} />
+          </div>
+          {hasImages && (
+            <div className="mt-2">
+              <PhotoThumbs images={item.images} />
+            </div>
+          )}
+          {item.photosLocked && <LockedPhotos count={item.photoCount} loginHref={loginHref} />}
+          <div className="mt-1">
+            <PostReactions
+              postId={item.id}
+              liked={item.liked}
+              likeCount={item.likeCount}
+              comments={item.comments}
+              viewer={viewer}
+              loginHref={loginHref}
+              onChanged={onChanged}
+            />
+          </div>
         </>
       )}
     </article>
+  );
+}
+
+/**
+ * 비회원에게 잠긴 활동 사진 안내. 활동 사진은 회원 전용이라 주소를 발급하지 않고 장수만 알린다(설계 §6).
+ * 사진 줄과 같은 자리를 차지하도록 한 줄 높이로 작게 둔다.
+ */
+function LockedPhotos({ count, loginHref }: { count: number; loginHref: string }) {
+  return (
+    <div className="mt-2 h-14 px-4 rounded-lg bg-muted flex items-center gap-2.5 text-[14px] text-muted-foreground">
+      <CameraIcon size={20} className="shrink-0" />
+      <p className="flex-1 min-w-0">{`로그인하면 사진 ${count}장을 볼 수 있어요`}</p>
+      <Link href={loginHref} className="shrink-0 font-semibold text-foreground underline underline-offset-2">
+        로그인
+      </Link>
+    </div>
   );
 }
 

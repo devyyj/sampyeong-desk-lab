@@ -6,7 +6,7 @@ import { comments, posts } from '../drizzle/schema';
 /**
  * 모바일(iPhone 13 뷰포트) E2E: 모바일 중심 개편의 앱 셸과 핵심 흐름을 실제 DB·Storage로 확인한다.
  * - 로고 헤더 고정, 하단 탭바 이동, 탭별 ＋ 버튼
- * - 사진을 실제로 첨부해 글쓰기(전체 화면 작성 모드) → 피드 캐러셀
+ * - 사진을 실제로 첨부해 글쓰기(전체 화면 작성 모드) → 피드 썸네일·라이트박스
  * - 댓글 바텀시트에서 댓글 작성, 보드게임 카테고리 시트, MY에서 로그아웃
  * playwright.config.ts의 mobile 프로젝트에서만 돈다.
  */
@@ -41,7 +41,7 @@ test('비회원: 로고 헤더와 하단 탭바로 이동하고, ＋는 로그�
   await page.waitForURL('**/login?redirect=%2Fposts%2Fwrite');
 });
 
-test('회원: 사진 첨부 글쓰기 → 피드 캐러셀 → 댓글 시트 → 보드게임 카테고리 시트 → 로그아웃', async ({ page }) => {
+test('회원: 사진 첨부 글쓰기 → 피드 썸네일 → 댓글 시트 → 보드게임 카테고리 시트 → 로그아웃', async ({ page }) => {
   test.setTimeout(90_000);
   const content = `E2E 모바일 글 ${Date.now()}`;
   await login(page, member, '/');
@@ -57,13 +57,17 @@ test('회원: 사진 첨부 글쓰기 → 피드 캐러셀 → 댓글 시트 →
   await page.getByRole('button', { name: '게시하기' }).click();
   await page.waitForURL((url) => url.pathname === '/');
 
-  // 피드 카드: 화면 폭 캐러셀(사진 2장)이 실제로 로드된다.
+  // 피드 카드: 사진은 작은 썸네일(3칸 격자의 한 칸, 화면 폭의 1/3 정도)로 보이고 실제로 로드된다.
   const card = page.locator('article').filter({ hasText: content });
-  const carousel = card.getByRole('region', { name: '사진 2장' });
-  await expect(carousel).toBeVisible();
-  expect((await carousel.boundingBox())!.width).toBeGreaterThanOrEqual(380);
-  await expectImageLoaded(card.locator('img').first());
-  await expect(card.getByText('1/2')).toBeVisible();
+  const photos = card.getByRole('region', { name: '사진 2장' });
+  await expect(photos).toBeVisible();
+  const thumb = photos.getByRole('button', { name: /크게 보기$/ }).first();
+  expect((await thumb.boundingBox())!.width).toBeLessThan(140);
+  await expectImageLoaded(thumb.locator('img'));
+  // 누르면 전체 화면으로 크게 본다.
+  await thumb.click();
+  await expect(page.getByRole('dialog')).toContainText('1 / 2');
+  await page.keyboard.press('Escape');
 
   // 댓글은 바텀시트에서 쓴다.
   await card.getByRole('button', { name: '댓글 0', exact: true }).click();

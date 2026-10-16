@@ -68,7 +68,8 @@ test('게시글: 사진 3장 작성 → 수정(1장 삭제·1장 추가) → 다
     await img.scrollIntoViewIfNeeded();
     await expectImageLoaded(img);
   }
-  expect((await thumbs.first().boundingBox())!.width).toBeGreaterThan(300);
+  // 피드에서는 사진을 작게(3칸 썸네일) 보여준다. 크게 보기는 라이트박스·상세에서 한다.
+  expect((await thumbs.first().boundingBox())!.width).toBeLessThan(300);
 
   // 라이트박스: 누른 사진부터, 이전/다음·←/→, n / N
   await thumbs.nth(1).click();
