@@ -132,6 +132,23 @@ describe('mypage server actions', () => {
       expect(uploadAvatar).not.toHaveBeenCalled();
     });
 
+    it('사진 삭제(removeProfileImage=1)면 profileImageUrl을 null로 되돌린다(사진을 설정하지 않은 상태)', async () => {
+      vi.mocked(session.getSession).mockResolvedValueOnce(me);
+      const mockDb = await mockDbWrite();
+      const { uploadAvatar } = await import('@/lib/storage-admin');
+      expect(await updateProfile(null, fields({ nickname: '보드왕', removeProfileImage: '1' })))
+        .toEqual({ success: '정보가 성공적으로 수정되었습니다.' });
+      expect(mockDb.set).toHaveBeenCalledWith(expect.objectContaining({ profileImageUrl: null }));
+      expect(uploadAvatar).not.toHaveBeenCalled();
+    });
+
+    it('사진 삭제 표시가 없으면 기존 사진을 건드리지 않는다', async () => {
+      vi.mocked(session.getSession).mockResolvedValueOnce(me);
+      const mockDb = await mockDbWrite();
+      await updateProfile(null, fields({ nickname: '보드왕' }));
+      expect(mockDb.set.mock.calls[0][0]).not.toHaveProperty('profileImageUrl');
+    });
+
     it('프로필 사진 업로드가 실패하면 저장하지 않고 오류', async () => {
       vi.mocked(session.getSession).mockResolvedValueOnce(me);
       const { uploadAvatar } = await import('@/lib/storage-admin');

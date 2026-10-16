@@ -52,4 +52,39 @@ describe('MypageForm', () => {
     expect(screen.queryByText('Y')).toBeNull();
     expect(screen.getByText('보')).toBeInTheDocument();
   });
+
+  it('사진이 없으면 사진 삭제 버튼이 없다', () => {
+    render(<MypageForm user={user} />);
+    expect(screen.queryByRole('button', { name: '사진 삭제' })).toBeNull();
+  });
+
+  it('사진 삭제를 누르면 기본(닉네임 첫 글자) 모습으로 돌아가고, 저장 때 삭제 표시를 보낸다', () => {
+    const { container } = render(<MypageForm user={{ ...user, profileImageUrl: 'https://public/avatars/me.png' }} />);
+    expect(screen.getByAltText('Profile')).toHaveAttribute('src', 'https://public/avatars/me.png');
+    expect(container.querySelector('input[name="removeProfileImage"]')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: '사진 삭제' }));
+    expect(screen.queryByAltText('Profile')).toBeNull();
+    expect(screen.getByText('보')).toBeInTheDocument();
+    expect(container.querySelector('input[name="removeProfileImage"]')).toHaveValue('1');
+    expect(screen.queryByRole('button', { name: '사진 삭제' })).toBeNull();
+  });
+
+  it('삭제 후 새 사진을 고르면 삭제 표시를 거두고 새 사진을 올린다', () => {
+    const { container } = render(<MypageForm user={{ ...user, profileImageUrl: 'https://public/avatars/me.png' }} />);
+    fireEvent.click(screen.getByRole('button', { name: '사진 삭제' }));
+    const file = new File(['x'], 'me.png', { type: 'image/png' });
+    fireEvent.change(screen.getByLabelText('프로필 사진 변경'), { target: { files: [file] } });
+    expect(screen.getByAltText('Profile')).toHaveAttribute('src', 'blob:preview');
+    expect(container.querySelector('input[name="removeProfileImage"]')).toBeNull();
+  });
+
+  it('새로 고른 사진만 있는 상태에서 삭제하면 고른 파일도 비운다', () => {
+    render(<MypageForm user={user} />);
+    const input = screen.getByLabelText('프로필 사진 변경') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [new File(['x'], 'me.png', { type: 'image/png' })] } });
+    fireEvent.click(screen.getByRole('button', { name: '사진 삭제' }));
+    expect(screen.queryByAltText('Profile')).toBeNull();
+    expect(input.value).toBe('');
+  });
 });

@@ -38,14 +38,30 @@ test('프로필: 부서·자기소개·사진을 바꾸면 저장되고 새로�
   const saved = await getUser(member.username);
   expect(saved).toMatchObject({ department: '바뀐팀', bio: 'E2E 자기소개' });
 
-  // 회원 탈퇴는 아직 준비 중 안내만 띄운다(데이터가 지워지지 않아야 함).
-  const messages: string[] = [];
+  // 사진 삭제: 저장하면 사진을 설정하지 않은 상태(닉네임 첫 글자)로 돌아간다.
+  await page.getByRole('button', { name: '사진 삭제' }).click();
+  await expect(page.getByRole('img', { name: 'Profile' })).toHaveCount(0);
+  await page.getByRole('button', { name: '정보 수정' }).click();
+  await expect(page.getByText(SAVED)).toBeVisible();
+  await expect.poll(async () => (await getUser(member.username))?.profileImageUrl).toBeNull();
+  await page.reload();
+  await expect(page.getByRole('img', { name: 'Profile' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '사진 삭제' })).toHaveCount(0);
+
+  // 회원 탈퇴는 아직 준비 중 안내만 띄운다(데이터가 지워지지 않아야 함). 브라우저 대화상자가 아닌 앱 안의 팝업이다.
+  let nativeDialog = false;
   page.on('dialog', (dialog) => {
-    messages.push(dialog.message());
-    dialog.accept();
+    nativeDialog = true;
+    dialog.dismiss();
   });
   await page.getByRole('button', { name: '회원 탈퇴' }).click();
-  await expect.poll(() => messages).toEqual(['정말로 탈퇴하시겠습니까? 이 작업은 되돌릴 수 없습니다.', '준비 중인 기능입니다.']);
+  const ask = page.getByRole('alertdialog', { name: '정말로 탈퇴하시겠습니까?' });
+  await expect(ask).toContainText('이 작업은 되돌릴 수 없습니다.');
+  await ask.getByRole('button', { name: '탈퇴' }).click();
+  const notice = page.getByRole('alertdialog', { name: '준비 중인 기능입니다.' });
+  await notice.getByRole('button', { name: '확인' }).click();
+  await expect(notice).toHaveCount(0);
+  expect(nativeDialog).toBe(false);
   expect(await getUser(member.username)).toBeTruthy();
 
   await page.context().close();

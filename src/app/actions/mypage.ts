@@ -52,6 +52,12 @@ export async function updateProfile(prevState: any, formData: FormData) {
       updateData.mustChangePin = false;
     }
 
+    // 사진 삭제: 사진을 설정하지 않은 상태(NULL → 닉네임 첫 글자)로 되돌린다. 같은 요청에 새 사진이 있으면 새 사진이 이긴다(아래에서 덮어씀).
+    // 예전 파일은 사진을 바꿀 때와 마찬가지로 Storage에 남겨 둔다(공개 버킷이라 주소만 끊기면 화면에 다시 쓰이지 않는다).
+    if (formData.get('removeProfileImage') === '1') {
+      updateData.profileImageUrl = null;
+    }
+
     if (image && image.size > 0) {
       // 브라우저 검사를 우회한 직접 호출도 있으므로 게시글 사진과 같은 규칙을 서버에서 다시 검사한다.
       const invalid = checkImageFiles([image]);

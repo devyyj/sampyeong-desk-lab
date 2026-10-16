@@ -1,15 +1,23 @@
 'use client';
 
-import { useActionState, useEffect, useState } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { updateProfile } from '@/app/actions/mypage';
+import { useConfirm } from '@/components/ConfirmDialog';
 import { fieldError, fieldHint, fieldInput, fieldLabel, fieldSuccess, submitButton } from '@/lib/form-styles';
 
 export default function MypageForm({ user }: { user: any }) {
   const [state, formAction] = useActionState(updateProfile, null as any);
   const [newPin, setNewPin] = useState('');
+  // 브라우저 confirm/alert 대신 앱 안의 확인 팝업을 쓴다.
+  const [confirm, confirmDialog] = useConfirm();
   const [confirmNewPin, setConfirmNewPin] = useState('');
   // 새로 고른 사진의 미리보기 URL. 사진을 눌러 파일을 골랐을 때 바로 바뀐 모습을 보여주기 위함이다.
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  // "사진 삭제"를 눌렀는지. 저장(정보 수정) 때 removeProfileImage=1을 보내 사진을 설정하지 않은 상태로 되돌린다.
+  // 다른 항목처럼 바로 지우지 않고 저장 버튼으로 반영해, 잘못 눌렀으면 페이지를 떠나기만 하면 되게 했다.
+  const [removed, setRemoved] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const shownImage = previewUrl || (removed ? null : user.profileImageUrl);
 
   // 이전 미리보기 blob URL은 더 이상 쓰지 않으므로 메모리 누수를 막기 위해 해제한다.
   useEffect(() => {
@@ -30,23 +38,41 @@ export default function MypageForm({ user }: { user: any }) {
             htmlFor="profileImage"
             className="w-24 h-24 rounded-full bg-muted ring-1 ring-black/5 overflow-hidden flex items-center justify-center relative cursor-pointer"
           >
-            {previewUrl || user.profileImageUrl ? (
-              <img src={previewUrl || user.profileImageUrl} alt="Profile" className="w-full h-full object-cover" />
+            {shownImage ? (
+              <img src={shownImage} alt="Profile" className="w-full h-full object-cover" />
             ) : (
               // 아이디는 로그인에만 쓰고 화면에 드러내지 않으므로 닉네임 첫 글자를 쓴다.
               <span className="text-4xl font-bold text-muted-foreground">{[...user.nickname][0]?.toUpperCase()}</span>
             )}
           </label>
           {/* 사진만으로는 누를 수 있다는 것을 알기 어려워 아래에 글자 버튼을 함께 둔다(같은 파일 입력을 연다). */}
-          <label htmlFor="profileImage" className="text-[14px] font-semibold cursor-pointer" aria-hidden="true">
-            사진 변경
-          </label>
+          <div className="flex items-center gap-4">
+            <label htmlFor="profileImage" className="text-[14px] font-semibold cursor-pointer" aria-hidden="true">
+              사진 변경
+            </label>
+            {shownImage && (
+              <button
+                type="button"
+                onClick={() => {
+                  // 새로 고른 파일도 비워야 저장할 때 다시 올라가지 않는다.
+                  if (fileRef.current) fileRef.current.value = '';
+                  setPreviewUrl(null);
+                  setRemoved(true);
+                }}
+                className="text-[14px] font-semibold text-red-600"
+              >
+                사진 삭제
+              </button>
+            )}
+          </div>
+          {removed && !previewUrl && <input type="hidden" name="removeProfileImage" value="1" />}
           <input
             type="file"
             id="profileImage"
             name="profileImage"
             accept="image/*"
             aria-label="프로필 사진 변경"
+            ref={fileRef}
             onChange={(e) => {
               const file = e.target.files?.[0];
               setPreviewUrl(file ? URL.createObjectURL(file) : null);
@@ -174,16 +200,17 @@ export default function MypageForm({ user }: { user: any }) {
       <div className="flex flex-col-reverse items-center gap-3 pt-2">
         <button
           type="button"
-          onClick={() => {
-            if (confirm('정말로 탈퇴하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+          onClick={async () => {
+            if (await confirm({ title: '정말로 탈퇴하시겠습니까?', message: '이 작업은 되돌릴 수 없습니다.', confirmLabel: '탈퇴', danger: true })) {
               // TODO: 회원 탈퇴 로직 추가
-              alert('준비 중인 기능입니다.');
+              await confirm({ title: '준비 중인 기능입니다.', alertOnly: true });
             }
           }}
           className="h-10 px-4 text-[13px] text-muted-foreground underline underline-offset-2"
         >
           회원 탈퇴
         </button>
+        {confirmDialog}
         
         <button
           type="submit"
