@@ -46,10 +46,14 @@ describe('ActivityFeed', () => {
     const a = within(sectionOf('시즌 3')).getByRole('link', { name: /활동 a/ });
     expect(a).toHaveAttribute('href', '/activities/a');
     expect(a).toHaveTextContent('점심');
-    expect(a).toHaveTextContent('📷 2');
-    expect(a).toHaveTextContent('❤ 3');
-    expect(a).not.toHaveTextContent('💬');
-    expect(within(sectionOf('시즌 3')).getByRole('link', { name: /활동 b/ })).toHaveTextContent('💬 1');
+    // 날짜는 요일을 붙인 짧은 표기, 기계용 값은 dateTime에 그대로 둔다.
+    expect(a.querySelector('time')).toHaveAttribute('dateTime', '2026-04-01');
+    expect(a.querySelector('time')!.textContent).toMatch(/4월 1일 \(수\)$/);
+    // 아이콘은 장식이고, 수는 "사진 2"처럼 읽힌다(모노크롬 아이콘이라 이모지 대신 숨김 텍스트로 뜻을 전한다).
+    expect(a).toHaveTextContent('사진 2');
+    expect(a).toHaveTextContent('좋아요 3');
+    expect(a).not.toHaveTextContent('댓글');
+    expect(within(sectionOf('시즌 3')).getByRole('link', { name: /활동 b/ })).toHaveTextContent('댓글 1');
     expect(within(sectionOf('시즌 2')).getAllByRole('link')).toHaveLength(1);
     // 더 없으면 더 보기 버튼도 없다.
     expect(screen.queryByRole('button', { name: '활동 더 보기' })).toBeNull();

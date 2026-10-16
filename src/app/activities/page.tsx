@@ -1,6 +1,7 @@
 import { db } from '@/db';
 import ActivityFeed from '@/components/ActivityFeed';
 import { getActivityPage, getActivityStats } from '@/lib/activity-list';
+import TopBar from '@/components/TopBar';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,8 +19,8 @@ export default async function ActivitiesPage() {
 
   if (allSeasons.length === 0) {
     return (
-      <div className="max-w-4xl mx-auto">
-        <PageHeader />
+      <div>
+        <TopBar title="활동 기록" />
         <p className="text-center py-20 text-muted-foreground">등록된 시즌이 없습니다.</p>
       </div>
     );
@@ -28,30 +29,20 @@ export default async function ActivitiesPage() {
   const [firstPage, stats] = await Promise.all([getActivityPage(0), getActivityStats()]);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <PageHeader>
-        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mt-3">
-          <span className="font-semibold text-foreground">활동 {stats.total}건</span>
-          {stats.byType.map(([label, count]) => (
-            <span key={label}>{`${label} ${count}`}</span>
-          ))}
-        </div>
-      </PageHeader>
+    <div>
+      <TopBar title="활동 기록" />
+      {/* 전체·종류별 활동 수. 한 줄을 넘치면 가로로 밀어 본다(첫 화면 높이를 아끼려고 줄바꿈하지 않음). */}
+      <div className="-mx-4 px-4 pt-3 flex gap-1.5 overflow-x-auto no-scrollbar text-[13px] whitespace-nowrap">
+        <span className="px-2.5 py-1 rounded-full bg-foreground text-background font-semibold">활동 {stats.total}건</span>
+        {stats.byType.map(([label, count]) => (
+          <span key={label} className="px-2.5 py-1 rounded-full bg-muted text-muted-foreground">{`${label} ${count}`}</span>
+        ))}
+      </div>
 
       <ActivityFeed
         initial={firstPage}
         seasons={allSeasons.map((s) => ({ id: s.id, name: s.name, period: s.period, count: stats.bySeason[s.id] ?? 0 }))}
       />
-    </div>
-  );
-}
-
-function PageHeader({ children }: { children?: React.ReactNode }) {
-  return (
-    <div className="pb-4 border-b border-border">
-      <h1 className="text-2xl font-bold tracking-tight">활동 기록</h1>
-      <p className="text-sm text-muted-foreground mt-1">시즌별 SDL 모임 기록입니다.</p>
-      {children}
     </div>
   );
 }

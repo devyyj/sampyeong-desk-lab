@@ -11,6 +11,11 @@ import { isUuid } from '@/lib/uuid';
 import { getComments, getLikeSummaries } from '@/lib/community';
 import LikeButton from '@/components/LikeButton';
 import CommentSection from '@/components/CommentSection';
+import TopBar from '@/components/TopBar';
+import PhotoCarousel from '@/components/PhotoCarousel';
+import { primaryButtonClass } from '@/components/EmptyState';
+import { CameraIcon } from '@/components/icons';
+import { shortDate } from '@/lib/time';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,66 +49,37 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
   const like = likes.get(activity.id) ?? { count: 0, liked: false };
   const comments = commentsById.get(activity.id) ?? [];
 
+  const loginHref = `/login?redirect=${encodeURIComponent(`/activities/${activity.id}`)}`;
+  // 서명 발급에 실패한 사진(null)은 캐러셀에서 빼고 몇 장인지만 알린다.
+  const photos = photoUrls.flatMap((url, i) => (url ? [{ src: url, alt: `${activity.title} 사진 ${i + 1}` }] : []));
+  const failedCount = photoUrls.length - photos.length;
+
   return (
-    <article className="max-w-3xl mx-auto space-y-6">
+    <article>
       {/* 활동 기록은 시즌 선택 없이 전체를 무한 스크롤로 보여주므로 시즌 쿼리 없이 돌아간다. */}
-      <Link href="/activities" className="text-sm text-muted-foreground hover:text-foreground">
-        ← 활동 기록
-      </Link>
+      <TopBar title="활동 기록" backHref="/activities" backLabel="활동 기록으로 돌아가기" />
 
-      <header className="space-y-2 pb-4 border-b border-border">
-        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          {/* 목록의 시즌 제목과 같은 색으로 어느 시즌의 활동인지 강조한다. */}
-          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary-50 text-primary-600 border border-primary-100">
-            {activity.season.name}
-          </span>
-          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${type.badgeClass}`}>{type.label}</span>
-          <time dateTime={activity.date} className="tabular-nums">{activity.date}</time>
-        </div>
-        <h1 className="text-2xl font-bold tracking-tight">{activity.title}</h1>
-      </header>
-
-      <Markdown>{activity.bodyMd}</Markdown>
-
-      {activity.noteMd && (
-        <section className="bg-muted/60 border border-border rounded-xl p-4">
-          <h2 className="text-sm font-semibold mb-2">비고</h2>
-          <Markdown>{activity.noteMd}</Markdown>
-        </section>
-      )}
-
+      {/* 사진이 상세의 주인공이라 맨 위에 둔다. 회원: 화면 폭 캐러셀 / 비회원: 같은 자리에 로그인 안내. */}
       {photoCount > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-lg font-bold">사진 {photoCount}장</h2>
+        <section aria-label={`사진 ${photoCount}장`} className="-mx-4 sm:mx-0 sm:mt-3">
           {session ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {photoUrls.map((url, i) =>
-                url ? (
-                  <a key={activity.photos[i].id} href={url} target="_blank" rel="noopener noreferrer" className="block">
-                    <img
-                      src={url}
-                      alt={`${activity.title} 사진 ${i + 1}`}
-                      loading="lazy"
-                      className="w-full aspect-square object-cover rounded-lg bg-muted"
-                    />
-                  </a>
-                ) : (
-                  <div
-                    key={activity.photos[i].id}
-                    className="w-full aspect-square rounded-lg bg-muted flex items-center justify-center text-xs text-muted-foreground text-center p-2"
-                  >
-                    사진을 불러오지 못했습니다.
-                  </div>
-                ),
+            <>
+              {photos.length > 0 && (
+                <div className="sm:rounded-xl sm:overflow-hidden">
+                  <PhotoCarousel images={photos} aspect="1 / 1" />
+                </div>
               )}
-            </div>
+              {failedCount > 0 && (
+                <p className="px-4 pt-2 text-xs text-muted-foreground">
+                  <span>사진을 불러오지 못했습니다.</span> <span className="tabular-nums">{`(${failedCount}장)`}</span>
+                </p>
+              )}
+            </>
           ) : (
-            <div className="bg-card border border-border rounded-xl p-6 text-center space-y-2">
-              <p className="text-sm text-muted-foreground">로그인하면 사진 {photoCount}장을 볼 수 있습니다.</p>
-              <Link
-                href={`/login?redirect=${encodeURIComponent(`/activities/${activity.id}`)}`}
-                className="inline-block px-4 py-2 bg-foreground text-background rounded-full text-sm font-semibold hover:bg-foreground/90"
-              >
+            <div className="py-12 bg-muted flex flex-col items-center justify-center gap-3 px-6 text-center sm:rounded-xl">
+              <CameraIcon size={32} className="text-muted-foreground" />
+              <p className="text-[15px] text-muted-foreground">로그인하면 사진 {photoCount}장을 볼 수 있습니다.</p>
+              <Link href={loginHref} className={primaryButtonClass}>
                 로그인
               </Link>
             </div>
@@ -111,11 +87,31 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
         </section>
       )}
 
-      {/* 상세에서는 반응이 주인공이라 좋아요와 댓글을 항상 펼쳐 둔다(피드는 접어 둠). */}
-      <section className="space-y-4 pt-4 border-t border-border">
-        <div className="flex items-center gap-3">
+      <header className="pt-4 pb-3 space-y-2">
+        <div className="flex flex-wrap items-center gap-1.5 text-[13px] text-muted-foreground">
+          <span className="px-1.5 py-px rounded-md text-[11px] font-bold bg-primary-100 text-primary-600">{activity.season.name}</span>
+          <span className={`px-1.5 py-px rounded-md text-[11px] font-bold ${type.badgeClass}`}>{type.label}</span>
+          <time dateTime={activity.date} className="tabular-nums">
+            {shortDate(activity.date)}
+          </time>
+        </div>
+        <h1 className="text-[22px] font-bold leading-snug tracking-tight">{activity.title}</h1>
+      </header>
+
+      <Markdown>{activity.bodyMd}</Markdown>
+
+      {activity.noteMd && (
+        <section className="mt-5 rounded-2xl bg-muted/60 p-4">
+          <h2 className="text-[13px] font-semibold text-muted-foreground mb-2">비고</h2>
+          <Markdown>{activity.noteMd}</Markdown>
+        </section>
+      )}
+
+      {/* 상세에서는 반응이 주인공이라 좋아요와 댓글을 항상 펼쳐 둔다(피드는 시트로 접어 둠). */}
+      <section className="mt-6 pt-3 border-t border-border space-y-2">
+        <div className="flex items-center gap-2 -ml-2">
           <LikeButton target="activity" id={activity.id} liked={like.liked} count={like.count} canLike={session !== null} />
-          <h2 className="text-lg font-bold">댓글 {comments.length}</h2>
+          <h2 className="text-[15px] font-bold">댓글 {comments.length}</h2>
         </div>
         <CommentSection
           target="activity"
@@ -123,7 +119,7 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
           comments={comments}
           // 관리자 여부는 삭제 버튼 표시용. 실제 권한은 deleteComment가 DB로 다시 확인한다.
           viewer={session ? { id: session.userId, isAdmin: session.isAdmin } : null}
-          loginHref={`/login?redirect=${encodeURIComponent(`/activities/${activity.id}`)}`}
+          loginHref={loginHref}
         />
       </section>
     </article>

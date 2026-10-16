@@ -85,7 +85,7 @@ describe('ActivityDetailPage', () => {
     expect(screen.getByText('인원 : 8명').tagName).toBe('STRONG');
     expect(screen.getByText('다음엔 스컬킹')).toBeInTheDocument();
     // 활동 기록은 시즌 선택 없이 전체를 보여주므로 쿼리 없이 돌아간다. 시즌은 머리말에 강조해 보여준다.
-    expect(screen.getByRole('link', { name: '← 활동 기록' })).toHaveAttribute('href', '/activities');
+    expect(screen.getByRole('link', { name: '활동 기록으로 돌아가기' })).toHaveAttribute('href', '/activities');
     expect(screen.getByText('시즌 2')).toHaveClass('text-primary-600');
   });
 
@@ -109,6 +109,8 @@ describe('ActivityDetailPage', () => {
     const imgs = screen.getAllByRole('img');
     expect(imgs).toHaveLength(1);
     expect(imgs[0]).toHaveAttribute('src', 'https://signed/1');
+    // 회원에게는 피드와 같은 화면 폭 캐러셀로 보여준다(불러온 사진만).
+    expect(screen.getByRole('region', { name: '사진 1장' })).toBeInTheDocument();
     expect(screen.getByText('사진을 불러오지 못했습니다.')).toBeInTheDocument();
   });
 

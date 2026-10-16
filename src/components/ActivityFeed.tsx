@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { loadMoreActivities } from '@/app/actions/activities';
 import { getActivityType } from '@/lib/activity-types';
 import type { ActivityListItem, ActivityPage } from '@/lib/activity-list';
+import { shortDate } from '@/lib/time';
+import { CameraIcon, CommentIcon, HeartIcon } from './icons';
 
 type SeasonInfo = { id: number; name: string; period: string; count: number };
 
@@ -13,7 +15,7 @@ type SeasonInfo = { id: number; name: string; period: string; count: number };
  * 바닥 근처에 닿으면 다음 페이지를 서버 액션으로 받아 이어 붙인다.
  *
  * 시즌 구분이 목록의 뼈대라서 시즌마다 큰 제목(이름·기간·전체 건수)을 두고, 스크롤하는 동안
- * 지금 어느 시즌을 보고 있는지 알 수 있도록 제목을 GNB(h-16) 바로 아래에 고정(sticky)한다.
+ * 지금 어느 시즌을 보고 있는지 알 수 있도록 제목을 상단 바(TopBar, h-12) 바로 아래에 고정(sticky)한다.
  * 건수는 지금까지 불러온 줄 수가 아니라 시즌 전체 기준(서버가 센 값)이라 페이지를 더 불러와도 바뀌지 않는다.
  *
  * IntersectionObserver를 지원하지 않거나 자동 로드가 실패했을 때를 위해 "활동 더 보기" 버튼을 함께 둔다.
@@ -70,7 +72,7 @@ export default function ActivityFeed({ seasons, initial }: { seasons: SeasonInfo
 
   if (list.items.length === 0) {
     return (
-      <p className="text-center py-16 text-muted-foreground bg-card border border-border rounded-xl">기록된 활동이 없습니다.</p>
+      <p className="text-center py-20 text-muted-foreground">기록된 활동이 없습니다.</p>
     );
   }
 
@@ -84,28 +86,22 @@ export default function ActivityFeed({ seasons, initial }: { seasons: SeasonInfo
   }
 
   return (
-    <div className="space-y-8">
+    <div>
       {groups.map(({ seasonId, items }) => {
         const season = seasonById.get(seasonId);
         const headingId = `season-${seasonId}`;
         return (
-          <section key={seasonId} aria-labelledby={headingId} className="space-y-3">
-            <div className="sticky top-16 z-10 -mx-1 px-1 py-2 bg-background/95 backdrop-blur">
-              <div className="flex items-center gap-3 rounded-xl border border-primary-100 bg-primary-50 px-4 py-3 dark:border-primary-600/40 dark:bg-primary-600/15">
-                <span aria-hidden className="h-8 w-1.5 shrink-0 rounded-full bg-primary-600" />
-                <h2 id={headingId} className="flex flex-wrap items-baseline gap-x-2 min-w-0">
-                  <span className="text-xl font-extrabold tracking-tight text-primary-600">{season?.name ?? `시즌 ${seasonId}`}</span>
-                  {season && <span className="text-sm font-medium text-muted-foreground">{season.period}</span>}
-                </h2>
-                {season && (
-                  <span className="ml-auto shrink-0 rounded-full bg-primary-600 px-2.5 py-0.5 text-xs font-bold text-white">
-                    {season.count}건
-                  </span>
-                )}
-              </div>
+          <section key={seasonId} aria-labelledby={headingId}>
+            {/* 상단 바(h-12) 바로 아래에 붙는다. 화면 끝까지 바탕이 이어지도록 main의 좌우 여백을 상쇄한다. */}
+            <div className="sticky top-12 z-10 -mx-4 px-4 pt-5 pb-2 bg-background/95 backdrop-blur flex items-baseline gap-2 border-b border-border">
+              <h2 id={headingId} className="flex items-baseline gap-2 min-w-0">
+                <span className="text-[17px] font-extrabold tracking-tight">{season?.name ?? `시즌 ${seasonId}`}</span>
+                {season && <span className="text-[13px] text-muted-foreground">{season.period}</span>}
+              </h2>
+              {season && <span className="ml-auto shrink-0 text-[13px] font-medium text-muted-foreground tabular-nums">{season.count}건</span>}
             </div>
 
-            <ul className="bg-card border border-border rounded-xl divide-y divide-border overflow-hidden">
+            <ul className="divide-y divide-border">
               {items.map((activity) => (
                 <ActivityRow key={activity.id} activity={activity} />
               ))}
@@ -115,7 +111,7 @@ export default function ActivityFeed({ seasons, initial }: { seasons: SeasonInfo
       })}
 
       <div ref={sentinelRef} aria-hidden className="h-px" />
-      <div className="flex flex-col items-center gap-2 pb-4 text-sm text-muted-foreground">
+      <div className="flex flex-col items-center gap-2 py-6 text-sm text-muted-foreground">
         {failed && (
           <p role="alert" className="text-red-500">
             활동을 더 불러오지 못했습니다.
@@ -126,7 +122,7 @@ export default function ActivityFeed({ seasons, initial }: { seasons: SeasonInfo
           <button
             type="button"
             onClick={() => void loadMore()}
-            className="px-4 py-2 rounded-full border border-border text-foreground hover:bg-muted transition-colors"
+            className="h-11 px-5 rounded-full bg-muted text-foreground font-medium active:opacity-80"
           >
             활동 더 보기
           </button>
@@ -137,20 +133,35 @@ export default function ActivityFeed({ seasons, initial }: { seasons: SeasonInfo
   );
 }
 
+/**
+ * 활동 한 줄(두 줄 구성): 1줄째 제목 전체(최대 2줄), 2줄째 종류 배지 · 날짜 · 사진/좋아요/댓글 수.
+ * 예전에는 한 줄에 다 넣어 모바일에서 제목이 잘렸다. 수가 0이면 생략해 줄을 가볍게 둔다.
+ * 아이콘은 장식이고 뜻은 숨김 텍스트("사진 2")로 전한다.
+ */
 function ActivityRow({ activity }: { activity: ActivityListItem }) {
   const type = getActivityType(activity.type);
+  const counts = [
+    { icon: CameraIcon, label: '사진', value: activity.photoCount },
+    { icon: HeartIcon, label: '좋아요', value: activity.likeCount },
+    { icon: CommentIcon, label: '댓글', value: activity.commentCount },
+  ].filter((c) => c.value > 0);
   return (
     <li>
-      <Link href={`/activities/${activity.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors">
-        <time dateTime={activity.date} className="shrink-0 w-24 text-sm tabular-nums text-muted-foreground">
-          {activity.date}
-        </time>
-        <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-semibold ${type.badgeClass}`}>{type.label}</span>
-        <span className="flex-1 min-w-0 truncate font-medium">{activity.title}</span>
-        {/* 사진·좋아요·댓글 수. 0이면 생략해 줄을 가볍게 둔다. */}
-        {activity.photoCount > 0 && <span className="shrink-0 text-xs text-muted-foreground">📷 {activity.photoCount}</span>}
-        {activity.likeCount > 0 && <span className="shrink-0 text-xs text-muted-foreground">❤ {activity.likeCount}</span>}
-        {activity.commentCount > 0 && <span className="shrink-0 text-xs text-muted-foreground">💬 {activity.commentCount}</span>}
+      <Link href={`/activities/${activity.id}`} className="block py-3 active:bg-muted">
+        <span className="block text-[16px] font-semibold leading-snug line-clamp-2">{activity.title}</span>
+        <span className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted-foreground">
+          <span className={`px-1.5 py-px rounded-md text-[11px] font-bold ${type.badgeClass}`}>{type.label}</span>
+          <time dateTime={activity.date} className="tabular-nums">
+            {shortDate(activity.date)}
+          </time>
+          {counts.map(({ icon: Icon, label, value }) => (
+            <span key={label} className="inline-flex items-center gap-0.5 tabular-nums">
+              <Icon size={14} />
+              <span className="sr-only">{`${label} `}</span>
+              {value}
+            </span>
+          ))}
+        </span>
       </Link>
     </li>
   );
