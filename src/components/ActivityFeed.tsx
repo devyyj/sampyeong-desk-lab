@@ -15,7 +15,7 @@ type SeasonInfo = { id: number; name: string; period: string; count: number };
  * 바닥 근처에 닿으면 다음 페이지를 서버 액션으로 받아 이어 붙인다.
  *
  * 시즌 구분이 목록의 뼈대라서 시즌마다 큰 제목(이름·기간·전체 건수)을 두고, 스크롤하는 동안
- * 지금 어느 시즌을 보고 있는지 알 수 있도록 제목을 상단 바(TopBar, h-12) 바로 아래에 고정(sticky)한다.
+ * 지금 어느 시즌을 보고 있는지 알 수 있도록 제목을 로고 헤더(AppHeader, h-12) 바로 아래에 고정(sticky)한다(넓은 화면은 맨 위).
  * 건수는 지금까지 불러온 줄 수가 아니라 시즌 전체 기준(서버가 센 값)이라 페이지를 더 불러와도 바뀌지 않는다.
  *
  * IntersectionObserver를 지원하지 않거나 자동 로드가 실패했을 때를 위해 "활동 더 보기" 버튼을 함께 둔다.
@@ -92,8 +92,8 @@ export default function ActivityFeed({ seasons, initial }: { seasons: SeasonInfo
         const headingId = `season-${seasonId}`;
         return (
           <section key={seasonId} aria-labelledby={headingId}>
-            {/* 상단 바(h-12) 바로 아래에 붙는다. 화면 끝까지 바탕이 이어지도록 main의 좌우 여백을 상쇄한다. */}
-            <div className="sticky top-12 z-10 -mx-4 px-4 pt-5 pb-2 bg-background/95 backdrop-blur flex items-baseline gap-2 border-b border-border">
+            {/* 로고 헤더(h-12) 바로 아래에 붙는다. 화면 끝까지 바탕이 이어지도록 main의 좌우 여백을 상쇄한다. */}
+            <div className="sticky top-12 lg:top-0 z-10 -mx-4 px-4 pt-5 pb-2 bg-background/95 backdrop-blur flex items-baseline gap-2 border-b border-border">
               <h2 id={headingId} className="flex items-baseline gap-2 min-w-0">
                 <span className="text-[17px] font-extrabold tracking-tight">{season?.name ?? `시즌 ${seasonId}`}</span>
                 {season && <span className="text-[13px] text-muted-foreground">{season.period}</span>}

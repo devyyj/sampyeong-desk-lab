@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import { TABS, activeTabOf, hidesTabBar } from './nav';
+import { TABS, activeTabOf, hidesAppChrome } from './nav';
 
 describe('TABS', () => {
   it('하단 탭 5개를 순서대로 둔다', () => {
@@ -40,7 +40,7 @@ describe('activeTabOf', () => {
   });
 });
 
-describe('hidesTabBar', () => {
+describe('hidesAppChrome', () => {
   it.each([
     // 작성 화면은 키보드·본문 입력에 집중하도록 탭바를 숨긴다.
     ['/posts/write', true],
@@ -49,6 +49,6 @@ describe('hidesTabBar', () => {
     ['/activities/abc', false],
     ['/mypage', false],
   ])('%s → %s', (pathname, expected) => {
-    expect(hidesTabBar(pathname)).toBe(expected);
+    expect(hidesAppChrome(pathname)).toBe(expected);
   });
 });

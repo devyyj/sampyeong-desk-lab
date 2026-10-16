@@ -36,7 +36,7 @@ export function activeTabOf(pathname: string): Tab | null {
   return null;
 }
 
-/** 작성·수정 화면은 본문 입력과 키보드에 화면을 다 쓰도록 탭바를 숨긴다. */
-export function hidesTabBar(pathname: string): boolean {
+/** 작성·수정 화면은 본문 입력과 키보드에 화면을 다 쓰도록 앱 공통 바(로고 헤더·탭바)를 숨긴다. */
+export function hidesAppChrome(pathname: string): boolean {
   return pathname === '/posts/write' || /^\/posts\/[^/]+\/edit\/?$/.test(pathname);
 }

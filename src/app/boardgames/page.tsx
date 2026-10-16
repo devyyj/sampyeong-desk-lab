@@ -98,7 +98,7 @@ export default async function BoardGamesPage({
       />
 
       {allGames.length > 0 && (
-        <div className="sticky top-12 z-10 -mx-4 px-4 pt-3 pb-2 bg-background/95 backdrop-blur space-y-2.5">
+        <div className="sticky top-12 lg:top-0 z-10 -mx-4 px-4 pt-3 pb-2 bg-background/95 backdrop-blur space-y-2.5">
           {/* GET 폼이라 검색 결과도 ?q= 주소로 남아 공유·뒤로 가기가 된다. next/form이라 전체 새로고침 없이 이동한다. */}
           <Form action="/boardgames" role="search" className="relative flex items-center">
             {cabinetOnly && <input type="hidden" name="cabinet" value="1" />}

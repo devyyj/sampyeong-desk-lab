@@ -120,7 +120,7 @@ export default function PostForm({ mode, post }: { mode: 'create' | 'edit'; post
       {post && <input type="hidden" name="id" value={post.id} />}
 
       {/*
-        전체 화면 작성 모드의 상단 바: 취소 | 제목 | 게시. 탭바는 이 화면에서 숨겨진다(nav.hidesTabBar).
+        전체 화면 작성 모드의 상단 바: 취소 | 제목 | 게시. 탭바는 이 화면에서 숨겨진다(nav.hidesAppChrome).
         제출 버튼을 폼 안(이 바)에 두어 form 속성 없이도 Enter·버튼 모두 같은 onSubmit을 탄다.
       */}
       <header className="sticky top-0 z-30 -mx-4 px-2 h-12 flex items-center gap-1 bg-background/95 backdrop-blur border-b border-border/60">

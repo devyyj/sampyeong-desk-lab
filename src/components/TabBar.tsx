@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ComponentType } from 'react';
-import { TABS, activeTabOf, hidesTabBar, type TabKey } from '@/lib/nav';
+import { TABS, activeTabOf, hidesAppChrome, type TabKey } from '@/lib/nav';
 import { CalendarIcon, DiceIcon, HomeIcon, UserIcon, UsersIcon } from './icons';
+import Logo from './Logo';
 
 const ICONS: Record<TabKey, ComponentType<{ size?: number; strokeWidth?: number }>> = {
   feed: HomeIcon,
@@ -21,7 +22,7 @@ const ICONS: Record<TabKey, ComponentType<{ size?: number; strokeWidth?: number 
  */
 export default function TabBar() {
   const pathname = usePathname();
-  if (hidesTabBar(pathname)) return null;
+  if (hidesAppChrome(pathname)) return null;
   const active = activeTabOf(pathname);
 
   return (
@@ -30,9 +31,9 @@ export default function TabBar() {
       className="fixed z-40 bottom-0 inset-x-0 border-t border-border bg-background/95 backdrop-blur pb-[env(safe-area-inset-bottom)]
         lg:inset-x-auto lg:left-0 lg:top-0 lg:bottom-0 lg:w-56 lg:border-t-0 lg:border-r lg:pb-0 lg:pt-6 lg:px-3"
     >
-      {/* 레일 위쪽 로고. 바로 아래 '피드' 탭이 같은 곳(/)으로 가므로 링크로 중복시키지 않는다. */}
-      <p className="hidden lg:block px-3 pb-6 text-xl font-extrabold tracking-tight" aria-hidden="true">
-        SDL
+      {/* 레일 위쪽 로고(넓은 화면에서는 모바일 로고 헤더 대신 여기 보인다). 바로 아래 '피드' 탭이 같은 곳(/)으로 가므로 링크로 중복시키지 않는다. */}
+      <p className="hidden lg:block px-3 pb-7" aria-hidden="true">
+        <Logo />
       </p>
       <ul className="flex lg:flex-col lg:gap-1">
         {TABS.map((tab) => {
