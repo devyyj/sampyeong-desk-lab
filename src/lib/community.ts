@@ -1,6 +1,6 @@
 import { asc, count, inArray, sql } from 'drizzle-orm';
 import { db } from '@/db';
-import { commentLikes, comments, postLikes } from '../../drizzle/schema';
+import { boardGameLikes, commentLikes, comments, postLikes } from '../../drizzle/schema';
 import { getMemberBadges } from './member-badges';
 import type { MemberBadge } from './badge';
 import { relativeTime } from './time';
@@ -31,6 +31,7 @@ export type LikeSummary = { count: number; liked: boolean };
 const LIKE_COLUMNS = {
   post: { table: postLikes, column: postLikes.postId },
   comment: { table: commentLikes, column: commentLikes.commentId },
+  boardgame: { table: boardGameLikes, column: boardGameLikes.boardGameId },
 } as const;
 
 // 활동 기록은 게시글로 합쳐져(설계 §5.5) 댓글 대상은 게시글 하나다.

@@ -119,6 +119,13 @@ export const commentLikes = pgTable('comment_likes', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (t) => [primaryKey({ columns: [t.commentId, t.userId] })]);
 
+// 보드게임 좋아요(0011). 게시글·댓글 좋아요와 같은 구조로, 보드게임 목록을 좋아요 많은 순으로 정렬하는 데 쓴다.
+export const boardGameLikes = pgTable('board_game_likes', {
+  boardGameId: uuid('board_game_id').notNull().references(() => boardGames.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (t) => [primaryKey({ columns: [t.boardGameId, t.userId] })]);
+
 export const usersRelations = relations(users, ({ many }) => ({
   posts: many(posts),
   boardGames: many(boardGames, { relationName: 'addedBy' }),
@@ -155,7 +162,12 @@ export const commentLikesRelations = relations(commentLikes, ({ one }) => ({
   comment: one(comments, { fields: [commentLikes.commentId], references: [comments.id] }),
 }));
 
-export const boardGamesRelations = relations(boardGames, ({ one }) => ({
+export const boardGameLikesRelations = relations(boardGameLikes, ({ one }) => ({
+  boardGame: one(boardGames, { fields: [boardGameLikes.boardGameId], references: [boardGames.id] }),
+}));
+
+export const boardGamesRelations = relations(boardGames, ({ one, many }) => ({
+  likes: many(boardGameLikes),
   addedBy: one(users, {
     fields: [boardGames.addedById],
     references: [users.id],

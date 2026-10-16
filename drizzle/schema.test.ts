@@ -4,7 +4,7 @@ import { getTableConfig } from 'drizzle-orm/pg-core';
 import * as schema from './schema';
 import {
   users, boardGames, seasonMembers, seasons, documents,
-  posts, postImages, comments, postLikes, commentLikes,
+  posts, postImages, comments, postLikes, commentLikes, boardGameLikes,
 } from './schema';
 
 const column = (table: Parameters<typeof getTableConfig>[0], name: string) =>
@@ -54,6 +54,14 @@ describe('schema: 커뮤니티 기능(0005)', () => {
   it('좋아요 테이블은 (대상, 회원) 복합 PK로 회원당 1회만 허용', () => {
     expect(getTableConfig(postLikes).primaryKeys[0].columns.map((c) => c.name)).toEqual(['post_id', 'user_id']);
     expect(getTableConfig(commentLikes).primaryKeys[0].columns.map((c) => c.name)).toEqual(['comment_id', 'user_id']);
+  });
+});
+
+describe('schema: 보드게임 좋아요(0011)', () => {
+  it('board_game_likes는 (게임, 회원) 복합 PK로 회원당 1회만 허용하고, 게임·회원이 지워지면 함께 지운다', () => {
+    const config = getTableConfig(boardGameLikes);
+    expect(config.primaryKeys[0].columns.map((c) => c.name)).toEqual(['board_game_id', 'user_id']);
+    expect(config.foreignKeys.map((fk) => fk.onDelete)).toEqual(['cascade', 'cascade']);
   });
 });
 

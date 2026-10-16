@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { EditBoardGameForm } from "./edit-form";
+import { getBoardGameCategories } from "@/lib/boardgame-categories";
 
 export default async function EditBoardGamePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -16,5 +17,5 @@ export default async function EditBoardGamePage({ params }: { params: Promise<{ 
   }
 
   // 상단 바(취소 | 보드게임 수정 | 수정완료)는 폼이 그린다.
-  return <EditBoardGameForm game={game} />;
+  return <EditBoardGameForm game={game} categories={await getBoardGameCategories()} />;
 }

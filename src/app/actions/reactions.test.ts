@@ -63,6 +63,12 @@ describe('toggleLike', () => {
     expect(inserted).toHaveBeenCalledWith('comment_likes', { commentId: TARGET, userId: ME });
   });
 
+  it('보드게임 좋아요는 board_game_likes에 쓰고 보드게임 목록을 다시 그린다', async () => {
+    await toggleLike('boardgame', TARGET);
+    expect(inserted).toHaveBeenCalledWith('board_game_likes', { boardGameId: TARGET, userId: ME });
+    expect(revalidatePath).toHaveBeenCalledWith('/boardgames');
+  });
+
   it('대상이 그 사이 삭제됐으면(FK 위반) 찾을 수 없음', async () => {
     inserted.mockRejectedValueOnce(Object.assign(new Error('Failed query'), { cause: { code: '23503' } }));
     expect(await toggleLike('post', TARGET)).toEqual({ error: '찾을 수 없습니다.' });

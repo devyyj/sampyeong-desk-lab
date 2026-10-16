@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { boardGames } from "../../../drizzle/schema";
 import { asc, desc } from "drizzle-orm";
 import { getSession } from "@/lib/session";
+import { getLikeSummaries } from "@/lib/community";
 import Link from "next/link";
 import Form from "next/form";
 import TopBar from "@/components/TopBar";
@@ -72,7 +73,12 @@ export default async function BoardGamesPage({
     active: category === name,
   }));
 
+  // 좋아요 수·누름 여부를 화면에 남은 게임만 한 번에 센다(N+1 방지). 비회원은 누름 여부가 항상 false.
+  const likes = await getLikeSummaries('boardgame', games.map((game) => game.id), session?.userId ?? null);
+  const likeOf = (id: string) => likes.get(id) ?? { count: 0, liked: false };
+
   // 클라이언트 목록에 넘길 값. 보유자 실명은 회원일 때만 담는다(비회원 HTML에 실명이 실리지 않게).
+  // 좋아요가 많은 게임부터 보여준다. Array.prototype.sort는 안정 정렬이라 좋아요 수가 같으면 DB 순서(최신 등록·이름순)가 유지된다.
   const items: BoardGameItem[] = games.map((game) => ({
     id: game.id,
     name: game.name,
@@ -82,7 +88,9 @@ export default async function BoardGamesPage({
     inSharedCabinet: game.inSharedCabinet,
     thumbnailUrl: game.thumbnailUrl,
     ownerName: session && game.owner ? game.owner.displayName || game.owner.nickname : null,
-  }));
+    likeCount: likeOf(game.id).count,
+    liked: likeOf(game.id).liked,
+  })).sort((a, b) => b.likeCount - a.likeCount);
 
   return (
     <div>
@@ -136,7 +144,7 @@ export default async function BoardGamesPage({
         <EmptyState title="조건에 맞는 보드게임이 없습니다." description="검색어나 필터를 바꿔 보세요." />
       ) : (
         // 이미지 없이 한 게임당 두 줄: 이름·배지 / 카테고리·인원·시간·보유자. 누르면 상세 시트.
-        <BoardGameList games={items} canEdit={Boolean(session)} />
+        <BoardGameList games={items} canEdit={Boolean(session)} loggedIn={Boolean(session)} />
       )}
     </div>
   );

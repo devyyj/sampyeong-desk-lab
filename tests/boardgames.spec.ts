@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { eq } from 'drizzle-orm';
 import { cleanupE2EData, createTestUser, db, loggedInPage, type TestUser } from './helpers';
-import { boardGames } from '../drizzle/schema';
+import { boardGameLikes, boardGames } from '../drizzle/schema';
 
 /**
  * 보드게임 현황 E2E: 등록(썸네일 없이 정보만) → 필터·검색 → 공용 보관함 여부 수정 → 삭제, 목록에 이미지가 없는지,
@@ -78,18 +78,25 @@ test('보드게임: 등록 → 미분류 필터 → 검색 → 공용 보관함 
   await expect(page.getByLabel(/보드게임 이름/)).toHaveValue(name);
   await expect(page.getByLabel('상태')).toHaveCount(0);
   await page.getByLabel(/보드게임 이름/).fill(renamed);
+  // 카테고리 입력(앞뒤·중복 공백은 서버가 정리해 저장한다).
+  const category = `E2E분류 ${Date.now()}`;
+  await expect(page.getByLabel('카테고리')).toHaveValue('');
+  await page.getByLabel('카테고리').fill(`  ${category.replace(' ', '   ')} `);
   await page.getByRole('checkbox', { name: '공용 보관함에 보관' }).check();
   await page.getByRole('button', { name: '수정완료' }).click();
   await page.waitForURL((url) => url.pathname === '/boardgames');
   const renamedCard = page.locator('article').filter({ hasText: renamed });
   await expect(renamedCard).toContainText('공용 보관함');
-  expect((await db.select().from(boardGames).where(eq(boardGames.id, row.id)))[0]).toMatchObject({ name: renamed, inSharedCabinet: true });
+  expect((await db.select().from(boardGames).where(eq(boardGames.id, row.id)))[0]).toMatchObject({ name: renamed, inSharedCabinet: true, category });
+  await expect(renamedCard).toContainText(category);
   await filters.getByRole('link', { name: /^공용 보관함 \d+$/ }).click();
   await page.waitForURL('**/boardgames?cabinet=1');
   await expect(page.locator('article').filter({ hasText: renamed })).toHaveCount(1);
 
-  // 다시 빼기(체크 해제는 값이 아예 오지 않는 경우라 따로 확인한다).
+  // 다시 빼기(체크 해제는 값이 아예 오지 않는 경우라 따로 확인한다). 수정 화면에 저장한 카테고리가 채워져 있다.
   await (await openSheet(renamed)).getByRole('link', { name: '수정' }).click();
+  await page.waitForURL(`**/boardgames/${row.id}/edit`);
+  await expect(page.getByLabel('카테고리')).toHaveValue(category);
   await expect(page.getByRole('checkbox', { name: '공용 보관함에 보관' })).toBeChecked();
   await page.getByRole('checkbox', { name: '공용 보관함에 보관' }).uncheck();
   await page.getByRole('button', { name: '수정완료' }).click();
@@ -97,11 +104,20 @@ test('보드게임: 등록 → 미분류 필터 → 검색 → 공용 보관함 
   await expect(page.locator('article').filter({ hasText: renamed })).not.toContainText('공용 보관함');
   expect((await db.select().from(boardGames).where(eq(boardGames.id, row.id)))[0].inSharedCabinet).toBe(false);
 
-  // 삭제(확인 창 수락)
-  page.once('dialog', (dialog) => dialog.accept());
+  // 좋아요: 줄의 ♡를 누르면 board_game_likes에 저장되고, 새로고침해도 유지된다(다시 누르면 취소).
+  const likedCard = page.locator('article').filter({ hasText: renamed });
+  await likedCard.getByRole('button', { name: '좋아요 0' }).click();
+  await expect(likedCard.getByRole('button', { name: '좋아요 1' })).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(async () => (await db.select().from(boardGameLikes).where(eq(boardGameLikes.boardGameId, row.id))).length).toBe(1);
+  await page.reload();
+  await expect(likedCard.getByRole('button', { name: '좋아요 1' })).toHaveAttribute('aria-pressed', 'true');
+
+  // 삭제(앱 확인 팝업에서 한 번 더 삭제). 좋아요도 cascade로 함께 지워진다.
   await (await openSheet(renamed)).getByRole('button', { name: '삭제' }).click();
+  await page.getByRole('alertdialog').getByRole('button', { name: '삭제' }).click();
   await expect(page.locator('article').filter({ hasText: renamed })).toHaveCount(0);
   expect(await db.select().from(boardGames).where(eq(boardGames.id, row.id))).toHaveLength(0);
+  expect(await db.select().from(boardGameLikes).where(eq(boardGameLikes.boardGameId, row.id))).toHaveLength(0);
 
   await page.context().close();
 });

@@ -16,6 +16,21 @@ function readCabinet(formData: FormData): boolean {
   return formData.get('inSharedCabinet') !== null;
 }
 
+const CATEGORY_MAX = 50; // board_games.category varchar(50)
+const CATEGORY_TOO_LONG = '카테고리는 50자 이하로 입력해주세요.';
+
+/**
+ * 카테고리 입력값. 앞뒤 공백을 지우고 연속 공백을 하나로 줄인다(" 트릭  테이킹"과 "트릭 테이킹"이 다른 필터로 갈라지지 않게 —
+ * 0004에서 표기 차이로 갈라진 분류를 한 번 정리한 적이 있다). 비우면 미분류(null).
+ * 형식에 맞지 않으면 { error }를 돌려준다.
+ */
+function readCategory(formData: FormData): { category: string | null } | { error: string } {
+  const raw = formData.get('category');
+  const category = typeof raw === 'string' ? raw.trim().replace(/\s+/g, ' ') : '';
+  if (category.length > CATEGORY_MAX) return { error: CATEGORY_TOO_LONG };
+  return { category: category || null };
+}
+
 export async function addBoardGame(prevState: any, formData: FormData) {
   const session = await getSession();
   if (!session) {
@@ -29,12 +44,15 @@ export async function addBoardGame(prevState: any, formData: FormData) {
   if (!name) {
     return { error: '보드게임 이름을 입력해주세요.' };
   }
+  const category = readCategory(formData);
+  if ('error' in category) return category;
 
   // 보드게임 목록은 이미지 없이 정보만 보여주므로 썸네일은 더 이상 받지 않는다.
   // (폼에서 파일 입력을 뺐고, 요청에 파일이 섞여 와도 Storage에 올리지 않는다. 기존 thumbnail_url 데이터는 그대로 둔다.)
   try {
     await db.insert(boardGames).values({
       name,
+      category: category.category,
       recommendedPlayers,
       playTime,
       inSharedCabinet: readCabinet(formData),
@@ -63,10 +81,12 @@ export async function updateBoardGame(prevState: any, formData: FormData) {
   if (!id || !name) {
     return { error: '필수 값을 입력해주세요.' };
   }
+  const category = readCategory(formData);
+  if ('error' in category) return category;
 
   try {
     await db.update(boardGames)
-      .set({ name, recommendedPlayers, playTime, inSharedCabinet: readCabinet(formData), updatedAt: new Date() })
+      .set({ name, category: category.category, recommendedPlayers, playTime, inSharedCabinet: readCabinet(formData), updatedAt: new Date() })
       .where(eq(boardGames.id, id));
   } catch (e) {
     console.error('Update boardgame error', e);

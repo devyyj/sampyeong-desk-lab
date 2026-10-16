@@ -3,18 +3,20 @@
 import { useActionState } from 'react';
 import { updateBoardGame } from '@/app/actions/boardgame';
 import FormHeader from '@/components/FormHeader';
+import BoardGameCategoryField from '@/components/BoardGameCategoryField';
 import { checkboxRow, fieldError, fieldInput, fieldLabel } from '@/lib/form-styles';
 
 type GameType = {
   id: string;
   name: string;
+  category: string | null;
   recommendedPlayers: string | null;
   playTime: string | null;
   inSharedCabinet: boolean;
 };
 
 /** 보드게임 수정. 등록 화면과 같은 전체 화면 폼(취소 | 보드게임 수정 | 수정완료)이다. */
-export function EditBoardGameForm({ game }: { game: GameType }) {
+export function EditBoardGameForm({ game, categories }: { game: GameType; categories: string[] }) {
   const [state, formAction, isPending] = useActionState(updateBoardGame, null as any);
 
   return (
@@ -28,6 +30,8 @@ export function EditBoardGameForm({ game }: { game: GameType }) {
           </label>
           <input type="text" id="name" name="name" defaultValue={game.name} required className={fieldInput} />
         </div>
+
+        <BoardGameCategoryField categories={categories} defaultValue={game.category} />
 
         <div className="grid grid-cols-2 gap-3">
           <div>

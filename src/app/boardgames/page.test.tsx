@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { db } from '@/db';
 import { getSession } from '@/lib/session';
+import { getLikeSummaries } from '@/lib/community';
 import BoardGamesPage from './page';
 
 vi.mock('@/db', () => ({ db: { query: { boardGames: { findMany: vi.fn() } } } }));
@@ -9,6 +10,8 @@ vi.mock('@/lib/session', () => ({ getSession: vi.fn() }));
 // next/form은 라우터 컨텍스트가 필요하다. 여기서는 GET 폼으로 렌더되는 모양(action·입력 이름)만 본다.
 vi.mock('next/form', () => ({ default: (props: React.ComponentProps<'form'>) => <form {...props} /> }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock('@/lib/community', () => ({ getLikeSummaries: vi.fn() }));
+vi.mock('@/app/actions/reactions', () => ({ toggleLike: vi.fn() }));
 
 const game = (o: Record<string, unknown>) => ({
   id: o.name, status: 'AVAILABLE', thumbnailUrl: null, recommendedPlayers: null, playTime: null,
@@ -22,6 +25,7 @@ describe('BoardGamesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getSession).mockResolvedValue(null);
+    vi.mocked(getLikeSummaries).mockImplementation(async (_t, ids) => new Map(ids.map((id) => [id, { count: 0, liked: false }])));
     vi.mocked(db.query.boardGames.findMany).mockResolvedValue([
       game({ name: '스컬킹', category: '트릭테이킹', inSharedCabinet: true, owner: { displayName: '박씨', nickname: '스컬러' } }),
       game({ name: '아그리콜라', category: '전략', owner: { displayName: null, nickname: '비비' } }),
@@ -196,5 +200,42 @@ describe('BoardGamesPage', () => {
     expect(screen.queryByText('No Image')).toBeNull();
     const row = screen.getByRole('heading', { level: 3, name: '사진있는게임' }).closest('article')!;
     expect(row).toHaveTextContent('전략 · 2~4명 · 30분');
+  });
+
+  describe('좋아요', () => {
+    it('좋아요가 많은 게임부터 보여준다(같으면 원래 순서: 최신 등록·이름순)', async () => {
+      vi.mocked(getLikeSummaries).mockResolvedValue(new Map([
+        ['스컬킹', { count: 1, liked: false }],
+        ['아그리콜라', { count: 5, liked: true }],
+        ['이름없는게임', { count: 1, liked: false }],
+      ]));
+      await page();
+      expect(titles()).toEqual(['아그리콜라', '스컬킹', '이름없는게임']);
+    });
+
+    it('보는 회원 기준으로 보드게임 좋아요 수·누름 여부를 한 번에 가져온다', async () => {
+      vi.mocked(getSession).mockResolvedValue({ userId: 'u1' } as never);
+      await page();
+      expect(getLikeSummaries).toHaveBeenCalledTimes(1);
+      expect(getLikeSummaries).toHaveBeenCalledWith('boardgame', ['스컬킹', '아그리콜라', '이름없는게임'], 'u1');
+    });
+
+    it('줄마다 좋아요 버튼(수·누름 상태)이 있다', async () => {
+      vi.mocked(getLikeSummaries).mockResolvedValue(new Map([['아그리콜라', { count: 5, liked: true }]]));
+      await page();
+      const row = screen.getByRole('heading', { level: 3, name: '아그리콜라' }).closest('article')!;
+      expect(within(row).getByRole('button', { name: '좋아요 5' })).toHaveAttribute('aria-pressed', 'true');
+      const other = screen.getByRole('heading', { level: 3, name: '스컬킹' }).closest('article')!;
+      expect(within(other).getByRole('button', { name: '좋아요 0' })).toHaveAttribute('aria-pressed', 'false');
+    });
+  });
+
+  it('보유자는 눈에 띄게 강조한다(이름을 굵은 본문색으로)', async () => {
+    vi.mocked(getSession).mockResolvedValue({ userId: 'u1' } as never);
+    await page();
+    const row = screen.getByRole('heading', { level: 3, name: '스컬킹' }).closest('article')!;
+    const owner = within(row).getByText('박씨');
+    expect(owner.tagName).toBe('STRONG');
+    expect(owner.className).toMatch(/text-foreground/);
   });
 });
