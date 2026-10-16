@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { getTableConfig } from 'drizzle-orm/pg-core';
 import {
   users, boardGames, activities, activityPhotos, seasonMembers, seasons, documents,
-  postImages, comments, postLikes, activityLikes, commentLikes,
+  posts, postImages, comments, postLikes, activityLikes, commentLikes,
 } from './schema';
 
 const column = (table: Parameters<typeof getTableConfig>[0], name: string) =>
@@ -58,5 +58,24 @@ describe('schema: 커뮤니티 기능(0005)', () => {
     expect(getTableConfig(postLikes).primaryKeys[0].columns.map((c) => c.name)).toEqual(['post_id', 'user_id']);
     expect(getTableConfig(activityLikes).primaryKeys[0].columns.map((c) => c.name)).toEqual(['activity_id', 'user_id']);
     expect(getTableConfig(commentLikes).primaryKeys[0].columns.map((c) => c.name)).toEqual(['comment_id', 'user_id']);
+  });
+});
+
+describe('schema: 피드·활동 통합(0006)', () => {
+  it('posts.kind는 필수이고 기본값은 일반 글(general)', () => {
+    expect(column(posts, 'kind')).toMatchObject({ notNull: true, default: 'general', length: 20 });
+  });
+
+  it('활동형 칼럼(제목·종류·시즌·모임 날짜)은 nullable이고, 이관 멱등성 키는 unique', () => {
+    for (const name of ['title', 'activity_type', 'season_id', 'activity_date']) {
+      expect(column(posts, name).notNull, name).toBe(false);
+    }
+    expect(column(posts, 'source_key').isUnique).toBe(true);
+  });
+
+  it('종류별 필수 칼럼을 CHECK로 DB가 보장하고, 피드 필터용 (kind, created_at) 인덱스가 있다', () => {
+    const config = getTableConfig(posts);
+    expect(config.checks.map((c) => c.name)).toContain('posts_kind_fields');
+    expect(config.indexes.map((i) => i.config.name)).toContain('posts_kind_created_at_idx');
   });
 });

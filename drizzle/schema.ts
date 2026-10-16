@@ -28,9 +28,27 @@ export const posts = pgTable('posts', {
   content: text('content').notNull(),
   // 예전 단일 사진의 공개 URL. 0005에서 post_images로 옮겼고 코드에서는 더 이상 쓰지 않는다(되돌리기용으로 컬럼만 남김).
   imageUrl: text('image_url'),
+  // 게시글 종류(0006). 'general' = 자유글, 'activity' = 활동 기록(예전 activities 테이블을 합친 것).
+  // 종류에 따라 사진 버킷이 다르다: general → post_images(공개), activity → activity_photos(회원 전용, signed URL).
+  // 그래서 작성 후에는 종류를 바꾸지 않는다.
+  kind: varchar('kind', { length: 20 }).notNull().default('general'),
+  // 아래 4개는 활동 기록에만 있다(general이면 모두 NULL, activity면 모두 필수 — posts_kind_fields CHECK).
+  title: text('title'),
+  activityType: varchar('activity_type', { length: 20 }), // ESCAPE_ROOM | REGULAR | LUNCH | EVENING | OTHER
+  seasonId: integer('season_id').references(() => seasons.id),
+  activityDate: date('activity_date', { mode: 'string' }),
+  // 활동 이관 멱등성 키(예전 activities.source_key, Confluence "<pageId>:<행 번호>")
+  sourceKey: text('source_key').unique(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+}, (t) => [
+  check(
+    'posts_kind_fields',
+    sql`(${t.kind} = 'general' AND ${t.title} IS NULL AND ${t.activityType} IS NULL AND ${t.seasonId} IS NULL AND ${t.activityDate} IS NULL)
+     OR (${t.kind} = 'activity' AND ${t.title} IS NOT NULL AND ${t.activityType} IS NOT NULL AND ${t.seasonId} IS NOT NULL AND ${t.activityDate} IS NOT NULL)`,
+  ),
+  index('posts_kind_created_at_idx').on(t.kind, t.createdAt),
+]);
 
 export const boardGames = pgTable('board_games', {
   id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
@@ -153,6 +171,7 @@ export const postsRelations = relations(posts, ({ one, many }) => ({
   images: many(postImages),
   comments: many(comments),
   likes: many(postLikes),
+  season: one(seasons, { fields: [posts.seasonId], references: [seasons.id] }),
 }));
 
 export const postImagesRelations = relations(postImages, ({ one }) => ({
