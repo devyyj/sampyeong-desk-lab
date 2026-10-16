@@ -34,7 +34,8 @@ export const posts = pgTable('posts', {
   kind: varchar('kind', { length: 20 }).notNull().default('general'),
   // 아래 4개는 활동 기록에만 있다(general이면 모두 NULL, activity면 모두 필수 — posts_kind_fields CHECK).
   title: text('title'),
-  activityType: varchar('activity_type', { length: 20 }), // ESCAPE_ROOM | REGULAR | LUNCH | EVENING | OTHER
+  // 활동 종류 이름(회원이 입력, 예: 방탈출·정기 모임). 예전 코드값(ESCAPE_ROOM 등)은 0007에서 이름으로 바꿨다.
+  activityType: varchar('activity_type', { length: 20 }),
   seasonId: integer('season_id').references(() => seasons.id),
   activityDate: date('activity_date', { mode: 'string' }),
   // 활동 이관 멱등성 키(예전 activities.source_key, Confluence "<pageId>:<행 번호>")

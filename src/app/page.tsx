@@ -2,7 +2,7 @@ import { getSession } from "@/lib/session";
 import TopBar from "@/components/TopBar";
 import FeedList from "@/components/FeedList";
 import FeedFilterChips from "@/components/FeedFilterChips";
-import { getFeedPage } from "@/lib/feed";
+import { getActivityTypes, getFeedPage } from "@/lib/feed";
 import { feedFilterHref, parseFeedFilter } from "@/lib/feed-filter";
 
 export const dynamic = 'force-dynamic';
@@ -17,13 +17,17 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   const session = await getSession();
   // 관리자 여부는 메뉴·댓글 삭제 버튼을 보여줄지 정하는 데만 쓴다. 실제 권한은 서버 액션이 DB로 다시 확인한다.
   const viewer = session ? { id: session.userId, isAdmin: session.isAdmin } : null;
-  const firstPage = await getFeedPage(filter, 0, viewer);
+  // 종류 칩은 활동 기록 필터에서만 보이므로 그때만 센다.
+  const [firstPage, types] = await Promise.all([
+    getFeedPage(filter, 0, viewer),
+    filter.kind === 'activity' ? getActivityTypes() : Promise.resolve([]),
+  ]);
   const here = feedFilterHref(filter);
 
   return (
     <div>
       <TopBar title="피드" />
-      <FeedFilterChips filter={filter} />
+      <FeedFilterChips filter={filter} types={types} />
       {/* 필터가 바뀌면 목록 상태(불러온 페이지·offset)를 새로 시작하도록 key를 필터 주소로 둔다. */}
       <FeedList
         key={here}

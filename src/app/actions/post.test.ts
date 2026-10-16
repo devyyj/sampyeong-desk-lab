@@ -73,7 +73,7 @@ beforeEach(() => {
 
 /** 활동 기록 작성 폼의 기본 입력. */
 const activityForm = (o: Record<string, string | string[]> = {}) =>
-  form({ kind: 'activity', title: '제 9회 정기모임', activityType: 'REGULAR', activityDate: '2026-10-16', seasonId: '5', content: '• 인원 8명', ...o });
+  form({ kind: 'activity', title: '제 9회 정기모임', activityType: ' 정기  모임 ', activityDate: '2026-10-16', seasonId: '5', content: '• 인원 8명', ...o });
 
 describe('requestPostImageUploads', () => {
   it('로그인이 필요하다', async () => {
@@ -187,7 +187,8 @@ describe('createPost (활동 기록)', () => {
       op: 'insert:posts',
       values: {
         content: '• 인원 8명', authorId: ME, kind: 'activity',
-        title: '제 9회 정기모임', activityType: 'REGULAR', activityDate: '2026-10-16', seasonId: 5,
+        // 종류는 입력한 글자를 공백만 정리해 저장한다.
+        title: '제 9회 정기모임', activityType: '정기 모임', activityDate: '2026-10-16', seasonId: 5,
       },
     });
     expect(redirect).toHaveBeenCalledWith('/');
@@ -195,7 +196,7 @@ describe('createPost (활동 기록)', () => {
 
   it('활동 입력이 잘못되면 저장하지 않는다', async () => {
     expect(await createPost(null, activityForm({ title: ' ' }))).toEqual({ error: '제목을 입력해주세요.' });
-    expect(await createPost(null, activityForm({ activityType: 'PARTY' }))).toEqual({ error: '활동 종류를 골라주세요.' });
+    expect(await createPost(null, activityForm({ activityType: '  ' }))).toEqual({ error: '활동 종류를 입력해주세요.' });
     vi.mocked(db.query.seasons.findFirst).mockResolvedValueOnce(undefined as never);
     expect(await createPost(null, activityForm({ seasonId: '99' }))).toEqual({ error: '시즌을 골라주세요.' });
     expect(db.transaction).not.toHaveBeenCalled();
@@ -279,7 +280,7 @@ describe('updatePost', () => {
     await updatePost(null, activityForm({ id: POST, kind: 'general', title: '고친 제목', removeImageIds: 'img-a', imagePaths: myPath(3) }));
     expect(writes[0]).toEqual({
       op: 'update:posts',
-      values: expect.objectContaining({ content: '• 인원 8명', title: '고친 제목', activityType: 'REGULAR', activityDate: '2026-10-16', seasonId: 5 }),
+      values: expect.objectContaining({ content: '• 인원 8명', title: '고친 제목', activityType: '정기 모임', activityDate: '2026-10-16', seasonId: 5 }),
     });
     expect(writes[0].values).not.toHaveProperty('kind');
     expect(getPostImageInfo).toHaveBeenCalledWith([myPath(3)], 'activity_photos');

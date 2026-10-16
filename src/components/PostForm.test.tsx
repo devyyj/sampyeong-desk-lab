@@ -80,6 +80,15 @@ describe('PostForm', () => {
     expect(submitted().getAll('imagePaths')).toEqual(['me/0.png', 'me/1.png']);
   });
 
+  it('내용 칸은 보이는 라벨이 있는 입력 상자이고, 플레이스홀더는 입력 요청 문구다', () => {
+    render(<PostForm mode="create" />);
+    const content = screen.getByRole('textbox', { name: '내용' });
+    expect(content).toHaveAttribute('placeholder', '내용을 입력하세요');
+    // 라벨이 화면에 보인다(스크린리더 전용 sr-only가 아님).
+    expect(screen.getByText('내용', { selector: 'label' })).not.toHaveClass('sr-only');
+    expect(content.className).toContain('bg-muted');
+  });
+
   it('사진이 없으면 업로드 없이 바로 저장한다', async () => {
     render(<PostForm mode="create" />);
     fireEvent.change(screen.getByLabelText(/내용/), { target: { value: '글만' } });
@@ -126,15 +135,29 @@ describe('PostForm', () => {
       // 날짜 기본값은 서버가 넘긴 오늘(한국 날짜), 시즌 기본값은 최신 시즌.
       expect(screen.getByLabelText('모임 날짜')).toHaveValue('2026-10-17');
       expect(screen.getByLabelText('시즌')).toHaveValue('5');
-      const types = screen.getByRole('radiogroup', { name: '활동 종류' });
-      expect(within(types).getAllByRole('radio').map((r) => r.closest('label')!.textContent)).toEqual(['방탈출', '정기 모임', '점심', '저녁', '기타']);
+      // 종류는 글자로 입력하고, 예시를 누르면 입력란에 채워진다.
+      const type = screen.getByRole('textbox', { name: '활동 종류' });
+      expect(type).toBeRequired();
+      // 플레이스홀더는 예시가 아니라 입력 요청 문구다(예시는 아래 칩으로 보여준다).
+      expect(type).toHaveAttribute('placeholder', '활동 종류를 입력하세요');
+      expect(screen.getByLabelText('제목')).toHaveAttribute('placeholder', '제목을 입력하세요');
+      expect(screen.getByLabelText('내용')).toHaveAttribute('placeholder', '활동 내용과 후기를 입력하세요');
+      const examples = screen.getAllByRole('button', { name: /^(방탈출|정기 모임|점심|저녁)$/ });
+      expect(examples.map((b) => b.textContent)).toEqual(['방탈출', '정기 모임', '점심', '저녁']);
+      fireEvent.click(screen.getByRole('button', { name: '점심' }));
+      expect(type).toHaveValue('점심');
+      expect(screen.getByRole('button', { name: '점심' })).toHaveAttribute('aria-pressed', 'true');
+      // 예시에 없는 종류도 직접 쓸 수 있다.
+      fireEvent.change(type, { target: { value: '보드게임 카페' } });
+      expect(type).toHaveValue('보드게임 카페');
+      expect(screen.getByRole('button', { name: '점심' })).toHaveAttribute('aria-pressed', 'false');
     });
 
     it('활동 기록 사진은 activity_photos(비공개)에 올리고, 활동 칸을 함께 보낸다', async () => {
       render(<PostForm mode="create" seasons={SEASONS} today="2026-10-17" />);
       fireEvent.click(screen.getByRole('radio', { name: '활동 기록' }));
       fireEvent.change(screen.getByLabelText('제목'), { target: { value: '제 9회 정기모임' } });
-      fireEvent.click(screen.getByRole('radio', { name: '정기 모임' }));
+      fireEvent.click(screen.getByRole('button', { name: '정기 모임' }));
       fireEvent.change(screen.getByLabelText('시즌'), { target: { value: '4' } });
       fireEvent.change(screen.getByLabelText(/내용/), { target: { value: '• 인원 8명' } });
       const a = png('a.png', 10);
@@ -146,7 +169,7 @@ describe('PostForm', () => {
       expect(uploadToSignedUrl).toHaveBeenCalledWith('activity_photos', 'me/0.png', 't0', a);
       const fd = submitted();
       expect(Object.fromEntries(['kind', 'title', 'activityType', 'activityDate', 'seasonId'].map((k) => [k, fd.get(k)]))).toEqual({
-        kind: 'activity', title: '제 9회 정기모임', activityType: 'REGULAR', activityDate: '2026-10-17', seasonId: '4',
+        kind: 'activity', title: '제 9회 정기모임', activityType: '정기 모임', activityDate: '2026-10-17', seasonId: '4',
       });
     });
 
@@ -164,7 +187,8 @@ describe('PostForm', () => {
       expect(screen.queryByRole('radiogroup', { name: '글 종류' })).toBeNull();
       expect(screen.getByText('활동 기록 수정')).toBeInTheDocument();
       expect(screen.getByLabelText('제목')).toHaveValue('제 7회 방탈출');
-      expect(screen.getByRole('radio', { name: '방탈출' })).toBeChecked();
+      // 예전 코드(ESCAPE_ROOM)로 저장된 글도 이름으로 채워진다.
+      expect(screen.getByRole('textbox', { name: '활동 종류' })).toHaveValue('방탈출');
       expect(screen.getByLabelText('모임 날짜')).toHaveValue('2026-07-31');
       expect(screen.getByLabelText('시즌')).toHaveValue('4');
       pick([png('n.png')]);

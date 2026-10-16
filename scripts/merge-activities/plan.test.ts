@@ -37,7 +37,7 @@ describe('buildMergePlan (activities → posts)', () => {
         authorId: PRES,
         kind: 'activity',
         title: '제 7회 방탈출 정기모임',
-        activityType: 'ESCAPE_ROOM',
+        activityType: '방탈출',
         seasonId: 4,
         activityDate: '2026-07-31',
         sourceKey: '1349016580:7',

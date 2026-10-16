@@ -3,10 +3,16 @@ import { db } from '@/db';
 import { getComments, getLikeSummaries } from './community';
 import { getMemberBadges } from './member-badges';
 import { createSignedPhotoUrls } from './storage-admin';
-import { FEED_PAGE_SIZE, getFeedPage, getPostView } from './feed';
+import { FEED_PAGE_SIZE, getActivityTypes, getFeedPage, getPostView } from './feed';
 import { feedFilterHref, parseFeedFilter } from './feed-filter';
 
-vi.mock('@/db', () => ({ db: { query: { posts: { findMany: vi.fn(), findFirst: vi.fn() } } } }));
+const groupBy = vi.fn();
+vi.mock('@/db', () => ({
+  db: {
+    query: { posts: { findMany: vi.fn(), findFirst: vi.fn() } },
+    select: vi.fn(() => ({ from: () => ({ where: () => ({ groupBy }) }) })),
+  },
+}));
 vi.mock('./community', () => ({ getComments: vi.fn(), getLikeSummaries: vi.fn() }));
 vi.mock('./member-badges', () => ({ getMemberBadges: vi.fn() }));
 vi.mock('./storage-admin', () => ({ createSignedPhotoUrls: vi.fn() }));
@@ -34,9 +40,10 @@ describe('parseFeedFilter / feedFilterHref (피드 필터 칩 ↔ 주소)', () =
     expect(parseFeedFilter({})).toEqual({ kind: 'all', type: null });
     expect(parseFeedFilter({ kind: 'xxx' })).toEqual({ kind: 'all', type: null });
   });
-  it('활동 기록은 종류까지 고를 수 있고, 모르는 종류는 무시한다', () => {
-    expect(parseFeedFilter({ kind: 'activity', type: 'LUNCH' })).toEqual({ kind: 'activity', type: 'LUNCH' });
-    expect(parseFeedFilter({ kind: 'activity', type: 'HACK' })).toEqual({ kind: 'activity', type: null });
+  it('활동 기록은 종류(입력한 이름)까지 고를 수 있다. 예전 코드는 이름으로, 너무 긴 값은 무시', () => {
+    expect(parseFeedFilter({ kind: 'activity', type: '보드게임 카페' })).toEqual({ kind: 'activity', type: '보드게임 카페' });
+    expect(parseFeedFilter({ kind: 'activity', type: 'LUNCH' })).toEqual({ kind: 'activity', type: '점심' });
+    expect(parseFeedFilter({ kind: 'activity', type: '가'.repeat(21) })).toEqual({ kind: 'activity', type: null });
   });
   it('자유글에는 종류가 없다', () => {
     expect(parseFeedFilter({ kind: 'general', type: 'LUNCH' })).toEqual({ kind: 'general', type: null });
@@ -47,7 +54,7 @@ describe('parseFeedFilter / feedFilterHref (피드 필터 칩 ↔ 주소)', () =
   it('필터를 주소로 되돌린다', () => {
     expect(feedFilterHref({ kind: 'all', type: null })).toBe('/');
     expect(feedFilterHref({ kind: 'general', type: null })).toBe('/?kind=general');
-    expect(feedFilterHref({ kind: 'activity', type: 'ESCAPE_ROOM' })).toBe('/?kind=activity&type=ESCAPE_ROOM');
+    expect(feedFilterHref({ kind: 'activity', type: '정기 모임' })).toBe('/?kind=activity&type=%EC%A0%95%EA%B8%B0+%EB%AA%A8%EC%9E%84');
   });
 });
 
@@ -142,5 +149,18 @@ describe('getPostView (상세)', () => {
     vi.mocked(db.query.posts.findFirst).mockResolvedValueOnce(activity as never);
     const view = await getPostView('a1', null, NOW);
     expect(view).toMatchObject({ id: 'a1', photoCount: 2, photosLocked: true, activity: { title: '제 7회 방탈출' } });
+  });
+});
+
+describe('getActivityTypes (피드 종류 칩)', () => {
+  it('실제로 쓰인 종류를 많이 쓴 순(같으면 가나다순)으로, 예전 코드는 이름으로 합쳐 센다', async () => {
+    groupBy.mockResolvedValueOnce([
+      { type: '정기 모임', count: 3 },
+      { type: 'ESCAPE_ROOM', count: 2 },
+      { type: '방탈출', count: 2 },
+      { type: '번개', count: 3 },
+      { type: null, count: 1 },
+    ]);
+    expect(await getActivityTypes()).toEqual(['방탈출', '번개', '정기 모임']);
   });
 });

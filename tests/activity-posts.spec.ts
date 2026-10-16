@@ -35,7 +35,10 @@ test('활동 기록: 사진 첨부 작성 → 회원은 signed URL 사진, 비�
   await page.waitForURL('**/posts/write');
   await page.getByRole('radiogroup', { name: '글 종류' }).getByText('활동 기록').click();
   await page.getByLabel('제목').fill(title);
-  await page.getByRole('radiogroup', { name: '활동 종류' }).getByText('정기 모임').click();
+  // 종류는 글자로 입력한다. 예시 칩을 누르면 채워지고, 직접 쓴 글자도 그대로 저장된다.
+  await page.getByRole('button', { name: '정기 모임' }).click();
+  await expect(page.getByRole('textbox', { name: '활동 종류' })).toHaveValue('정기 모임');
+  await page.getByRole('textbox', { name: '활동 종류' }).fill('정기 모임 번개');
   await page.getByLabel(/내용/).fill('• 인원 : 6명\n• 게임 : 스컬킹');
   await page.getByLabel('사진 첨부 (선택)').setInputFiles(TEST_IMAGE);
   await expect(page.getByRole('group', { name: '새 사진' }).getByRole('img')).toHaveCount(1);
@@ -44,7 +47,7 @@ test('활동 기록: 사진 첨부 작성 → 회원은 signed URL 사진, 비�
 
   // DB: 활동 칼럼이 채워진 활동형 게시글, 사진은 activity_photos(비공개)에만 있다.
   const [row] = await db.select().from(posts).where(eq(posts.title, title));
-  expect(row).toMatchObject({ authorId: author.id, kind: 'activity', activityType: 'REGULAR' });
+  expect(row).toMatchObject({ authorId: author.id, kind: 'activity', activityType: '정기 모임 번개' });
   expect(row.seasonId).not.toBeNull();
   expect(row.activityDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   const [photo] = await imagesOf(row.id);
@@ -54,7 +57,7 @@ test('활동 기록: 사진 첨부 작성 → 회원은 signed URL 사진, 비�
 
   // 피드 맨 위 카드: 종류 배지·굵은 제목, 사진은 signed URL로 실제 로드된다.
   const card = page.locator('article').filter({ has: page.getByRole('link', { name: title, exact: true }) });
-  await expect(card).toContainText('정기 모임');
+  await expect(card).toContainText('정기 모임 번개');
   const img = card.getByRole('region', { name: '사진 1장' }).locator('img');
   await expect(img).toHaveAttribute('src', /\/storage\/v1\/object\/sign\/activity_photos\//);
   await expectImageLoaded(img);

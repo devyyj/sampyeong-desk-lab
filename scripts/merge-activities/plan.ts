@@ -3,6 +3,7 @@
  * 설계: docs/superpowers/specs/2026-10-16-feed-activity-merge-design.md §4
  */
 import { activityContent } from '../../src/lib/markdown-plain';
+import { getActivityType } from '../../src/lib/activity-types';
 
 export type MergeSource = {
   activities: {
@@ -55,7 +56,8 @@ export function buildMergePlan(source: MergeSource, presidentId: string): MergeP
     authorId: presidentId,
     kind: 'activity' as const,
     title: a.title,
-    activityType: a.type,
+    // 게시글의 활동 종류는 코드가 아니라 이름으로 저장한다(0007, 자유 입력과 같은 형태).
+    activityType: getActivityType(a.type).label,
     seasonId: a.seasonId,
     activityDate: a.date,
     sourceKey: a.sourceKey,

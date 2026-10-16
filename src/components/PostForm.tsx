@@ -4,7 +4,7 @@ import { startTransition, useActionState, useEffect, useRef, useState, type Form
 import { createPost, updatePost, requestPostImageUploads } from '@/app/actions/post';
 import { createClient } from '@/utils/supabase/client';
 import { bucketForKind, checkImageFiles, MAX_POST_IMAGES, type PostKind } from '@/lib/post-images';
-import { ACTIVITY_TYPE_CODES, getActivityType } from '@/lib/activity-types';
+import { ACTIVITY_TYPE_EXAMPLES, MAX_ACTIVITY_TYPE_LENGTH, getActivityType } from '@/lib/activity-types';
 import { fieldInput, fieldLabel } from '@/lib/form-styles';
 import { CameraIcon } from './icons';
 import FormHeader from './FormHeader';
@@ -228,18 +228,21 @@ export default function PostForm({
 
       {shownError && <p role="alert" className="mb-3 text-sm text-red-500 font-medium">{shownError}</p>}
 
-      <label htmlFor="content" className="sr-only">
+      {/* 내용 칸. 예전에는 테두리·배경 없이 화면에 녹아 있어 안내 문구가 일반 설명처럼 보였고, 입력할 수 있는 곳인지 몰랐다.
+          그래서 다른 입력란과 같은 회색 상자 + 보이는 라벨로 "여기에 쓴다"를 드러낸다. 플레이스홀더는 예시가 아니라
+          무엇을 입력하라는 요청 문구로 둔다(예시 문장은 이미 쓴 글처럼 읽혀 헷갈렸다).
+          입력 글자 16px 이상: iOS Safari가 초점 시 화면을 확대하지 않게 한다. */}
+      <label htmlFor="content" className={fieldLabel}>
         내용
       </label>
-      {/* 입력 글자 16px 이상: iOS Safari가 초점 시 화면을 확대하지 않게 한다. */}
       <textarea
         id="content"
         name="content"
         required
         rows={8}
         defaultValue={post?.content}
-        className="w-full py-1 bg-transparent text-[17px] leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none resize-none"
-        placeholder={isActivity ? '어떤 게임을 했나요? 인원·후기도 남겨 주세요.' : '오늘 어떤 게임을 하셨나요?'}
+        className="w-full min-h-48 px-4 py-3 rounded-xl bg-muted text-[16px] leading-relaxed text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-foreground/20 resize-y"
+        placeholder={isActivity ? '활동 내용과 후기를 입력하세요' : '내용을 입력하세요'}
       />
       <p className="mt-2 text-xs text-muted-foreground">사진은 한 장에 10MB 이하, 최대 {MAX_POST_IMAGES}장까지 올릴 수 있어요.</p>
     </form>
@@ -278,36 +281,54 @@ function KindSwitch({ kind, onChange }: { kind: PostKind; onChange: (kind: PostK
 }
 
 /**
- * 활동 기록 칸: 제목(필수) · 종류(칩, 필수) · 모임 날짜 · 시즌(기본 최신).
+ * 활동 기록 칸: 제목(필수) · 종류(글자 입력, 필수) · 모임 날짜 · 시즌(기본 최신).
+ * 종류는 정해진 목록이 아니라 회원이 입력한다. 무엇을 쓰면 되는지 알 수 있게 예시 칩을 두고, 누르면 입력란에 채운다.
  * 서버(parseActivityFields)가 다시 검사하므로 여기서는 required로 빠뜨림만 막는다.
  */
 function ActivityFields({ values, seasons, today }: { values: ActivityValues | null; seasons: Season[]; today: string }) {
   const latest = seasons.reduce<Season | null>((a, b) => (a && a.id > b.id ? a : b), null);
   const sorted = [...seasons].sort((a, b) => b.id - a.id);
+  // 예시 칩으로 값을 채워야 해서 제어 입력으로 둔다. 예전 코드(ESCAPE_ROOM 등)는 이름으로 바꿔 보여준다.
+  const [type, setType] = useState(values ? getActivityType(values.activityType).label : '');
   return (
     <div className="mb-4 space-y-4">
       <div>
         <label htmlFor="title" className={fieldLabel}>
           제목
         </label>
-        <input id="title" name="title" required maxLength={100} defaultValue={values?.title} className={fieldInput} placeholder="예: 제 9회 보드게임 정기모임" />
+        <input id="title" name="title" required maxLength={100} defaultValue={values?.title} className={fieldInput} placeholder="제목을 입력하세요" />
       </div>
 
-      <fieldset>
-        <legend className={fieldLabel}>활동 종류</legend>
-        <div role="radiogroup" aria-label="활동 종류" className="flex flex-wrap gap-1.5">
-          {ACTIVITY_TYPE_CODES.map((code, i) => (
-            <label
-              key={code}
-              className="h-9 px-3.5 inline-flex items-center rounded-full bg-muted text-[14px] font-medium cursor-pointer has-[:checked]:bg-foreground has-[:checked]:text-background has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-foreground/30"
+      <div>
+        <label htmlFor="activityType" className={fieldLabel}>
+          활동 종류
+        </label>
+        <input
+          id="activityType"
+          name="activityType"
+          required
+          maxLength={MAX_ACTIVITY_TYPE_LENGTH}
+          value={type}
+          onChange={(e) => setType(e.target.value)}
+          className={fieldInput}
+          placeholder="활동 종류를 입력하세요"
+          aria-describedby="activityType-examples"
+        />
+        <div id="activityType-examples" className="mt-2 flex flex-wrap items-center gap-1.5">
+          <span className="text-xs text-muted-foreground">예시</span>
+          {ACTIVITY_TYPE_EXAMPLES.map((example) => (
+            <button
+              key={example}
+              type="button"
+              aria-pressed={type === example}
+              onClick={() => setType(example)}
+              className="h-8 px-3 rounded-full border border-border text-[13px] font-medium text-foreground aria-pressed:bg-foreground aria-pressed:text-background aria-pressed:border-foreground"
             >
-              {/* 같은 name의 라디오 하나에만 required를 걸어도 그룹 전체가 필수가 된다. */}
-              <input type="radio" name="activityType" value={code} required={i === 0} defaultChecked={values?.activityType === code} className="sr-only" />
-              {getActivityType(code).label}
-            </label>
+              {example}
+            </button>
           ))}
         </div>
-      </fieldset>
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div>

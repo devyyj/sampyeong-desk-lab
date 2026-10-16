@@ -108,7 +108,8 @@ test('활동 기록 필터: 무한 스크롤로 모든 활동을 불러오고, �
   const [{ escape }] = await db
     .select({ escape: sql<number>`count(*)::int` })
     .from(posts)
-    .where(and(eq(posts.kind, 'activity'), eq(posts.activityType, 'ESCAPE_ROOM')));
+    // 필터는 저장값(종류 이름)으로 비교한다. 이관 데이터의 예전 코드는 0007에서 이름으로 바꿨다.
+    .where(and(eq(posts.kind, 'activity'), eq(posts.activityType, '방탈출')));
 
   await page.goto('/?kind=activity');
   // 첫 화면에는 한 페이지(10건)만 있고, 바닥까지 스크롤하면 이어서 불러온다.
@@ -127,7 +128,7 @@ test('활동 기록 필터: 무한 스크롤로 모든 활동을 불러오고, �
 
   // 종류 칩: 방탈출만.
   await page.getByRole('navigation', { name: '활동 종류' }).getByRole('link', { name: '방탈출' }).click();
-  await page.waitForURL((url) => url.searchParams.get('type') === 'ESCAPE_ROOM');
+  await page.waitForURL((url) => url.searchParams.get('type') === '방탈출');
   if (escape <= 10) {
     await expect(cards).toHaveCount(escape);
     for (const card of await cards.all()) await expect(card).toContainText('방탈출');

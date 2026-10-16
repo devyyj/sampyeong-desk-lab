@@ -1,4 +1,4 @@
-import { isActivityType, type ActivityTypeCode } from './activity-types';
+import { MAX_ACTIVITY_TYPE_LENGTH, normalizeActivityType } from './activity-types';
 
 /*
  * 활동 기록 입력(제목·종류·모임 날짜·시즌) 검사. 설계 §5.3.
@@ -9,7 +9,7 @@ import { isActivityType, type ActivityTypeCode } from './activity-types';
 /** 카드에서 두 줄 안에 읽히는 길이. 기존 91건 중 가장 긴 제목도 이보다 짧다. */
 export const MAX_TITLE_LENGTH = 100;
 
-export type ActivityFields = { title: string; activityType: ActivityTypeCode; activityDate: string; seasonId: number };
+export type ActivityFields = { title: string; activityType: string; activityDate: string; seasonId: number };
 
 /** 달력에 있는 날짜인지(2026-02-30 같은 값을 Date가 다음 달로 넘겨 받아들이는 것을 막는다). */
 function isRealDate(ymd: string): boolean {
@@ -23,8 +23,11 @@ export function parseActivityFields(formData: FormData): ActivityFields | { erro
   if (!title) return { error: '제목을 입력해주세요.' };
   if (title.length > MAX_TITLE_LENGTH) return { error: `제목은 ${MAX_TITLE_LENGTH}자 이하로 입력해주세요.` };
 
-  const activityType = formData.get('activityType');
-  if (!isActivityType(activityType)) return { error: '활동 종류를 골라주세요.' };
+  // 종류는 회원이 글자로 입력한다(예시는 화면에만 있고 강제하지 않음). 공백을 정리해 같은 종류가 한 칩으로 모이게 한다.
+  const rawType = String(formData.get('activityType') ?? '');
+  if (!rawType.trim()) return { error: '활동 종류를 입력해주세요.' };
+  const activityType = normalizeActivityType(rawType);
+  if (!activityType) return { error: `활동 종류는 ${MAX_ACTIVITY_TYPE_LENGTH}자 이하로 입력해주세요.` };
 
   const activityDate = String(formData.get('activityDate') ?? '');
   if (!isRealDate(activityDate)) return { error: '모임 날짜를 확인해주세요.' };

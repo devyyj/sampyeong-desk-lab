@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, type SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, type SQL } from 'drizzle-orm';
 import { db } from '@/db';
 import { postImages, posts } from '../../drizzle/schema';
 import type { MemberBadge } from './badge';
@@ -8,6 +8,7 @@ import { postImagePublicUrl } from './post-images';
 import { createSignedPhotoUrls } from './storage-admin';
 import type { FeedFilter } from './feed-filter';
 import { relativeDay, relativeTime } from './time';
+import { getActivityType } from './activity-types';
 
 /*
  * 통합 피드(자유글 + 활동 기록) 데이터. 설계: docs/superpowers/specs/2026-10-16-feed-activity-merge-design.md §5.2
@@ -151,4 +152,23 @@ export async function getPostView(id: string, viewer: Viewer, now: Date = new Da
   if (!row) return null;
   const [item] = await toItems([row], viewer, now);
   return item;
+}
+
+/**
+ * 피드의 활동 종류 칩 목록: 실제로 쓰인 종류 이름을 많이 쓴 순서로(같으면 가나다순).
+ * 종류를 자유 입력으로 받으므로 고정 목록 대신 데이터에서 만든다. 0007 적용 전의 예전 코드는 이름으로 합쳐 센다.
+ */
+export async function getActivityTypes(): Promise<string[]> {
+  const rows = await db
+    .select({ type: posts.activityType, count: count() })
+    .from(posts)
+    .where(eq(posts.kind, 'activity'))
+    .groupBy(posts.activityType);
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    if (!row.type) continue;
+    const { label } = getActivityType(row.type);
+    counts.set(label, (counts.get(label) ?? 0) + row.count);
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ko')).map(([label]) => label);
 }
