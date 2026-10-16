@@ -24,41 +24,32 @@ function cleanContent(raw: FormDataEntryValue | null): string | null {
 }
 const CONTENT_ERROR = { error: `댓글은 1~${MAX_COMMENT_LENGTH}자로 입력해주세요.` };
 
-/** 댓글이 보이는 화면을 다시 그린다(게시글 댓글은 피드, 활동 댓글은 활동 상세·목록의 댓글 수). */
-function revalidateFor(target: { postId: string | null; activityId: string | null }) {
-  if (target.postId) revalidatePath('/');
-  if (target.activityId) {
-    revalidatePath(`/activities/${target.activityId}`);
-    revalidatePath('/activities');
-  }
+/** 댓글이 보이는 화면(피드 댓글 수·게시글 상세)을 다시 그린다. */
+function revalidateFor(target: { postId: string | null }) {
+  revalidatePath('/');
+  if (target.postId) revalidatePath(`/posts/${target.postId}`);
 }
 
-/** 게시글 또는 활동 기록에 댓글을 단다. 회원만 가능하다. */
+/** 게시글(자유글·활동 기록)에 댓글을 단다. 회원만 가능하다. 활동 기록은 게시글로 합쳐져 대상은 post 하나다(설계 §5.5). */
 export async function addComment(prevState: unknown, formData: FormData): Promise<CommentActionState> {
   const session = await getSession();
   if (!session) return LOGIN_REQUIRED;
 
   const target = formData.get('target');
   const targetId = formData.get('targetId');
-  if ((target !== 'post' && target !== 'activity') || !isUuid(targetId)) return BAD_REQUEST;
+  if (target !== 'post' || !isUuid(targetId)) return BAD_REQUEST;
   const content = cleanContent(formData.get('content'));
   if (!content) return CONTENT_ERROR;
 
-  // 게시글·활동 중 정확히 하나만 채운다(DB CHECK comments_one_target이 최종 보장).
-  const ref = target === 'post' ? { postId: targetId, activityId: null } : { postId: null, activityId: targetId };
   try {
-    await db.insert(comments).values({
-      ...(target === 'post' ? { postId: targetId } : { activityId: targetId }),
-      authorId: session.userId,
-      content,
-    });
+    await db.insert(comments).values({ postId: targetId, authorId: session.userId, content });
   } catch (e) {
-    // 댓글을 쓰는 사이 글/활동이 삭제됐으면 FK 위반이 난다.
+    // 댓글을 쓰는 사이 글이 삭제됐으면 FK 위반이 난다.
     if (isForeignKeyViolation(e)) return NOT_FOUND;
     console.error('Add comment error', e);
     return { error: '댓글을 저장하지 못했습니다.' };
   }
-  revalidateFor(ref);
+  revalidateFor({ postId: targetId });
   return { ok: true };
 }
 

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { db } from '@/db';
 import { getMemberBadges } from './member-badges';
-import { getComments, getLikeSummaries, getCommentCounts, formatKst } from './community';
+import { getComments, getLikeSummaries, formatKst } from './community';
 
 const groupBy = vi.fn();
 vi.mock('@/db', () => ({
@@ -33,16 +33,7 @@ describe('getLikeSummaries', () => {
 
   it('비회원은 liked가 항상 false', async () => {
     groupBy.mockResolvedValueOnce([{ targetId: 'x', count: 2, liked: null }]);
-    expect((await getLikeSummaries('activity', ['x'], null)).get('x')).toEqual({ count: 2, liked: false });
-  });
-});
-
-describe('getCommentCounts', () => {
-  it('대상별 댓글 수, 없으면 0', async () => {
-    groupBy.mockResolvedValueOnce([{ targetId: 'x', count: 4 }]);
-    const map = await getCommentCounts('activity', ['x', 'y']);
-    expect(map.get('x')).toBe(4);
-    expect(map.get('y')).toBe(0);
+    expect((await getLikeSummaries('comment', ['x'], null)).get('x')).toEqual({ count: 2, liked: false });
   });
 });
 
@@ -75,7 +66,7 @@ describe('getComments', () => {
   });
 
   it('대상이 없으면 조회하지 않는다', async () => {
-    expect((await getComments('activity', [], null)).size).toBe(0);
+    expect((await getComments('post', [], null)).size).toBe(0);
     expect(db.query.comments.findMany).not.toHaveBeenCalled();
   });
 });

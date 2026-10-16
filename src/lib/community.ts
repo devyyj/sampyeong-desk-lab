@@ -1,11 +1,11 @@
 import { asc, count, inArray, sql } from 'drizzle-orm';
 import { db } from '@/db';
-import { activityLikes, commentLikes, comments, postLikes } from '../../drizzle/schema';
+import { commentLikes, comments, postLikes } from '../../drizzle/schema';
 import { getMemberBadges } from './member-badges';
 import type { MemberBadge } from './badge';
 
 /*
- * 좋아요·댓글 화면 데이터 조회. 피드·활동 목록처럼 대상이 여러 개인 화면에서도
+ * 좋아요·댓글 화면 데이터 조회. 피드처럼 대상이 여러 개인 화면에서도
  * 종류별로 쿼리 한 번씩만 돌도록 대상 id 목록을 받아 묶어서 가져온다(N+1 방지).
  */
 
@@ -26,11 +26,11 @@ export type LikeSummary = { count: number; liked: boolean };
 
 const LIKE_COLUMNS = {
   post: { table: postLikes, column: postLikes.postId },
-  activity: { table: activityLikes, column: activityLikes.activityId },
   comment: { table: commentLikes, column: commentLikes.commentId },
 } as const;
 
-const COMMENT_COLUMNS = { post: comments.postId, activity: comments.activityId } as const;
+// 활동 기록은 게시글로 합쳐져(설계 §5.5) 댓글 대상은 게시글 하나다.
+const COMMENT_COLUMNS = { post: comments.postId } as const;
 
 /**
  * 한국 시간 "YYYY. MM. DD. HH:mm". 서버(Vercel은 UTC)와 브라우저의 시간대가 달라도 같은 문자열이 나오도록
@@ -69,16 +69,6 @@ export async function getLikeSummaries(
   return result;
 }
 
-/** 대상별 댓글 수(활동 목록처럼 댓글 내용 없이 수만 필요한 화면용). */
-export async function getCommentCounts(target: keyof typeof COMMENT_COLUMNS, ids: string[]): Promise<Map<string, number>> {
-  const result = new Map<string, number>(ids.map((id) => [id, 0]));
-  if (ids.length === 0) return result;
-  const column = COMMENT_COLUMNS[target];
-  const rows = await db.select({ targetId: column, count: count() }).from(comments).where(inArray(column, ids)).groupBy(column);
-  for (const row of rows) if (row.targetId) result.set(row.targetId, row.count);
-  return result;
-}
-
 /** 대상별 댓글 목록(오래된 순). 작성자는 닉네임만 싣는다(아이디·실명은 화면에 쓰지 않음). */
 export async function getComments(
   target: keyof typeof COMMENT_COLUMNS,
@@ -100,7 +90,7 @@ export async function getComments(
   ]);
 
   for (const c of rows) {
-    const targetId = (target === 'post' ? c.postId : c.activityId)!;
+    const targetId = c.postId!;
     const like = likes.get(c.id) ?? { count: 0, liked: false };
     result.get(targetId)?.push({
       id: c.id,

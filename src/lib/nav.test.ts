@@ -3,10 +3,9 @@ import { describe, it, expect } from 'vitest';
 import { TABS, activeTabOf, hidesAppChrome, createActionFor } from './nav';
 
 describe('TABS', () => {
-  it('하단 탭 5개를 순서대로 둔다', () => {
+  it('하단 탭 4개를 순서대로 둔다(활동 기록은 피드로 합쳐짐)', () => {
     expect(TABS.map((t) => [t.label, t.href])).toEqual([
       ['피드', '/'],
-      ['활동', '/activities'],
       ['보드게임', '/boardgames'],
       ['회원', '/members'],
       ['MY', '/my'],
@@ -18,8 +17,8 @@ describe('activeTabOf', () => {
   it.each([
     ['/', '/'],
     // 하위 경로도 상위 탭을 현재 탭으로 본다. '/'는 모든 경로의 접두사라 정확히 일치할 때만 피드다.
-    ['/activities', '/activities'],
-    ['/activities/abc', '/activities'],
+    // 게시글 상세(자유글·활동 기록)는 피드 탭이다.
+    ['/posts/abc', '/'],
     ['/boardgames/add', '/boardgames'],
     ['/boardgames/x/edit', '/boardgames'],
     ['/members', '/members'],
@@ -34,7 +33,7 @@ describe('activeTabOf', () => {
     ['/posts/abc/edit', '/'],
     // 어떤 탭에도 속하지 않는 화면
     ['/login', null],
-    ['/activitiesX', null],
+    ['/postsX', null],
   ])('%s → %s', (pathname, expected) => {
     expect(activeTabOf(pathname)?.href ?? null).toBe(expected);
   });
@@ -50,7 +49,7 @@ describe('hidesAppChrome', () => {
     ['/boardgames/abc/edit', true],
     ['/members/new', true],
     ['/', false],
-    ['/activities/abc', false],
+    ['/posts/abc', false],
     ['/mypage', false],
   ])('%s → %s', (pathname, expected) => {
     expect(hidesAppChrome(pathname)).toBe(expected);
@@ -78,7 +77,7 @@ describe('createActionFor (탭별 ＋ 버튼)', () => {
   });
 
   it('탭 첫 화면이 아니면 없다', () => {
-    for (const path of ['/my', '/activities', '/boardgames/add', '/posts/write', '/members/new', '/about/rules']) {
+    for (const path of ['/my', '/posts/abc', '/boardgames/add', '/posts/write', '/members/new', '/about/rules']) {
       expect(createActionFor(path, admin)).toBeNull();
     }
   });

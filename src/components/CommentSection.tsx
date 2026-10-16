@@ -26,7 +26,7 @@ export default function CommentSection({
   viewer,
   loginHref,
 }: {
-  target: 'post' | 'activity';
+  target: 'post';
   targetId: string;
   comments: CommentView[];
   viewer: Viewer;
@@ -58,7 +58,7 @@ export default function CommentSection({
   );
 }
 
-function NewCommentForm({ target, targetId }: { target: 'post' | 'activity'; targetId: string }) {
+function NewCommentForm({ target, targetId }: { target: 'post'; targetId: string }) {
   const [state, formAction, isPending] = useActionState<CommentActionState, FormData>(addComment, null);
   const formRef = useRef<HTMLFormElement>(null);
   // 저장에 성공하면 입력란을 비운다. 실패하면 쓴 내용을 남겨 다시 시도할 수 있게 한다.

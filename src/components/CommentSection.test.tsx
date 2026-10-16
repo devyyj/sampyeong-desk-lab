@@ -61,14 +61,14 @@ describe('CommentSection', () => {
   });
 
   it('댓글을 쓰면 대상과 함께 addComment로 보내고, 성공하면 입력란을 비운다', async () => {
-    render(<CommentSection target="activity" targetId={POST} comments={[]} viewer={{ id: ME, isAdmin: false }} loginHref="/login" />);
+    render(<CommentSection target="post" targetId={POST} comments={[]} viewer={{ id: ME, isAdmin: false }} loginHref="/login" />);
     expect(screen.getByText('첫 댓글을 남겨보세요.')).toBeInTheDocument();
     const box = screen.getByRole('textbox', { name: '댓글 쓰기' });
     fireEvent.change(box, { target: { value: '좋은 모임이었어요' } });
     fireEvent.click(screen.getByRole('button', { name: '댓글 달기' }));
     await waitFor(() => expect(addComment).toHaveBeenCalled());
     const fd = vi.mocked(addComment).mock.calls[0][1] as FormData;
-    expect(Object.fromEntries(fd)).toEqual({ target: 'activity', targetId: POST, content: '좋은 모임이었어요' });
+    expect(Object.fromEntries(fd)).toEqual({ target: 'post', targetId: POST, content: '좋은 모임이었어요' });
     await waitFor(() => expect(screen.getByRole('textbox', { name: '댓글 쓰기' })).toHaveValue(''));
   });
 

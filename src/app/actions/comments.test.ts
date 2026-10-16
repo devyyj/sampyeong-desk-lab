@@ -53,14 +53,16 @@ describe('addComment', () => {
     expect(db.insert).not.toHaveBeenCalled();
   });
 
-  it('게시글 댓글은 post_id에, 활동 댓글은 activity_id에 (공백 제거 후) 저장한다', async () => {
+  it('게시글 댓글을 (공백 제거 후) post_id에 저장하고 피드·상세를 다시 그린다', async () => {
     expect(await addComment(null, form({ target: 'post', targetId: POST, content: '  좋아요! ' }))).toEqual({ ok: true });
     expect(values).toHaveBeenCalledWith({ postId: POST, authorId: ME, content: '좋아요!' });
     expect(revalidatePath).toHaveBeenCalledWith('/');
+    expect(revalidatePath).toHaveBeenCalledWith(`/posts/${POST}`);
+  });
 
-    await addComment(null, form({ target: 'activity', targetId: POST, content: '재밌었어요' }));
-    expect(values).toHaveBeenLastCalledWith({ activityId: POST, authorId: ME, content: '재밌었어요' });
-    expect(revalidatePath).toHaveBeenCalledWith(`/activities/${POST}`);
+  it('활동 기록은 게시글로 합쳐져 activity 대상은 받지 않는다', async () => {
+    expect(await addComment(null, form({ target: 'activity', targetId: POST, content: '재밌었어요' }))).toEqual({ error: '잘못된 요청입니다.' });
+    expect(db.insert).not.toHaveBeenCalled();
   });
 
   it('대상이 그 사이 삭제됐으면(FK 위반) 찾을 수 없음', async () => {
@@ -109,10 +111,10 @@ describe('deleteComment', () => {
   });
 
   it('관리자는 (DB로 다시 확인한 뒤) 남의 댓글도 지울 수 있다', async () => {
-    vi.mocked(db.query.comments.findFirst).mockResolvedValueOnce({ ...comment(OTHER), postId: null, activityId: POST } as never);
+    vi.mocked(db.query.comments.findFirst).mockResolvedValueOnce(comment(OTHER) as never);
     vi.mocked(getAdminUser).mockResolvedValueOnce({ id: ME, isAdmin: true } as never);
     expect(await deleteComment(COMMENT)).toEqual({ ok: true });
-    expect(revalidatePath).toHaveBeenCalledWith(`/activities/${POST}`);
+    expect(revalidatePath).toHaveBeenCalledWith(`/posts/${POST}`);
   });
 
   it('이미 지워진 댓글은 찾을 수 없음', async () => {

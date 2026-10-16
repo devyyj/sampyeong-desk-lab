@@ -2,7 +2,7 @@
  * 하단 탭바(데스크톱에서는 사이드 레일) 정의와 "지금 어느 탭인가" 규칙.
  * 탭바(TabBar)·글쓰기 버튼(Fab)·테스트가 같은 규칙을 쓰도록 순수 함수로 분리했다.
  */
-export type TabKey = 'feed' | 'activities' | 'boardgames' | 'members' | 'my';
+export type TabKey = 'feed' | 'boardgames' | 'members' | 'my';
 
 export type Tab = {
   key: TabKey;
@@ -13,16 +13,16 @@ export type Tab = {
 };
 
 export const TABS: readonly Tab[] = [
-  // 게시글 작성·수정은 피드에서 들어가는 화면이라 피드 탭에 둔다.
+  // 게시글 상세·작성·수정은 피드에서 들어가는 화면이라 피드 탭에 둔다.
+  // 활동 기록은 게시글의 한 종류로 합쳐져 별도 탭이 없다(피드의 "활동 기록" 필터, 설계 §5.1).
   { key: 'feed', label: '피드', href: '/', also: ['/posts'] },
-  { key: 'activities', label: '활동', href: '/activities' },
   { key: 'boardgames', label: '보드게임', href: '/boardgames' },
   { key: 'members', label: '회원', href: '/members' },
   // GNB가 없어지면서 프로필 편집·동호회 안내·관리자·PIN 변경은 모두 MY에서 들어간다.
   { key: 'my', label: 'MY', href: '/my', also: ['/mypage', '/about', '/admin', '/change-pin'] },
 ];
 
-/** base 자신이거나 base/로 시작하면 참. '/activitiesX' 같은 경로가 '/activities'로 오인되지 않게 한다. */
+/** base 자신이거나 base/로 시작하면 참. '/postsX' 같은 경로가 '/posts'로 오인되지 않게 한다. */
 function underPath(pathname: string, base: string): boolean {
   return pathname === base || pathname.startsWith(`${base}/`);
 }

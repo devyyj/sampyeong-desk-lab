@@ -31,7 +31,7 @@ describe('Fab', () => {
     expect(screen.getByRole('link', { name: '회원 추가' })).toHaveAttribute('href', '/members/new');
   });
 
-  it.each(['/activities', '/my', '/posts/write'])('그 외 화면(%s)에서는 보이지 않는다', (pathname) => {
+  it.each(['/posts/abc', '/my', '/posts/write'])('그 외 화면(%s)에서는 보이지 않는다', (pathname) => {
     vi.mocked(usePathname).mockReturnValue(pathname);
     render(<Fab isLoggedIn isAdmin />);
     expect(screen.queryByRole('link')).toBeNull();

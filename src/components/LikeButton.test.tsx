@@ -35,7 +35,7 @@ describe('LikeButton', () => {
 
   it('실패하면 원래 상태로 되돌리고 오류를 보여준다', async () => {
     vi.mocked(toggleLike).mockResolvedValueOnce({ error: '찾을 수 없습니다.' });
-    render(<LikeButton target="activity" id={ID} liked={false} count={2} canLike />);
+    render(<LikeButton target="post" id={ID} liked={false} count={2} canLike />);
     fireEvent.click(screen.getByRole('button', { name: '좋아요 2' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('찾을 수 없습니다.');
     await waitFor(() => expect(screen.getByRole('button', { name: '좋아요 2' })).toHaveAttribute('aria-pressed', 'false'));

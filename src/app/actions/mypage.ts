@@ -80,7 +80,7 @@ export async function updateProfile(prevState: any, formData: FormData) {
 
     // 닉네임은 피드·댓글 작성자 표시에 쓰이므로 그 화면들도 새로 그린다.
     revalidatePath('/');
-    revalidatePath('/activities', 'layout');
+    revalidatePath('/posts/[id]', 'page');
     revalidatePath('/mypage');
     revalidatePath('/members');
     return { success: '정보가 성공적으로 수정되었습니다.' };

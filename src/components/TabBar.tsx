@@ -4,12 +4,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ComponentType } from 'react';
 import { TABS, activeTabOf, hidesAppChrome, type TabKey } from '@/lib/nav';
-import { CalendarIcon, DiceIcon, HomeIcon, UserIcon, UsersIcon } from './icons';
+import { DiceIcon, HomeIcon, UserIcon, UsersIcon } from './icons';
 import Logo from './Logo';
 
 const ICONS: Record<TabKey, ComponentType<{ size?: number; strokeWidth?: number }>> = {
   feed: HomeIcon,
-  activities: CalendarIcon,
   boardgames: DiceIcon,
   members: UsersIcon,
   my: UserIcon,

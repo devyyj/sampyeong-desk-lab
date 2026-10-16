@@ -8,11 +8,10 @@ vi.mock('next/navigation', () => ({ usePathname: vi.fn(() => '/') }));
 const nav = () => screen.getByRole('navigation', { name: '주요 메뉴' });
 
 describe('TabBar', () => {
-  it('탭 5개를 링크로 보여준다', () => {
+  it('탭 4개를 링크로 보여준다', () => {
     render(<TabBar />);
     expect(within(nav()).getAllByRole('link').map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
       ['피드', '/'],
-      ['활동', '/activities'],
       ['보드게임', '/boardgames'],
       ['회원', '/members'],
       ['MY', '/my'],
@@ -20,9 +19,9 @@ describe('TabBar', () => {
   });
 
   it('현재 탭에만 aria-current="page"', () => {
-    vi.mocked(usePathname).mockReturnValue('/activities/abc');
+    vi.mocked(usePathname).mockReturnValue('/boardgames/abc');
     render(<TabBar />);
-    expect(within(nav()).getByRole('link', { name: '활동' })).toHaveAttribute('aria-current', 'page');
+    expect(within(nav()).getByRole('link', { name: '보드게임' })).toHaveAttribute('aria-current', 'page');
     expect(within(nav()).getByRole('link', { name: '피드' })).not.toHaveAttribute('aria-current');
   });
 

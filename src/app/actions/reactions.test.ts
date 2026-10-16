@@ -37,6 +37,8 @@ describe('toggleLike', () => {
     vi.mocked(getSession).mockResolvedValueOnce(null);
     expect(await toggleLike('post', TARGET)).toEqual({ error: '로그인이 필요합니다.' });
     expect(await toggleLike('user' as never, TARGET)).toEqual({ error: '잘못된 요청입니다.' });
+    // 활동 기록은 게시글로 합쳐져 별도 대상이 없다(post로 누른다).
+    expect(await toggleLike('activity' as never, TARGET)).toEqual({ error: '잘못된 요청입니다.' });
     expect(await toggleLike('post', 'nope')).toEqual({ error: '잘못된 요청입니다.' });
     expect(db.insert).not.toHaveBeenCalled();
   });
@@ -51,8 +53,8 @@ describe('toggleLike', () => {
   it('이미 눌렀으면 지우고 liked=false', async () => {
     deleted.mockResolvedValueOnce([{ userId: ME }]);
     counted.mockResolvedValueOnce([{ count: 2 }]);
-    expect(await toggleLike('activity', TARGET)).toEqual({ liked: false, count: 2 });
-    expect(deleted).toHaveBeenCalledWith('activity_likes');
+    expect(await toggleLike('post', TARGET)).toEqual({ liked: false, count: 2 });
+    expect(deleted).toHaveBeenCalledWith('post_likes');
     expect(inserted).not.toHaveBeenCalled();
   });
 
@@ -69,9 +71,10 @@ describe('toggleLike', () => {
   it('화면 데이터가 바뀌므로 해당 경로를 다시 그린다', async () => {
     await toggleLike('post', TARGET);
     expect(revalidatePath).toHaveBeenCalledWith('/');
+    expect(revalidatePath).toHaveBeenCalledWith(`/posts/${TARGET}`);
     vi.mocked(revalidatePath).mockClear();
-    await toggleLike('activity', TARGET);
-    expect(revalidatePath).toHaveBeenCalledWith(`/activities/${TARGET}`);
-    expect(revalidatePath).toHaveBeenCalledWith('/activities');
+    await toggleLike('comment', TARGET);
+    expect(revalidatePath).toHaveBeenCalledWith('/');
+    expect(revalidatePath).toHaveBeenCalledWith('/posts/[id]', 'page');
   });
 });

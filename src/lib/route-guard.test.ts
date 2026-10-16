@@ -19,8 +19,7 @@ describe('guardRoute', () => {
     ['/boardgames', null, null],
     ['/login', null, null],
     // 활동 기록·동호회 안내는 공개(활동 사진만 페이지에서 회원 여부로 가린다)
-    ['/activities', null, null],
-    ['/activities/abc', null, null],
+    ['/posts/abc', null, null],
     ['/about/rules', null, null],
     // MY 탭 허브는 비회원에게도 로그인 버튼·동호회 안내를 보여주는 공개 화면이다(/mypage 편집 화면만 보호).
     ['/my', null, null],
