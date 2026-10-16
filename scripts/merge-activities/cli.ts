@@ -156,9 +156,13 @@ export async function main(argv: string[]): Promise<void> {
 
     if (!opts.apply) return;
 
-    // 되돌리기용 원본 백업. 옛 테이블은 남겨 두지만, 0007 이후를 대비해 파일로도 남긴다.
+    // 되돌리기용 백업(설계 §4.1). 옛 테이블은 남겨 두지만, 0007 이후를 대비해 원본과 함께
+    // 이관이 손대는 대상 테이블의 적용 전 상태도 통째로 파일로 남긴다(동호회 규모라 수백 행 수준).
     const backupPath = path.join(outDir, 'backup.json');
-    writeFileSync(backupPath, JSON.stringify({ generatedAt, presidentId, source }, null, 2));
+    const tables = ['activities', 'activity_photos', 'activity_likes', 'comments', 'comment_likes', 'posts', 'post_images', 'post_likes'];
+    const dump: Record<string, unknown[]> = {};
+    for (const t of tables) dump[t] = [...(await sql`select * from ${sql(t)}`)];
+    writeFileSync(backupPath, JSON.stringify({ generatedAt, presidentId, source, tables: dump }, null, 2));
     console.log(`백업: ${backupPath}`);
 
     await sql.begin(async (tx) => {
