@@ -98,6 +98,33 @@ describe('PostCard', () => {
     expect(header).toHaveClass('bg-muted/50');
   });
 
+  it('시즌과 모임 날짜는 한 줄에 두고, 시즌은 본문색·굵게 강조한다', () => {
+    render(<PostCard item={meeting} />);
+    const card = screen.getByRole('article');
+    const season = within(card).getByText('시즌 4');
+    const line = season.parentElement!;
+    expect(line).toHaveTextContent('2026년 7월 31일 (금)');
+    expect(line).toHaveClass('flex');
+    expect(season).toHaveClass('text-foreground', 'font-extrabold');
+  });
+
+  it('시즌만 있거나 모임 날짜만 있어도 그 줄을 그린다', () => {
+    const { unmount } = render(<PostCard item={{ ...meeting, meetingDate: null, meetingDateLabel: null }} />);
+    expect(screen.getByText('시즌 4')).toBeInTheDocument();
+    expect(screen.queryByText(/모임 날짜/)).toBeNull();
+    unmount();
+    render(<PostCard item={{ ...meeting, seasonName: null }} />);
+    expect(screen.getByText('2026년 7월 31일 (금)')).toBeInTheDocument();
+    expect(screen.queryByText(/^시즌/)).toBeNull();
+  });
+
+  it('피드 작성자 정보는 크게: 큰 프로필 사진과 큰 닉네임', () => {
+    render(<PostCard item={base} />);
+    const header = screen.getByRole('article').querySelector('header')!;
+    expect(within(header).getByRole('button', { name: '보드왕 Lv.3' })).toHaveClass('text-[18px]');
+    expect((header.querySelector('span.rounded-full') as HTMLElement).style.width).toBe('42px');
+  });
+
   it('상세에서는 사진을 화면 폭 캐러셀로 크게, 본문을 접지 않고, 댓글을 펼쳐 둔다', () => {
     render(<PostCard item={{ ...meeting, content: '가'.repeat(300) }} variant="detail" />);
     expect(screen.getByRole('region', { name: '사진 1장' })).toHaveAttribute('aria-roledescription', 'carousel');

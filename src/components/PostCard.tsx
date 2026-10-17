@@ -59,10 +59,11 @@ export default function PostCard({ item, variant = 'feed', loginHref = '/login?r
     // 바탕이 구역 끝까지 차도록 패딩은 article이 아니라 각 구역이 갖고, overflow-hidden으로 둥근 모서리를 지킨다.
     <article className={detail ? '' : 'rounded-2xl border border-border overflow-hidden'}>
       <header className={detail ? '' : 'bg-muted/50 px-4 pt-2 pb-3'}>
-        <div className="flex items-center gap-2.5 h-11">
-          <Avatar src={item.author.profileImageUrl} name={item.author.nickname} size={34} />
+        {/* 작성자 줄은 카드에서 누가 쓴 글인지 먼저 읽히도록 크게 둔다(사진 42px, 닉네임 18px). */}
+        <div className="flex items-center gap-3 h-14">
+          <Avatar src={item.author.profileImageUrl} name={item.author.nickname} size={42} />
           <div className="min-w-0 flex-1 flex items-baseline gap-1.5">
-            <UserName userId={item.author.id} nickname={item.author.nickname} badge={item.badge} />
+            <UserName userId={item.author.id} nickname={item.author.nickname} badge={item.badge} size="lg" />
             <span className="text-muted-foreground text-sm" aria-hidden="true">·</span>
             <Link href={href} className="text-sm text-muted-foreground whitespace-nowrap hover:underline">
               <time dateTime={item.createdAt}>{item.createdLabel}</time>
@@ -71,11 +72,20 @@ export default function PostCard({ item, variant = 'feed', loginHref = '/login?r
           {item.canEdit && <PostMenu postId={item.id} onDeleted={afterDelete} />}
         </div>
 
-        {item.seasonName && (
-          // 바탕색 없이 글자만 둔다(회색 칩은 눌리는 버튼처럼 보이고 본문 위에서 무거워 보였다).
-          <span className="inline-block mt-0.5 text-[13px] font-bold text-muted-foreground">{item.seasonName}</span>
+        {(item.seasonName || item.meetingDate) && (
+          // 시즌과 모임 날짜는 한 줄에 둔다(두 줄로 쌓으면 정보 구역이 본문보다 길어 보였다). 좁은 화면에서 넘치면 줄바꿈한다.
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[15px]">
+            {item.seasonName && (
+              // 시즌은 어느 시즌 활동인지 한눈에 보이도록 본문색·굵게 강조한다.
+              // 바탕색은 두지 않는다(회색 칩은 눌리는 버튼처럼 보이고 본문 위에서 무거워 보였다).
+              <span className="text-foreground font-extrabold">{item.seasonName}</span>
+            )}
+            {item.seasonName && item.meetingDate && (
+              <span className="text-muted-foreground" aria-hidden="true">·</span>
+            )}
+            {item.meetingDate && <MeetingDate date={item.meetingDate} label={item.meetingDateLabel ?? item.meetingDate} />}
+          </p>
         )}
-        {item.meetingDate && <MeetingDate date={item.meetingDate} label={item.meetingDateLabel ?? item.meetingDate} />}
       </header>
 
       {detail ? (
@@ -143,16 +153,16 @@ function LockedPhotos({ count, loginHref }: { count: number; loginHref: string }
 }
 
 /**
- * 모임 날짜를 고른 글은 본문 위에 모임 날짜를 분명하게 적는다.
+ * 모임 날짜를 고른 글은 본문 위에 모임 날짜를 분명하게 적는다(시즌과 같은 줄).
  * 머리줄 날짜는 "3일 전" 같은 상대 표기라, 정확히 언제 모였는지는 여기서 연도·요일까지 보여준다.
  */
 function MeetingDate({ date, label }: { date: string; label: string }) {
   return (
-    <p className="mt-1 flex items-center gap-1.5 text-[15px]">
+    <span className="inline-flex items-center gap-1.5">
       <CalendarIcon size={16} className="shrink-0 text-muted-foreground" />
       <span className="text-muted-foreground">모임 날짜</span>
       <time dateTime={date} className="font-semibold">{label}</time>
-    </p>
+    </span>
   );
 }
 

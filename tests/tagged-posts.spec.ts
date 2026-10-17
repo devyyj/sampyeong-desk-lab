@@ -56,9 +56,10 @@ test('태그·날짜·시즌 글: 작성 → 카드·태그 모아 보기 → �
   expect(photo.storagePath).toMatch(new RegExp(`^${author.id}/[0-9a-f-]{36}\\.png$`));
   expect(await storageFileExists('activity_photos', photo.storagePath)).toBe(true);
 
-  // 카드: 머리줄 날짜는 모임 날짜, 본문에 모임 날짜를 연도·요일까지 적고, 시즌·태그, 사진은 signed URL로 실제 로드.
+  // 카드: 작성자 줄 날짜(상세로 가는 링크)는 모임 날짜, 그 아래 시즌과 같은 줄에 모임 날짜를 연도·요일까지 적고,
+  // 태그, 사진은 signed URL로 실제 로드. 정보 구역(header)에 time이 둘이라 작성자 줄 날짜는 링크 안의 time으로 고른다.
   const card = page.locator('article').filter({ hasText: `E2E 정기모임 ${stamp}` });
-  await expect(card.locator('header time')).toHaveAttribute('dateTime', '2026-10-16');
+  await expect(card.locator('header a time')).toHaveAttribute('dateTime', '2026-10-16');
   await expect(card.getByText('모임 날짜')).toBeVisible();
   await expect(card.locator('time', { hasText: '2026년 10월 16일 (금)' })).toHaveAttribute('dateTime', '2026-10-16');
   await expect(card.getByText(latestSeason.name, { exact: true })).toBeVisible();

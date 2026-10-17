@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { boardGames } from "../../../drizzle/schema";
+import { boardGames } from "../../../../drizzle/schema";
 import { asc, desc } from "drizzle-orm";
 import { getSession } from "@/lib/session";
 import { getLikeSummaries } from "@/lib/community";

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { asc, eq } from 'drizzle-orm';
 import { db } from '@/db';
-import { seasonMembers, seasons } from '../../../drizzle/schema';
+import { seasonMembers, seasons } from '../../../../drizzle/schema';
 import { resolveSeason } from '@/lib/seasons';
 import ScreenTitle from '@/components/ScreenTitle';
 import Avatar from '@/components/Avatar';

@@ -9,7 +9,18 @@ import ProfilePopup from './ProfilePopup';
  * 게시글·댓글 작성자 표시. 아이디는 로그인에만 쓰므로 닉네임과 시즌 배지만 보여주고,
  * 누르면 프로필 팝업을 연다(팝업 내용은 그때 서버에서 받아 온다).
  */
-export default function UserName({ userId, nickname, badge }: { userId: string; nickname: string; badge: MemberBadge | null }) {
+export default function UserName({
+  userId,
+  nickname,
+  badge,
+  size = 'md',
+}: {
+  userId: string;
+  nickname: string;
+  badge: MemberBadge | null;
+  /** lg: 피드 카드 작성자 줄(크게), md: 댓글 등 */
+  size?: 'md' | 'lg';
+}) {
   const [open, setOpen] = useState(false);
   // Overlay의 effect 의존성이라 렌더마다 새 함수가 되지 않게 고정한다.
   const close = useCallback(() => setOpen(false), []);
@@ -20,7 +31,7 @@ export default function UserName({ userId, nickname, badge }: { userId: string; 
         type="button"
         aria-haspopup="dialog"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1 font-semibold text-[16px] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 rounded"
+        className={`inline-flex items-center gap-1 ${size === 'lg' ? 'font-bold text-[18px]' : 'font-semibold text-[16px]'} hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 rounded`}
       >
         {nickname}
         {/* 공백을 별도 텍스트로 두어 접근 가능한 이름이 "닉네임 Lv.N" / "닉네임 회장"이 되게 한다. */}

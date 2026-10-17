@@ -32,11 +32,17 @@ export type BoardGameItem = {
  */
 export default function BoardGameList({ games, canEdit, loggedIn = canEdit }: { games: BoardGameItem[]; canEdit: boolean; /** 좋아요를 누를 수 있는지(비회원은 수만 보고 누르면 로그인 안내) */ loggedIn?: boolean }) {
   const [selected, setSelected] = useState<BoardGameItem | null>(null);
+  // 지운 게임은 서버가 화면을 다시 그려 주기를 기다리지 않고 바로 뺀다.
+  // 탭 화면은 (tabs)/loading.tsx 경계 안에 있는데, 이 경계 안에서는 삭제 액션의 revalidatePath·router.refresh()가
+  // 새 목록을 받아 오고도(응답에는 지운 게임이 빠져 있음) 화면에 반영되지 않는 현상이 E2E에서 재현됐다(Next 16.2).
+  // 피드(FeedList)가 삭제한 카드를 목록 상태에서 직접 빼는 것과 같은 방식으로, 갱신 여부와 상관없이 맞게 보이게 한다.
+  const [removedIds, setRemovedIds] = useState<ReadonlySet<string>>(() => new Set());
+  const visible = removedIds.size === 0 ? games : games.filter((game) => !removedIds.has(game.id));
 
   return (
     <>
       <div className="divide-y divide-border">
-        {games.map((game) => {
+        {visible.map((game) => {
           const details = [game.category, game.recommendedPlayers, game.playTime].filter(Boolean).join(' · ');
           return (
             // 줄 전체를 누를 수 있게: 제목 버튼의 ::after가 줄 전체를 덮는다(제목 안에 버튼을 두어 h3 구조는 유지).
@@ -79,7 +85,16 @@ export default function BoardGameList({ games, canEdit, loggedIn = canEdit }: { 
       </div>
 
       <BottomSheet open={selected !== null} title={selected?.name ?? ''} onClose={() => setSelected(null)}>
-        {selected && <GameDetail game={selected} canEdit={canEdit} onDeleted={() => setSelected(null)} />}
+        {selected && (
+          <GameDetail
+            game={selected}
+            canEdit={canEdit}
+            onDeleted={(id) => {
+              setSelected(null);
+              setRemovedIds((prev) => new Set(prev).add(id));
+            }}
+          />
+        )}
       </BottomSheet>
     </>
   );
@@ -89,7 +104,7 @@ function CabinetBadge() {
   return <span className="px-1.5 py-px rounded-md text-[12px] font-bold bg-foreground text-background">공용 보관함</span>;
 }
 
-function GameDetail({ game, canEdit, onDeleted }: { game: BoardGameItem; canEdit: boolean; onDeleted: () => void }) {
+function GameDetail({ game, canEdit, onDeleted }: { game: BoardGameItem; canEdit: boolean; onDeleted: (id: string) => void }) {
   const router = useRouter();
   const [isDeleting, startDelete] = useTransition();
   const [confirm, confirmDialog] = useConfirm();
@@ -105,7 +120,8 @@ function GameDetail({ game, canEdit, onDeleted }: { game: BoardGameItem; canEdit
     startDelete(async () => {
       // 권한은 deleteBoardGame이 서버에서 다시 확인한다.
       await deleteBoardGame(game.id);
-      onDeleted();
+      onDeleted(game.id);
+      // 목록 개수(전체 N) 같은 서버 값도 맞추도록 다시 그리기를 요청한다(반영되지 않아도 목록은 위에서 이미 맞다).
       router.refresh();
     });
   };

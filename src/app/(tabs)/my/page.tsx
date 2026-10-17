@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { ComponentType, ReactNode } from 'react';
 import { eq } from 'drizzle-orm';
 import { db } from '@/db';
-import { users } from '../../../drizzle/schema';
+import { users } from '../../../../drizzle/schema';
 import { getSession } from '@/lib/session';
 import { logout } from '@/app/actions/auth';
 import ScreenTitle from '@/components/ScreenTitle';
