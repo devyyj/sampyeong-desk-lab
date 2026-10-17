@@ -47,7 +47,7 @@ export default function MypageForm({ user }: { user: any }) {
           </label>
           {/* 사진만으로는 누를 수 있다는 것을 알기 어려워 아래에 글자 버튼을 함께 둔다(같은 파일 입력을 연다). */}
           <div className="flex items-center gap-4">
-            <label htmlFor="profileImage" className="text-[14px] font-semibold cursor-pointer" aria-hidden="true">
+            <label htmlFor="profileImage" className="text-[15px] font-semibold cursor-pointer" aria-hidden="true">
               사진 변경
             </label>
             {shownImage && (
@@ -59,7 +59,7 @@ export default function MypageForm({ user }: { user: any }) {
                   setPreviewUrl(null);
                   setRemoved(true);
                 }}
-                className="text-[14px] font-semibold text-red-600"
+                className="text-[15px] font-semibold text-red-600"
               >
                 사진 삭제
               </button>
@@ -140,7 +140,7 @@ export default function MypageForm({ user }: { user: any }) {
           </div>
 
           <div className="pt-5 mt-2 border-t border-border">
-            <h3 className="text-[15px] font-bold mb-3">비밀번호 변경</h3>
+            <h3 className="text-[16px] font-bold mb-3">비밀번호 변경</h3>
             <div className="space-y-4">
               <div>
                 <label htmlFor="newPin" className={fieldLabel}>
@@ -206,7 +206,7 @@ export default function MypageForm({ user }: { user: any }) {
               await confirm({ title: '준비 중인 기능입니다.', alertOnly: true });
             }
           }}
-          className="h-10 px-4 text-[13px] text-muted-foreground underline underline-offset-2"
+          className="h-10 px-4 text-[14px] text-muted-foreground underline underline-offset-2"
         >
           회원 탈퇴
         </button>

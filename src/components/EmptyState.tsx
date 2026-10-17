@@ -7,7 +7,7 @@ import type { ReactNode } from 'react';
 export default function EmptyState({ title, description, action }: { title: string; description?: string; action?: ReactNode }) {
   return (
     <div className="py-20 px-6 text-center flex flex-col items-center gap-2">
-      <p className="text-[16px] font-semibold">{title}</p>
+      <p className="text-[17px] font-semibold">{title}</p>
       {description && <p className="text-sm text-muted-foreground">{description}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
@@ -16,4 +16,4 @@ export default function EmptyState({ title, description, action }: { title: stri
 
 /** EmptyState 등에서 쓰는 기본 버튼 모양(검정 알약). Link·button 어디에나 className으로 붙인다. */
 export const primaryButtonClass =
-  'inline-flex items-center justify-center h-11 px-6 rounded-full bg-foreground text-background text-[15px] font-semibold active:opacity-80';
+  'inline-flex items-center justify-center h-11 px-6 rounded-full bg-foreground text-background text-[16px] font-semibold active:opacity-80';

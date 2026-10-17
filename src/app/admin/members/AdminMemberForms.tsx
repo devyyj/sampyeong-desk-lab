@@ -19,7 +19,7 @@ export function ResetPinForm({ userId }: { userId: string }) {
   return (
     <form action={formAction} className="flex flex-wrap items-center gap-2">
       <input type="hidden" name="userId" value={userId} />
-      <input name="pin" aria-label="초기화할 PIN" maxLength={4} pattern="\d{4}" inputMode="numeric" placeholder="1234" className="w-20 h-9 px-2 rounded-lg bg-muted text-[16px]" />
+      <input name="pin" aria-label="초기화할 PIN" maxLength={4} pattern="\d{4}" inputMode="numeric" placeholder="1234" className="w-20 h-9 px-2 rounded-lg bg-muted text-[17px]" />
       <button type="submit" className="h-9 px-3 rounded-full bg-foreground text-background text-xs font-semibold">
         PIN 초기화
       </button>

@@ -11,7 +11,7 @@ vi.mock('@/lib/session', () => ({ getSession: vi.fn() }));
 vi.mock('next/form', () => ({ default: (props: React.ComponentProps<'form'>) => <form {...props} /> }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock('@/lib/community', () => ({ getLikeSummaries: vi.fn() }));
-vi.mock('@/app/actions/reactions', () => ({ toggleLike: vi.fn() }));
+vi.mock('@/app/actions/reactions', () => ({ setLike: vi.fn() }));
 
 const game = (o: Record<string, unknown>) => ({
   id: o.name, status: 'AVAILABLE', thumbnailUrl: null, recommendedPlayers: null, playTime: null,

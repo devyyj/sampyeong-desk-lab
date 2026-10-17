@@ -22,22 +22,24 @@ const LIKE_TABLES = {
 } as const;
 
 /**
- * 좋아요를 누르거나 취소한다. 결과(최종 상태와 개수)를 돌려줘 화면의 낙관적 표시를 확정한다.
- * - 먼저 지워 보고(이미 눌렀으면 취소), 지운 행이 없으면 추가한다. 연타·동시 요청으로 같은 행이 두 번 들어오려 하면
- *   PK 충돌을 ON CONFLICT DO NOTHING으로 흡수한다(오류 없이 "눌린 상태"로 수렴).
+ * 좋아요 상태를 원하는 값(liked)으로 맞춘다. 결과(최종 상태와 개수)를 돌려줘 화면의 낙관적 표시를 확정한다.
+ * - "뒤집기(toggle)"가 아니라 "이 상태로 맞추기"라 멱등이다. 예전 토글 방식은 연타하면 요청 순서·개수에 따라
+ *   결과가 갈려, 화면이 응답을 기다리는 동안 클릭을 막아야 했다(빠르게 누르면 해제가 안 되던 원인).
+ *   이제 화면은 마지막으로 누른 상태만 보내면 되고, 같은 요청이 두 번 와도 결과가 같다.
+ * - 추가는 ON CONFLICT DO NOTHING으로 이미 눌린 경우를 흡수하고, 삭제는 행이 없어도 오류가 아니다.
  * - 그 사이 대상이 삭제됐으면 추가가 FK 위반으로 실패하므로 "찾을 수 없습니다."로 알린다.
  */
-export async function toggleLike(target: LikeTarget, id: string): Promise<{ liked: boolean; count: number } | { error: string }> {
+export async function setLike(target: LikeTarget, id: string, liked: boolean): Promise<{ liked: boolean; count: number } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: '로그인이 필요합니다.' };
-  if (!Object.hasOwn(LIKE_TABLES, target) || !isUuid(id)) return { error: '잘못된 요청입니다.' };
+  if (!Object.hasOwn(LIKE_TABLES, target) || !isUuid(id) || typeof liked !== 'boolean') return { error: '잘못된 요청입니다.' };
 
   const { table, column, key } = LIKE_TABLES[target];
   try {
-    const removed = await db.delete(table).where(and(eq(column, id), eq(table.userId, session.userId))).returning({ userId: table.userId });
-    const liked = removed.length === 0;
     if (liked) {
       await db.insert(table).values({ [key]: id, userId: session.userId } as never).onConflictDoNothing();
+    } else {
+      await db.delete(table).where(and(eq(column, id), eq(table.userId, session.userId)));
     }
     const [{ count: total }] = await db.select({ count: count() }).from(table).where(eq(column, id));
 

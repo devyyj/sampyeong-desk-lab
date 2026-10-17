@@ -40,7 +40,7 @@ export default function BottomSheet({
           <span className="w-10 h-1 rounded-full bg-border" />
         </div>
         <div className="flex items-center gap-2 px-4 h-12 shrink-0">
-          <h2 className="flex-1 text-[17px] font-bold tracking-tight">{title}</h2>
+          <h2 className="flex-1 text-[18px] font-bold tracking-tight">{title}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -71,7 +71,7 @@ export function SheetAction({
   danger?: boolean;
   disabled?: boolean;
 }) {
-  const className = `w-full h-12 flex items-center px-1 text-[16px] font-medium rounded-lg active:bg-muted disabled:opacity-50 ${
+  const className = `w-full h-12 flex items-center px-1 text-[17px] font-medium rounded-lg active:bg-muted disabled:opacity-50 ${
     danger ? 'text-red-600' : ''
   }`;
   if (href) {

@@ -57,8 +57,8 @@ export default function TabBar() {
                 href={tab.href}
                 onClick={press(tab.key)}
                 aria-current={current ? 'page' : undefined}
-                className={`flex flex-col items-center justify-center gap-0.5 h-14 text-[11px] transition-colors
-                  lg:flex-row lg:justify-start lg:gap-3 lg:h-12 lg:px-3 lg:rounded-xl lg:text-[15px] lg:hover:bg-muted
+                className={`flex flex-col items-center justify-center gap-0.5 h-14 text-[12px] transition-colors
+                  lg:flex-row lg:justify-start lg:gap-3 lg:h-12 lg:px-3 lg:rounded-xl lg:text-[16px] lg:hover:bg-muted
                   ${current ? 'text-foreground font-bold' : 'text-muted-foreground'}`}
               >
                 {/* 현재 탭은 선을 굵게 해, 색 없이도(모노크롬) 구분되게 한다. */}

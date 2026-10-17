@@ -47,7 +47,7 @@ export default function ProfilePopup({ userId, nickname, onClose }: { userId: st
         {profile === undefined && <p className="text-sm text-muted-foreground">불러오는 중…</p>}
         {profile === null && <p className="text-sm text-muted-foreground">프로필을 불러오지 못했습니다.</p>}
         {profile && (
-          <dl className="rounded-2xl bg-muted/60 divide-y divide-border text-[15px]">
+          <dl className="rounded-2xl bg-muted/60 divide-y divide-border text-[16px]">
             {/* 회원 전용 항목: 비회원 응답에는 키가 없어 줄 자체를 그리지 않는다. */}
             {'displayName' in profile && <Row label="실명">{profile.displayName || '-'}</Row>}
             {'department' in profile && <Row label="부서">{profile.department || '-'}</Row>}

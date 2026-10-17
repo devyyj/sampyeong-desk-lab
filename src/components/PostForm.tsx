@@ -232,7 +232,7 @@ export default function PostForm({
         required
         rows={8}
         defaultValue={post?.content}
-        className="w-full min-h-48 px-4 py-3 rounded-xl bg-muted text-[16px] leading-relaxed text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-foreground/20 resize-y"
+        className="w-full min-h-48 px-4 py-3 rounded-xl bg-muted text-[17px] leading-relaxed text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-foreground/20 resize-y"
         placeholder="내용을 입력하세요"
       />
       <p className="mt-2 text-xs text-muted-foreground">사진은 한 장에 10MB 이하, 최대 {MAX_POST_IMAGES}장까지 올릴 수 있어요.</p>
@@ -268,7 +268,7 @@ function TagField({ initial }: { initial: string[] }) {
       ))}
       <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-xl bg-muted focus-within:ring-2 focus-within:ring-foreground/20">
         {tags.map((tag) => (
-          <span key={tag} className="h-8 pl-3 pr-1 inline-flex items-center gap-1 rounded-full bg-background text-[14px] font-medium">
+          <span key={tag} className="h-8 pl-3 pr-1 inline-flex items-center gap-1 rounded-full bg-background text-[15px] font-medium">
             {`#${tag}`}
             <button
               type="button"
@@ -302,7 +302,7 @@ function TagField({ initial }: { initial: string[] }) {
           }}
           onBlur={() => text && commit()}
           placeholder={full ? `태그는 ${MAX_TAGS}개까지예요` : '태그를 입력하세요'}
-          className="flex-1 min-w-32 h-8 px-2 bg-transparent text-[16px] text-foreground placeholder:text-muted-foreground focus:outline-none"
+          className="flex-1 min-w-32 h-8 px-2 bg-transparent text-[17px] text-foreground placeholder:text-muted-foreground focus:outline-none"
         />
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -313,7 +313,7 @@ function TagField({ initial }: { initial: string[] }) {
             type="button"
             disabled={full || tags.includes(example)}
             onClick={() => commit(example)}
-            className="h-8 px-3 rounded-full border border-border text-[13px] font-medium text-foreground disabled:opacity-40"
+            className="h-8 px-3 rounded-full border border-border text-[14px] font-medium text-foreground disabled:opacity-40"
           >
             {`#${example}`}
           </button>

@@ -21,7 +21,7 @@ export default function LoginPage({
       <TopBar title="로그인" />
       <div className="pt-4 pb-6 flex flex-col items-center gap-3 text-center">
         <LogoMark size={56} />
-        <p className="text-[15px] text-muted-foreground">SDL에 오신 것을 환영합니다!<br />아이디와 PIN을 입력해주세요.</p>
+        <p className="text-[16px] text-muted-foreground">SDL에 오신 것을 환영합니다!<br />아이디와 PIN을 입력해주세요.</p>
       </div>
       <div>
         <form action={formAction} className="space-y-4">
@@ -76,7 +76,7 @@ export default function LoginPage({
           </div>
         </form>
 
-        <p className="mt-6 text-center text-[13px] text-muted-foreground">계정은 관리자에게 문의하세요.</p>
+        <p className="mt-6 text-center text-[14px] text-muted-foreground">계정은 관리자에게 문의하세요.</p>
       </div>
     </div>
   );

@@ -5,7 +5,7 @@ import PostCard from './PostCard';
 
 vi.mock('@/app/actions/profile', () => ({ getProfile: vi.fn() }));
 vi.mock('@/app/actions/comments', () => ({ addComment: vi.fn(), updateComment: vi.fn(), deleteComment: vi.fn() }));
-vi.mock('@/app/actions/reactions', () => ({ toggleLike: vi.fn() }));
+vi.mock('@/app/actions/reactions', () => ({ setLike: vi.fn() }));
 vi.mock('@/app/actions/post', () => ({ deletePost: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
 
@@ -79,6 +79,23 @@ describe('PostCard', () => {
     // 피드에서는 사진을 작은 썸네일 줄로 보여준다(화면 폭 캐러셀이 아님).
     const photos = within(card).getByRole('region', { name: '사진 1장' });
     expect(photos).not.toHaveAttribute('aria-roledescription', 'carousel');
+  });
+
+  it('피드 카드는 본문 위 정보(작성자·날짜·시즌·모임 날짜)와 본문 이하(본문·태그·반응)를 구역으로 나눈다', () => {
+    render(<PostCard item={meeting} />);
+    const card = screen.getByRole('article');
+    const header = card.querySelector('header')!;
+    // 위 구역: 작성자 줄 + 시즌 + 모임 날짜
+    expect(within(header).getByRole('button', { name: '보드왕 Lv.3' })).toBeInTheDocument();
+    expect(within(header).getByText('시즌 4')).toBeInTheDocument();
+    expect(within(header).getByText('2026년 7월 31일 (금)')).toBeInTheDocument();
+    expect(within(header).queryByText(/제 7회 방탈출/)).toBeNull();
+    // 아래 구역: 본문·태그·반응. 위 구역과 구분선·배경으로 갈린다.
+    const body = within(card).getByText(/제 7회 방탈출/).closest('[data-section="body"]')!;
+    expect(body).toHaveClass('border-t');
+    expect(within(body as HTMLElement).getByRole('list', { name: '태그' })).toBeInTheDocument();
+    expect(within(body as HTMLElement).getByRole('button', { name: '좋아요 4' })).toBeInTheDocument();
+    expect(header).toHaveClass('bg-muted/50');
   });
 
   it('상세에서는 사진을 화면 폭 캐러셀로 크게, 본문을 접지 않고, 댓글을 펼쳐 둔다', () => {

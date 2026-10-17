@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getSession } from "@/lib/session";
 import TopBar from "@/components/TopBar";
+import ScreenTitle from "@/components/ScreenTitle";
 import FeedList from "@/components/FeedList";
 import { getFeedPage } from "@/lib/feed";
 import { feedFilterHref, parseFeedFilter } from "@/lib/feed-filter";
@@ -35,7 +36,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
           }
         />
       ) : (
-        <TopBar title="피드" />
+        <ScreenTitle title="피드" />
       )}
       {/* 태그가 바뀌면 목록 상태(불러온 페이지·offset)를 새로 시작하도록 key를 주소로 둔다. */}
       <FeedList

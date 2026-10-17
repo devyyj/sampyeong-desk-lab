@@ -15,7 +15,7 @@ vi.mock('next/navigation', () => ({
 }));
 vi.mock('@/app/actions/profile', () => ({ getProfile: vi.fn() }));
 vi.mock('@/app/actions/comments', () => ({ addComment: vi.fn(), updateComment: vi.fn(), deleteComment: vi.fn() }));
-vi.mock('@/app/actions/reactions', () => ({ toggleLike: vi.fn() }));
+vi.mock('@/app/actions/reactions', () => ({ setLike: vi.fn() }));
 vi.mock('@/app/actions/post', () => ({ deletePost: vi.fn() }));
 
 const ID = '0b5c9a52-6f1e-4c55-9d8e-0d1f6c2a7b11';

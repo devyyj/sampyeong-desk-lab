@@ -33,7 +33,7 @@ type Props = {
  * 게시글 카드. 설계: 2026-10-17-unified-post-form-design.md §4.2
  * 글 종류 구분 없이 모두 같은 모양이고, 선택 정보(모임 날짜·시즌·태그)는 입력한 경우에만 보인다.
  *
- * 피드: 작성자 줄(날짜 하나) → 시즌 칩 → 본문(3줄 접기) → 태그 → 작은 사진 줄 → 반응(댓글은 시트).
+ * 피드: [정보 구역] 작성자 줄(날짜 하나) → 시즌 → 모임 날짜 / [본문 구역] 본문(3줄 접기) → 태그 → 작은 사진 줄 → 반응(댓글은 시트).
  *   사진은 피드를 훑기 쉽도록 작게(3칸 썸네일) 보여주고, 크게 보기는 Lightbox·상세에 맡긴다.
  * 상세: 작성자 줄 → 시즌 칩 → 화면 폭 캐러셀 → 본문 전체 → 태그 → 좋아요·댓글 펼침.
  *
@@ -51,25 +51,32 @@ export default function PostCard({ item, variant = 'feed', loginHref = '/login?r
 
   return (
     // 피드에서는 글마다 테두리 카드로 감싼다. 예전에는 얇은 구분선 하나(위아래 12px)뿐이라, 글 사이 간격이 글 안 요소 간격과
-    // 비슷해서 어디서 한 글이 끝나는지 알기 어려웠다. 반응 줄 버튼(h-10)에 자체 여백이 있어 아래 패딩은 위보다 작게 둔다.
-    <article className={detail ? '' : 'rounded-2xl border border-border px-4 pt-2 pb-1.5'}>
-      <header className="flex items-center gap-2.5 h-11">
-        <Avatar src={item.author.profileImageUrl} name={item.author.nickname} size={34} />
-        <div className="min-w-0 flex-1 flex items-baseline gap-1.5">
-          <UserName userId={item.author.id} nickname={item.author.nickname} badge={item.badge} />
-          <span className="text-muted-foreground text-sm" aria-hidden="true">·</span>
-          <Link href={href} className="text-sm text-muted-foreground whitespace-nowrap hover:underline">
-            <time dateTime={item.createdAt}>{item.createdLabel}</time>
-          </Link>
+    // 비슷해서 어디서 한 글이 끝나는지 알기 어려웠다.
+    //
+    // 피드 카드는 두 구역으로 나눈다: 위(header, 옅은 회색 바탕) = 글에 대한 정보(작성자·날짜·시즌·모임 날짜),
+    // 아래(본문 구역, 흰 바탕 + 구분선) = 글 자체(본문·태그·사진·반응). 한 덩어리로 이어져 있을 때는 시즌·모임 날짜 줄이
+    // 본문의 첫 줄처럼 읽혀 어디서 본문이 시작하는지 헷갈린다는 의견이 있었다.
+    // 바탕이 구역 끝까지 차도록 패딩은 article이 아니라 각 구역이 갖고, overflow-hidden으로 둥근 모서리를 지킨다.
+    <article className={detail ? '' : 'rounded-2xl border border-border overflow-hidden'}>
+      <header className={detail ? '' : 'bg-muted/50 px-4 pt-2 pb-3'}>
+        <div className="flex items-center gap-2.5 h-11">
+          <Avatar src={item.author.profileImageUrl} name={item.author.nickname} size={34} />
+          <div className="min-w-0 flex-1 flex items-baseline gap-1.5">
+            <UserName userId={item.author.id} nickname={item.author.nickname} badge={item.badge} />
+            <span className="text-muted-foreground text-sm" aria-hidden="true">·</span>
+            <Link href={href} className="text-sm text-muted-foreground whitespace-nowrap hover:underline">
+              <time dateTime={item.createdAt}>{item.createdLabel}</time>
+            </Link>
+          </div>
+          {item.canEdit && <PostMenu postId={item.id} onDeleted={afterDelete} />}
         </div>
-        {item.canEdit && <PostMenu postId={item.id} onDeleted={afterDelete} />}
-      </header>
 
-      {item.seasonName && (
-        // 바탕색 없이 글자만 둔다(회색 칩은 눌리는 버튼처럼 보이고 본문 위에서 무거워 보였다).
-        <span className="inline-block mt-0.5 text-[12px] font-bold text-muted-foreground">{item.seasonName}</span>
-      )}
-      {item.meetingDate && <MeetingDate date={item.meetingDate} label={item.meetingDateLabel ?? item.meetingDate} />}
+        {item.seasonName && (
+          // 바탕색 없이 글자만 둔다(회색 칩은 눌리는 버튼처럼 보이고 본문 위에서 무거워 보였다).
+          <span className="inline-block mt-0.5 text-[13px] font-bold text-muted-foreground">{item.seasonName}</span>
+        )}
+        {item.meetingDate && <MeetingDate date={item.meetingDate} label={item.meetingDateLabel ?? item.meetingDate} />}
+      </header>
 
       {detail ? (
         <>
@@ -80,22 +87,21 @@ export default function PostCard({ item, variant = 'feed', loginHref = '/login?r
             </div>
           )}
           {item.photosLocked && <LockedPhotos count={item.photoCount} loginHref={loginHref} />}
-          <p className="mt-3 whitespace-pre-wrap break-words text-[16px] leading-relaxed">{item.content}</p>
+          <p className="mt-3 whitespace-pre-wrap break-words text-[17px] leading-relaxed">{item.content}</p>
           <TagLinks tags={item.tags} />
           {/* 상세는 반응·댓글을 아래에 펼쳐 둔다(피드처럼 시트로 접지 않음). */}
           <section className="mt-6 pt-3 border-t border-border space-y-2">
             <div className="flex items-center gap-2 -ml-2">
               <LikeButton target="post" id={item.id} liked={item.liked} count={item.likeCount} canLike={viewer !== null} />
-              <h2 className="text-[15px] font-bold">{`댓글 ${item.comments.length}`}</h2>
+              <h2 className="text-[16px] font-bold">{`댓글 ${item.comments.length}`}</h2>
             </div>
             <CommentSection target="post" targetId={item.id} comments={item.comments} viewer={viewer} loginHref={loginHref} />
           </section>
         </>
       ) : (
-        <>
-          <div className="mt-1">
-            <PostCaption content={item.content} large={!hasImages && !item.photosLocked} />
-          </div>
+        // 반응 줄 버튼(h-10)에 자체 여백이 있어 아래 패딩은 위보다 작게 둔다.
+        <div data-section="body" className="border-t border-border px-4 pt-3 pb-1.5">
+          <PostCaption content={item.content} large={!hasImages && !item.photosLocked} />
           <TagLinks tags={item.tags} />
           {hasImages && (
             <div className="mt-2">
@@ -114,7 +120,7 @@ export default function PostCard({ item, variant = 'feed', loginHref = '/login?r
               onChanged={onChanged}
             />
           </div>
-        </>
+        </div>
       )}
     </article>
   );
@@ -126,7 +132,7 @@ export default function PostCard({ item, variant = 'feed', loginHref = '/login?r
  */
 function LockedPhotos({ count, loginHref }: { count: number; loginHref: string }) {
   return (
-    <div className="mt-2 h-14 px-4 rounded-lg bg-muted flex items-center gap-2.5 text-[14px] text-muted-foreground">
+    <div className="mt-2 h-14 px-4 rounded-lg bg-muted flex items-center gap-2.5 text-[15px] text-muted-foreground">
       <CameraIcon size={20} className="shrink-0" />
       <p className="flex-1 min-w-0">{`로그인하면 사진 ${count}장을 볼 수 있어요`}</p>
       <Link href={loginHref} className="shrink-0 font-semibold text-foreground underline underline-offset-2">
@@ -142,7 +148,7 @@ function LockedPhotos({ count, loginHref }: { count: number; loginHref: string }
  */
 function MeetingDate({ date, label }: { date: string; label: string }) {
   return (
-    <p className="mt-1 flex items-center gap-1.5 text-[14px]">
+    <p className="mt-1 flex items-center gap-1.5 text-[15px]">
       <CalendarIcon size={16} className="shrink-0 text-muted-foreground" />
       <span className="text-muted-foreground">모임 날짜</span>
       <time dateTime={date} className="font-semibold">{label}</time>
@@ -159,7 +165,7 @@ function TagLinks({ tags }: { tags: string[] }) {
         <li key={tag}>
           <Link
             href={feedFilterHref({ tag })}
-            className="h-7 px-2.5 inline-flex items-center rounded-full bg-muted text-[13px] font-medium text-foreground hover:bg-border"
+            className="h-7 px-2.5 inline-flex items-center rounded-full bg-muted text-[14px] font-medium text-foreground hover:bg-border"
           >
             {`#${tag}`}
           </Link>

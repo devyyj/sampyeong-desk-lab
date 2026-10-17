@@ -56,19 +56,19 @@ export default function ConfirmDialog({
     // 닫기(ESC·배경)는 "아니요"로 본다. alert 대신일 때는 확인과 같다(어차피 고를 것이 없다).
     <Overlay label={title} role="alertdialog" onClose={alertOnly ? onConfirm : onCancel} className="bg-black/40">
       <div className="w-full max-w-xs rounded-3xl bg-background text-foreground shadow-2xl p-5 animate-[sheet-up_150ms_ease-out]">
-        <h2 className="text-[17px] font-bold tracking-tight text-center">{title}</h2>
-        {message && <p className="mt-2 text-[14px] text-muted-foreground text-center whitespace-pre-line">{message}</p>}
+        <h2 className="text-[18px] font-bold tracking-tight text-center">{title}</h2>
+        {message && <p className="mt-2 text-[15px] text-muted-foreground text-center whitespace-pre-line">{message}</p>}
         <div className="mt-5 flex gap-2">
           {/* 취소를 먼저 두어 Overlay가 첫 포커스를 취소에 준다(엔터 한 번에 삭제되지 않게). */}
           {!alertOnly && (
-            <button type="button" onClick={onCancel} className="flex-1 h-11 rounded-full bg-muted text-[15px] font-semibold">
+            <button type="button" onClick={onCancel} className="flex-1 h-11 rounded-full bg-muted text-[16px] font-semibold">
               취소
             </button>
           )}
           <button
             type="button"
             onClick={onConfirm}
-            className={`flex-1 h-11 rounded-full text-[15px] font-semibold ${danger ? 'bg-red-600 text-white' : 'bg-foreground text-background'}`}
+            className={`flex-1 h-11 rounded-full text-[16px] font-semibold ${danger ? 'bg-red-600 text-white' : 'bg-foreground text-background'}`}
           >
             {confirmLabel}
           </button>

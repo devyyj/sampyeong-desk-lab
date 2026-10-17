@@ -9,7 +9,7 @@ vi.mock('@/lib/feed', () => ({ getFeedPage: vi.fn() }));
 vi.mock('@/app/actions/feed', () => ({ loadMoreFeed: vi.fn(), loadFeedItem: vi.fn() }));
 vi.mock('@/app/actions/profile', () => ({ getProfile: vi.fn() }));
 vi.mock('@/app/actions/comments', () => ({ addComment: vi.fn(), updateComment: vi.fn(), deleteComment: vi.fn() }));
-vi.mock('@/app/actions/reactions', () => ({ toggleLike: vi.fn() }));
+vi.mock('@/app/actions/reactions', () => ({ setLike: vi.fn() }));
 vi.mock('@/app/actions/post', () => ({ deletePost: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
 
@@ -30,7 +30,8 @@ describe('피드 페이지', () => {
   it('필터 칩 없이 최신순 첫 페이지를 그린다(비회원은 viewer 없이)', async () => {
     await render$();
     expect(getFeedPage).toHaveBeenCalledWith({ tag: null }, 0, null);
-    expect(screen.getByRole('heading', { level: 1, name: '피드' })).toBeInTheDocument();
+    // 제목 글자는 화면에서 뺐고(로고 헤더·탭바로 충분), 스크린 리더용 h1만 남긴다.
+    expect(screen.getByRole('heading', { level: 1, name: '피드' })).toHaveClass('sr-only');
     expect(screen.queryByRole('navigation', { name: '글 종류' })).toBeNull();
     expect(screen.getByRole('article')).toHaveTextContent('오늘 재밌었어요');
   });

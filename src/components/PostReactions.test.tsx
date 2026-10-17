@@ -4,7 +4,7 @@ import PostReactions from './PostReactions';
 import type { CommentView } from '@/lib/community';
 
 vi.mock('@/app/actions/comments', () => ({ addComment: vi.fn(), updateComment: vi.fn(), deleteComment: vi.fn() }));
-vi.mock('@/app/actions/reactions', () => ({ toggleLike: vi.fn() }));
+vi.mock('@/app/actions/reactions', () => ({ setLike: vi.fn() }));
 vi.mock('@/app/actions/profile', () => ({ getProfile: vi.fn() }));
 
 const comment: CommentView = {

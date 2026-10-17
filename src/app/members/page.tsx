@@ -3,7 +3,7 @@ import { asc, eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { seasonMembers, seasons } from '../../../drizzle/schema';
 import { resolveSeason } from '@/lib/seasons';
-import TopBar from '@/components/TopBar';
+import ScreenTitle from '@/components/ScreenTitle';
 import Avatar from '@/components/Avatar';
 import EmptyState, { primaryButtonClass } from '@/components/EmptyState';
 import { chipClass } from '@/lib/chip';
@@ -36,7 +36,7 @@ export default async function MembersPage({
     const seasonQuery = typeof seasonParam === 'string' ? `?season=${seasonParam}` : '';
     return (
       <div>
-        <TopBar title="회원 명부" />
+        <ScreenTitle title="회원 명부" />
         <EmptyState
           title="회원 명부는 로그인해야 확인할 수 있습니다."
           description="실명·부서가 있어 회원에게만 보여드려요."
@@ -56,7 +56,7 @@ export default async function MembersPage({
   if (!season) {
     return (
       <div>
-        <TopBar title="회원 명부" />
+        <ScreenTitle title="회원 명부" />
         <p className="text-center py-20 text-muted-foreground">등록된 시즌이 없습니다.</p>
       </div>
     );
@@ -93,7 +93,7 @@ export default async function MembersPage({
 
   return (
     <div>
-      <TopBar title="회원 명부" />
+      <ScreenTitle title="회원 명부" />
 
       {/* 시즌 선택은 ?season= 쿼리 링크라 공유·뒤로 가기가 그대로 된다. 넘치면 가로로 밀어 본다. */}
       <nav aria-label="시즌 선택" className="-mx-4 px-4 flex gap-2 overflow-x-auto no-scrollbar">
@@ -105,10 +105,10 @@ export default async function MembersPage({
       </nav>
 
       <div className="mt-4 flex items-baseline gap-2">
-        <h2 className="text-[17px] font-bold">
+        <h2 className="text-[18px] font-bold">
           {season.name} 회원 명부 ({members.length}명)
         </h2>
-        <span className="text-[13px] text-muted-foreground">{season.period}</span>
+        <span className="text-[14px] text-muted-foreground">{season.period}</span>
       </div>
 
 
@@ -118,7 +118,7 @@ export default async function MembersPage({
             <Avatar src={user.profileImageUrl} name={nameOf(user)} size={48} />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-                <h3 className="text-[16px] font-bold text-foreground">{nameOf(user)}</h3>
+                <h3 className="text-[17px] font-bold text-foreground">{nameOf(user)}</h3>
                 {/* 실명 옆에 게시글·댓글에서 쓰는 닉네임을 함께 보여준다. 실명이 없으면 이름 자리에 이미 닉네임이 있다. */}
                 {user.displayName && <span className="text-sm text-muted-foreground">{user.nickname}</span>}
                 {/*
@@ -132,15 +132,15 @@ export default async function MembersPage({
                 )}
                 {/* 회장 외 직책(이관 데이터에는 없음)이 생기면 칩으로 보여준다. */}
                 {role && role !== '회장' && (
-                  <span className="px-1.5 py-px rounded-md text-[11px] font-bold bg-muted text-foreground">{role}</span>
+                  <span className="px-1.5 py-px rounded-md text-[12px] font-bold bg-muted text-foreground">{role}</span>
                 )}
                 {/* 관리자가 발급한 초기 PIN을 아직 바꾸지 않은 회원 = 한 번도 로그인해 PIN을 설정하지 않은 회원 */}
                 {user.mustChangePin && (
-                  <span className="px-1.5 py-px rounded-md text-[11px] font-medium text-muted-foreground border border-border">미접속</span>
+                  <span className="px-1.5 py-px rounded-md text-[12px] font-medium text-muted-foreground border border-border">미접속</span>
                 )}
               </div>
-              {user.department && <p className="text-[13px] text-muted-foreground mt-0.5">{user.department}</p>}
-              {user.bio && <p className="text-[14px] mt-1 line-clamp-2">{user.bio}</p>}
+              {user.department && <p className="text-[14px] text-muted-foreground mt-0.5">{user.department}</p>}
+              {user.bio && <p className="text-[15px] mt-1 line-clamp-2">{user.bio}</p>}
             </div>
           </li>
         ))}

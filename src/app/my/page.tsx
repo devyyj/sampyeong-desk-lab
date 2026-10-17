@@ -5,7 +5,7 @@ import { db } from '@/db';
 import { users } from '../../../drizzle/schema';
 import { getSession } from '@/lib/session';
 import { logout } from '@/app/actions/auth';
-import TopBar from '@/components/TopBar';
+import ScreenTitle from '@/components/ScreenTitle';
 import Avatar from '@/components/Avatar';
 import { BookIcon, BoxIcon, ChevronRightIcon, CodeIcon, LogoutIcon, PencilIcon, ShieldIcon } from '@/components/icons';
 
@@ -31,7 +31,7 @@ export default async function MyPage() {
 
   return (
     <div className="pb-8">
-      <TopBar title="MY" />
+      <ScreenTitle title="MY" />
 
       {user ? (
         <section className="flex items-center gap-4 pb-6">
@@ -44,7 +44,7 @@ export default async function MyPage() {
         </section>
       ) : (
         <section className="pb-8 text-center space-y-4">
-          <p className="text-muted-foreground text-[15px]">로그인하면 글쓰기·댓글·회원 명부를 이용할 수 있어요.</p>
+          <p className="text-muted-foreground text-[16px]">로그인하면 글쓰기·댓글·회원 명부를 이용할 수 있어요.</p>
           <Link
             href={`/login?redirect=${encodeURIComponent('/my')}`}
             className="inline-flex items-center justify-center h-12 px-8 rounded-full bg-foreground text-background font-semibold"
@@ -52,7 +52,7 @@ export default async function MyPage() {
             로그인
           </Link>
           {/* 계정은 관리자가 발급한다(자가 가입 없음). 처음 온 사람이 어디에 물어야 할지 알 수 있게 안내한다. */}
-          <p className="text-[13px] text-muted-foreground">회원 가입은 관리자(youngyong.jo)에게 Teams로 문의해주세요.</p>
+          <p className="text-[14px] text-muted-foreground">회원 가입은 관리자(youngyong.jo)에게 Teams로 문의해주세요.</p>
         </section>
       )}
 
@@ -72,11 +72,11 @@ export default async function MyPage() {
       <MenuGroup title="앱 정보">
         <li>
           {/* 외부 사이트라 새 창으로 연다(앱 화면을 떠나지 않게). */}
-          <a href={REPO_URL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-4 py-3 text-[15px] active:bg-muted">
+          <a href={REPO_URL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-4 py-3 text-[16px] active:bg-muted">
             <CodeIcon size={20} />
             <span className="flex-1 min-w-0">
               <span className="block">GitHub 저장소</span>
-              <span className="block text-[13px] text-muted-foreground">이 앱의 소스 코드예요. 기능 제안·버그 제보도 환영해요.</span>
+              <span className="block text-[14px] text-muted-foreground">이 앱의 소스 코드예요. 기능 제안·버그 제보도 환영해요.</span>
             </span>
             <ChevronRightIcon size={18} className="text-muted-foreground" />
           </a>
@@ -87,7 +87,7 @@ export default async function MyPage() {
         <form action={logout} className="mt-6">
           <button
             type="submit"
-            className="w-full h-12 flex items-center gap-3 px-4 rounded-2xl bg-muted/60 text-[15px] text-red-600 font-medium"
+            className="w-full h-12 flex items-center gap-3 px-4 rounded-2xl bg-muted/60 text-[16px] text-red-600 font-medium"
           >
             <LogoutIcon size={20} />
             로그아웃
@@ -110,7 +110,7 @@ function MenuGroup({ title, children }: { title: string; children: ReactNode }) 
 function MenuLink({ href, icon: Icon, children }: { href: string; icon: ComponentType<{ size?: number }>; children: ReactNode }) {
   return (
     <li>
-      <Link href={href} className="h-12 flex items-center gap-3 px-4 text-[15px] active:bg-muted">
+      <Link href={href} className="h-12 flex items-center gap-3 px-4 text-[16px] active:bg-muted">
         <Icon size={20} />
         <span className="flex-1">{children}</span>
         <ChevronRightIcon size={18} className="text-muted-foreground" />

@@ -31,7 +31,7 @@ export default async function AdminMembersPage() {
     <div>
       {/* 회원 추가는 회원 탭과 같은 오른쪽 아래 ＋ 버튼(Fab, 관리자에게만)으로 통일했다. */}
       <TopBar title="회원 관리" backHref="/my" backLabel="MY로 돌아가기" />
-      <p className="text-[13px] text-muted-foreground">
+      <p className="text-[14px] text-muted-foreground">
         계정 발급과 비밀번호 초기화는 관리자만 할 수 있습니다. 새 회원은 오른쪽 아래 ＋로 만듭니다.
       </p>
 
@@ -43,19 +43,19 @@ export default async function AdminMembersPage() {
           return (
             <li key={m.id} className="py-3.5 space-y-2">
               <div className="flex items-center gap-2 min-w-0">
-                <span className="font-semibold text-[15px] truncate">{m.username}</span>
+                <span className="font-semibold text-[16px] truncate">{m.username}</span>
                 <span
-                  className={`shrink-0 px-1.5 py-px rounded-md text-[11px] font-bold ${
+                  className={`shrink-0 px-1.5 py-px rounded-md text-[12px] font-bold ${
                     status === '관리자' ? 'bg-foreground text-background' : status === '초기 PIN' ? 'bg-muted text-foreground border border-border' : 'bg-muted text-muted-foreground'
                   }`}
                 >
                   {status}
                 </span>
               </div>
-              <p className="text-[13px] text-muted-foreground">
+              <p className="text-[14px] text-muted-foreground">
                 {m.seasonIds.length > 0 ? `시즌 ${m.seasonIds.join(', ')}` : '시즌 없음'}
               </p>
-              {details && <p className="text-[13px] text-muted-foreground break-words">{details}</p>}
+              {details && <p className="text-[14px] text-muted-foreground break-words">{details}</p>}
               <ResetPinForm userId={m.id} />
             </li>
           );

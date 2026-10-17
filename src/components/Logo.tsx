@@ -12,7 +12,7 @@ const TILES = [
   { x: 37, d: 'M43.35 40.35H46.84V52.35H53.06V55.2H43.35Z' },
 ];
 
-export function LogoMark({ size = 28 }: { size?: number }) {
+export function LogoMark({ size = 36 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true" className="shrink-0">
       <rect width="64" height="64" rx="15" className="fill-foreground" />
@@ -30,11 +30,11 @@ export function LogoMark({ size = 28 }: { size?: number }) {
 /** 마크 + "SDL" + 동호회 이름. compact면 이름 줄을 생략한다. */
 export default function Logo({ compact = false }: { compact?: boolean }) {
   return (
-    <span className="inline-flex items-center gap-2">
+    <span className="inline-flex items-center gap-2.5">
       <LogoMark />
       <span className="flex flex-col leading-none">
-        <span className="text-[17px] font-black tracking-tight">SDL</span>
-        {!compact && <span className="mt-0.5 text-[10px] font-medium text-muted-foreground tracking-tight">삼평동 책상 전략 연구소</span>}
+        <span className="text-[20px] font-black tracking-tight">SDL</span>
+        {!compact && <span className="mt-1 text-[12px] font-medium text-muted-foreground tracking-tight">삼평동 책상 전략 연구소</span>}
       </span>
     </span>
   );

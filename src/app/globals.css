@@ -17,6 +17,16 @@
   --color-card-foreground: var(--card-foreground);
   --color-border: var(--border);
   --color-like: var(--like);
+  /*
+   * 가독성을 위해 기본 글자 크기를 Tailwind 기본값보다 1px씩 키운다(xs 12→13, sm 14→15, base 16→17, lg 18→19, xl 20→21).
+   * 줄 높이는 Tailwind가 크기에 대한 비율(--text-*--line-height)로 정해 두어 그대로 따라온다.
+   * 컴포넌트에 직접 적은 text-[Npx]도 같은 이유로 1px씩 올려 두었다.
+   */
+  --text-xs: 0.8125rem;
+  --text-sm: 0.9375rem;
+  --text-base: 1.0625rem;
+  --text-lg: 1.1875rem;
+  --text-xl: 1.3125rem;
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
 }
 
@@ -84,7 +94,8 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
-  font-size: 15px;
+  /* 기본 본문 글자 크기. 15px은 모바일에서 작게 읽힌다는 의견으로 16px로 키웠다. */
+  font-size: 16px;
   letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

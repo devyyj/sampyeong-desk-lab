@@ -32,7 +32,7 @@ export default function TopBar({
       ) : (
         <span className="w-2" />
       )}
-      <h1 className={`flex-1 min-w-0 truncate tracking-tight ${backHref ? 'text-[17px] font-bold' : 'text-[22px] font-extrabold'}`}>{title}</h1>
+      <h1 className={`flex-1 min-w-0 truncate tracking-tight ${backHref ? 'text-[18px] font-bold' : 'text-[24px] font-extrabold'}`}>{title}</h1>
       {actions && <div className="flex items-center">{actions}</div>}
     </div>
   );

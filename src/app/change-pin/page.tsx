@@ -14,7 +14,7 @@ export default function ChangePinPage() {
     <div>
       <TopBar title="초기 비밀번호를 변경해주세요" />
       <div>
-        <p className="mb-6 text-[14px] text-muted-foreground">
+        <p className="mb-6 text-[15px] text-muted-foreground">
           관리자가 발급한 비밀번호를 사용 중입니다. 본인만 아는 4자리 숫자로 바꿔야 서비스를 이용할 수 있습니다.
         </p>
 

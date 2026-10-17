@@ -9,7 +9,7 @@ import FeedList from './FeedList';
 vi.mock('@/app/actions/feed', () => ({ loadMoreFeed: vi.fn(), loadFeedItem: vi.fn() }));
 vi.mock('@/app/actions/profile', () => ({ getProfile: vi.fn() }));
 vi.mock('@/app/actions/comments', () => ({ addComment: vi.fn(), updateComment: vi.fn(), deleteComment: vi.fn() }));
-vi.mock('@/app/actions/reactions', () => ({ toggleLike: vi.fn() }));
+vi.mock('@/app/actions/reactions', () => ({ setLike: vi.fn() }));
 vi.mock('@/app/actions/post', () => ({ deletePost: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
 

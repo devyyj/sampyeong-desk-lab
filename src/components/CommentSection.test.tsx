@@ -9,7 +9,7 @@ vi.mock('@/app/actions/comments', () => ({
   updateComment: vi.fn(async () => ({ ok: true })),
   deleteComment: vi.fn(async () => ({ ok: true })),
 }));
-vi.mock('@/app/actions/reactions', () => ({ toggleLike: vi.fn() }));
+vi.mock('@/app/actions/reactions', () => ({ setLike: vi.fn() }));
 vi.mock('@/app/actions/profile', () => ({ getProfile: vi.fn() }));
 
 const ME = 'me-id';

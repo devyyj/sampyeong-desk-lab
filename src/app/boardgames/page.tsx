@@ -5,7 +5,7 @@ import { getSession } from "@/lib/session";
 import { getLikeSummaries } from "@/lib/community";
 import Link from "next/link";
 import Form from "next/form";
-import TopBar from "@/components/TopBar";
+import ScreenTitle from "@/components/ScreenTitle";
 import EmptyState from "@/components/EmptyState";
 import CategorySheet from "@/components/CategorySheet";
 import { chipClass } from "@/lib/chip";
@@ -95,11 +95,12 @@ export default async function BoardGamesPage({
   return (
     <div>
       {/* 등록은 피드·회원과 같은 방식으로 화면 오른쪽 아래 ＋(Fab)로 통일했다. */}
-      <TopBar title="보드게임" />
+      <ScreenTitle title="보드게임" />
 
       {allGames.length > 0 && (
-        // 붙었을 때 위 헤더와 붙지 않도록 pt-2를 두되, 처음 위치는 -mt-2로 상쇄해 제목 줄 아래 간격 규칙(8px)을 지킨다.
-        <div className="sticky top-12 lg:top-0 z-10 -mx-4 -mt-2 px-4 pt-2 pb-2 bg-background/95 backdrop-blur space-y-2.5">
+        // 붙었을 때 위 헤더와 붙지 않도록 pt-2를 두되, 처음 위치는 -mt-2로 상쇄해 다른 탭 화면과 같은 첫 여백(ScreenTitle의 12px)을 지킨다.
+        // top-16은 로고 헤더(AppHeader h-16) 바로 아래.
+        <div className="sticky top-16 lg:top-0 z-10 -mx-4 -mt-2 px-4 pt-2 pb-2 bg-background/95 backdrop-blur space-y-2.5">
           {/* GET 폼이라 검색 결과도 ?q= 주소로 남아 공유·뒤로 가기가 된다. next/form이라 전체 새로고침 없이 이동한다. */}
           <Form action="/boardgames" role="search" className="relative flex items-center">
             {cabinetOnly && <input type="hidden" name="cabinet" value="1" />}
@@ -114,7 +115,7 @@ export default async function BoardGamesPage({
               // 보유자는 회원에게만 보이므로 검색 대상도 회원에게만 넓힌다.
               placeholder={session ? '게임 이름 또는 보유자' : '게임 이름'}
               // 16px: iOS Safari가 초점 시 화면을 확대하지 않게 한다.
-              className="w-full h-10 pl-9 pr-10 rounded-xl bg-muted text-[16px] placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20"
+              className="w-full h-10 pl-9 pr-10 rounded-xl bg-muted text-[17px] placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20"
             />
             {query && (
               <Link

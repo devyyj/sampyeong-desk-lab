@@ -45,7 +45,7 @@ export default function PostReactions({
           aria-label={`댓글 ${count}`}
           aria-haspopup="dialog"
           onClick={() => setOpen(true)}
-          className="inline-flex items-center gap-1.5 h-10 px-2 rounded-full text-[15px] hover:bg-muted"
+          className="inline-flex items-center gap-1.5 h-10 px-2 rounded-full text-[16px] hover:bg-muted"
         >
           <CommentIcon size={24} />
           <span className="tabular-nums font-medium">{count}</span>

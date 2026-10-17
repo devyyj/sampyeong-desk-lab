@@ -21,6 +21,11 @@ describe('PostCaption', () => {
     expect(screen.queryByRole('button', { name: '더 보기' })).toBeNull();
   });
 
+  it('"더 보기"는 본문 오른쪽 끝에 둔다', () => {
+    render(<PostCaption content={'1\n2\n3\n4\n5'} />);
+    expect(screen.getByRole('button', { name: '더 보기' }).parentElement).toHaveClass('justify-end');
+  });
+
   it('짧은 글에는 "더 보기"가 없다', () => {
     render(<PostCaption content="짧은 글" />);
     expect(screen.queryByRole('button', { name: '더 보기' })).toBeNull();
@@ -28,6 +33,6 @@ describe('PostCaption', () => {
 
   it('사진 없는 글은 본문을 크게 보여준다', () => {
     render(<PostCaption content="글만" large />);
-    expect(screen.getByText('글만').className).toMatch(/text-\[17px\]/);
+    expect(screen.getByText('글만').className).toMatch(/text-\[18px\]/);
   });
 });

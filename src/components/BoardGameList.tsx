@@ -43,7 +43,7 @@ export default function BoardGameList({ games, canEdit, loggedIn = canEdit }: { 
             <article key={game.id} className="relative py-3 flex items-center gap-2 active:bg-muted">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <h3 className="text-[16px] font-semibold">
+                  <h3 className="text-[17px] font-semibold">
                     <button
                       type="button"
                       aria-haspopup="dialog"
@@ -57,7 +57,7 @@ export default function BoardGameList({ games, canEdit, loggedIn = canEdit }: { 
                   {/* 보관 상태(보관 중·대여 중 등)는 관리하지 않고 공용 보관함에 있는지만 표시한다. */}
                   {game.inSharedCabinet && <CabinetBadge />}
                 </div>
-                <p className="mt-1 text-[13px] text-muted-foreground">
+                <p className="mt-1 text-[14px] text-muted-foreground">
                   {details}
                   {/* 보유자는 실명이라 회원 명부(/members)와 같은 기준으로 로그인한 회원에게만 보여준다. */}
                   {/* 누구에게 빌릴지가 목록을 보는 주된 이유라, 보유자 이름은 본문색·굵게 강조한다. */}
@@ -86,7 +86,7 @@ export default function BoardGameList({ games, canEdit, loggedIn = canEdit }: { 
 }
 
 function CabinetBadge() {
-  return <span className="px-1.5 py-px rounded-md text-[11px] font-bold bg-foreground text-background">공용 보관함</span>;
+  return <span className="px-1.5 py-px rounded-md text-[12px] font-bold bg-foreground text-background">공용 보관함</span>;
 }
 
 function GameDetail({ game, canEdit, onDeleted }: { game: BoardGameItem; canEdit: boolean; onDeleted: () => void }) {
@@ -117,7 +117,7 @@ function GameDetail({ game, canEdit, onDeleted }: { game: BoardGameItem; canEdit
         <img src={game.thumbnailUrl} alt={`${game.name} 사진`} className="w-full max-h-64 object-contain rounded-2xl bg-muted" />
       )}
       {game.inSharedCabinet && <CabinetBadge />}
-      <dl className="rounded-2xl bg-muted/60 divide-y divide-border text-[15px]">
+      <dl className="rounded-2xl bg-muted/60 divide-y divide-border text-[16px]">
         {rows.map(([label, value]) => (
           <div key={label} className="flex gap-4 px-4 py-3">
             <dt className="w-16 shrink-0 text-muted-foreground">{label}</dt>

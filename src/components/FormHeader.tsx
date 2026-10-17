@@ -20,11 +20,11 @@ export default function FormHeader({
 }) {
   return (
     <header className="sticky top-0 z-30 -mx-4 mb-4 px-2 h-12 flex items-center gap-1 bg-background/95 backdrop-blur border-b border-border/60">
-      <Link href={cancelHref} className="h-11 px-3 flex items-center text-[16px]">
+      <Link href={cancelHref} className="h-11 px-3 flex items-center text-[17px]">
         취소
       </Link>
-      <h1 className="flex-1 text-center text-[17px] font-bold tracking-tight truncate">{title}</h1>
-      <button type="submit" disabled={busy} className="h-11 px-3 text-[16px] font-bold disabled:opacity-40">
+      <h1 className="flex-1 text-center text-[18px] font-bold tracking-tight truncate">{title}</h1>
+      <button type="submit" disabled={busy} className="h-11 px-3 text-[17px] font-bold disabled:opacity-40">
         {busy && busyLabel ? busyLabel : submitLabel}
       </button>
     </header>

@@ -24,7 +24,7 @@ export default function LevelBadge({ badge, className = '' }: { badge: MemberBad
   return (
     <span
       data-tone={tone ?? undefined}
-      className={`inline-flex items-center gap-0.5 px-1.5 py-px rounded-md text-[11px] font-bold leading-4 align-middle tabular-nums ${
+      className={`inline-flex items-center gap-0.5 px-1.5 py-px rounded-md text-[12px] font-bold leading-4 align-middle tabular-nums ${
         president ? 'bg-foreground text-background' : TONE_CLASS[tone!]
       } ${className}`}
     >

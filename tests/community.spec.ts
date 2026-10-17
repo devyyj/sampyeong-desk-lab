@@ -41,6 +41,22 @@ test('게시글: 좋아요 토글·유지, 댓글 작성·수정·좋아요·삭
   await expect(card.getByRole('button', { name: '좋아요 0' })).toHaveAttribute('aria-pressed', 'false');
   await expect.poll(async () => (await db.select().from(postLikes).where(eq(postLikes.postId, post.id))).length).toBe(0);
 
+  // 연타: 응답을 기다리지 않고 좋아요 → 해제 → 좋아요를 빠르게 누르면 누를 때마다 바로 바뀌고, 마지막 상태(좋아요)로 저장된다.
+  // (예전에는 응답 대기 중 클릭을 무시해 간격을 두고 눌러야 해제가 됐다.)
+  const likeButton = card.getByRole('button', { name: /^좋아요 \d+$/ });
+  await likeButton.click();
+  await expect(likeButton).toHaveAttribute('aria-pressed', 'true');
+  await likeButton.click();
+  await expect(likeButton).toHaveAttribute('aria-pressed', 'false');
+  await likeButton.click();
+  await expect(likeButton).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(async () => (await db.select().from(postLikes).where(eq(postLikes.postId, post.id))).length).toBe(1);
+  await expect(card.getByRole('button', { name: '좋아요 1' })).toHaveAttribute('aria-pressed', 'true');
+  // 다음 단계(댓글 좋아요 등)가 깨끗한 상태에서 시작하도록 되돌린다.
+  await likeButton.click();
+  await expect.poll(async () => (await db.select().from(postLikes).where(eq(postLikes.postId, post.id))).length).toBe(0);
+  await expect(card.getByRole('button', { name: '좋아요 0' })).toHaveAttribute('aria-pressed', 'false');
+
   // 댓글: 💬를 누르면 댓글 시트가 열린다
   await card.getByRole('button', { name: '댓글 0', exact: true }).click();
   await commentsSheet(page).getByRole('textbox', { name: '댓글 쓰기' }).fill('E2E 첫 댓글');

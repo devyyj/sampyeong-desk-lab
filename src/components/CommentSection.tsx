@@ -12,7 +12,7 @@ type Viewer = { id: string; isAdmin: boolean } | null;
 
 // 모바일 키보드에서 확대(zoom)되지 않도록 입력 글자는 16px 이상으로 둔다(iOS Safari는 16px 미만 입력란에 초점이 가면 화면을 확대한다).
 const inputClass =
-  'w-full px-4 py-2.5 rounded-2xl bg-muted text-foreground text-[16px] placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 resize-none';
+  'w-full px-4 py-2.5 rounded-2xl bg-muted text-foreground text-[17px] placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 resize-none';
 
 /**
  * 게시글·활동 기록 공용 댓글 영역: 목록(오래된 순) + 작성 폼.
@@ -157,7 +157,7 @@ function CommentItem({ comment, viewer, onChanged }: { comment: CommentView; vie
         />
       ) : (
         // 일반 텍스트로 보여준다(마크다운·HTML 아님). 줄바꿈은 살린다.
-        <p className="text-[15px] whitespace-pre-wrap break-words">{comment.content}</p>
+        <p className="text-[16px] whitespace-pre-wrap break-words">{comment.content}</p>
       )}
       {deleteError && <p role="alert" className="text-xs text-red-500">{deleteError}</p>}
 

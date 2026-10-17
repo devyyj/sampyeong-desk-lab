@@ -25,16 +25,19 @@ export default function PostCaption({ content, large = false }: { content: strin
   return (
     <div>
       <p
-        className={`whitespace-pre-wrap break-words ${large ? 'text-[17px] leading-relaxed' : 'text-[15px] leading-normal'} ${
+        className={`whitespace-pre-wrap break-words ${large ? 'text-[18px] leading-relaxed' : 'text-[16px] leading-normal'} ${
           clamped ? 'line-clamp-3' : ''
         }`}
       >
         {content}
       </p>
+      {/* "더 보기"는 오른쪽 끝에 둔다(왼쪽에 있으면 본문의 다음 줄처럼 읽혀 버튼인지 알아보기 어려웠다). */}
       {clamped && (
-        <button type="button" onClick={() => setExpanded(true)} className="mt-0.5 text-[15px] text-muted-foreground">
-          더 보기
-        </button>
+        <div className="flex justify-end">
+          <button type="button" onClick={() => setExpanded(true)} className="mt-0.5 text-[16px] font-medium text-muted-foreground hover:text-foreground">
+            더 보기
+          </button>
+        </div>
       )}
     </div>
   );
