@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { ComponentType } from 'react';
+import { useState, type ComponentType, type MouseEvent } from 'react';
 import { TABS, activeTabOf, hidesAppChrome, type TabKey } from '@/lib/nav';
 import { DiceIcon, HomeIcon, UserIcon, UsersIcon } from './icons';
 import Logo from './Logo';
@@ -18,11 +18,24 @@ const ICONS: Record<TabKey, ComponentType<{ size?: number; strokeWidth?: number 
  * 주요 메뉴. 모바일에서는 화면 아래 고정 탭바, 넓은 화면(lg 이상)에서는 왼쪽 세로 레일이다.
  * 같은 링크를 두 벌 그리지 않고 하나의 <nav>를 CSS로만 배치를 바꿔, 스크린 리더에도 메뉴가 한 번만 읽힌다.
  * 아이폰 홈 인디케이터에 가리지 않도록 safe-area 만큼 아래 여백을 더한다(layout의 viewport-fit=cover 필요).
+ *
+ * 탭 페이지는 모두 동적 렌더링이라, 경로(usePathname)는 서버가 다음 화면을 다 그린 뒤에야 바뀐다.
+ * 경로만 보고 현재 탭을 칠하면 누른 뒤 한참 동안 이전 탭이 강조돼 반응이 없는 것처럼 보이므로,
+ * 누른 탭을 바로 기억해 먼저 강조한다(낙관적 표시). 기록에는 누를 때의 경로를 함께 남겨,
+ * 경로가 바뀌는 순간(이동 완료·뒤로 가기 등) 저절로 무효가 되게 했다 — effect로 지울 필요가 없다.
  */
 export default function TabBar() {
   const pathname = usePathname();
+  const [pressed, setPressed] = useState<{ key: TabKey; from: string } | null>(null);
   if (hidesAppChrome(pathname)) return null;
-  const active = activeTabOf(pathname);
+  const pending = pressed?.from === pathname ? pressed.key : null;
+  const active = pending ?? activeTabOf(pathname)?.key;
+
+  // 새 탭/새 창으로 여는 클릭(Ctrl·⌘·Shift·Alt, 가운데 버튼)은 이 화면을 떠나지 않으므로 표시를 바꾸지 않는다.
+  const press = (key: TabKey) => (e: MouseEvent<HTMLAnchorElement>) => {
+    if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+    setPressed({ key, from: pathname });
+  };
 
   return (
     <nav
@@ -37,11 +50,12 @@ export default function TabBar() {
       <ul className="flex lg:flex-col lg:gap-1">
         {TABS.map((tab) => {
           const Icon = ICONS[tab.key];
-          const current = active?.key === tab.key;
+          const current = active === tab.key;
           return (
             <li key={tab.key} className="flex-1 lg:flex-none">
               <Link
                 href={tab.href}
+                onClick={press(tab.key)}
                 aria-current={current ? 'page' : undefined}
                 className={`flex flex-col items-center justify-center gap-0.5 h-14 text-[11px] transition-colors
                   lg:flex-row lg:justify-start lg:gap-3 lg:h-12 lg:px-3 lg:rounded-xl lg:text-[15px] lg:hover:bg-muted

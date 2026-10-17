@@ -50,7 +50,9 @@ export default function PostCard({ item, variant = 'feed', loginHref = '/login?r
   const hasImages = item.images.length > 0;
 
   return (
-    <article className={detail ? '' : 'py-3 first:pt-0'}>
+    // 피드에서는 글마다 테두리 카드로 감싼다. 예전에는 얇은 구분선 하나(위아래 12px)뿐이라, 글 사이 간격이 글 안 요소 간격과
+    // 비슷해서 어디서 한 글이 끝나는지 알기 어려웠다. 반응 줄 버튼(h-10)에 자체 여백이 있어 아래 패딩은 위보다 작게 둔다.
+    <article className={detail ? '' : 'rounded-2xl border border-border px-4 pt-2 pb-1.5'}>
       <header className="flex items-center gap-2.5 h-11">
         <Avatar src={item.author.profileImageUrl} name={item.author.nickname} size={34} />
         <div className="min-w-0 flex-1 flex items-baseline gap-1.5">

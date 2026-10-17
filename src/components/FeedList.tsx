@@ -98,7 +98,8 @@ export default function FeedList({
 
   return (
     <div>
-      <div className="divide-y divide-border">
+      {/* 카드 사이 간격. 카드 테두리만으로 경계가 보이므로 구분선은 따로 두지 않는다. */}
+      <div className="space-y-3">
         {list.items.map((item) => (
           <PostCard
             key={item.id}
